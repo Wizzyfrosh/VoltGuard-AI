@@ -97,9 +97,11 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
         const level = normalizeBatteryLevel(batteryLevel);
         publish({
           level,
-          source: level === null && current.state === ExpoBattery.BatteryState.UNKNOWN
-            ? 'unavailable'
-            : 'expo-battery',
+          source: current.androidDiagnostics !== null
+            ? 'native'
+            : level === null && current.state === ExpoBattery.BatteryState.UNKNOWN
+              ? 'unavailable'
+              : 'expo-battery',
           capabilities: { ...current.capabilities, batteryLevel: level === null ? 'unavailable' : 'available' },
         });
       }));
@@ -111,7 +113,11 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       subscriptions.push(ExpoBattery.addBatteryStateListener(({ batteryState }) => {
         publish({
           state: batteryState,
-          source: isKnownBatteryState(batteryState, ExpoBattery.BatteryState.UNKNOWN) || current.level !== null ? 'expo-battery' : current.source,
+          source: current.androidDiagnostics !== null
+            ? 'native'
+            : isKnownBatteryState(batteryState, ExpoBattery.BatteryState.UNKNOWN) || current.level !== null
+              ? 'expo-battery'
+              : current.source,
           capabilities: { ...current.capabilities, chargingState: isKnownBatteryState(batteryState, ExpoBattery.BatteryState.UNKNOWN) ? 'available' : 'unavailable' },
         });
       }));
@@ -123,7 +129,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       subscriptions.push(ExpoBattery.addLowPowerModeListener(({ lowPowerMode }) => {
         publish({
           lowPowerMode,
-          source: 'expo-battery',
+          source: current.androidDiagnostics !== null ? 'native' : 'expo-battery',
           capabilities: { ...current.capabilities, lowPowerMode: 'available' },
         });
       }));
