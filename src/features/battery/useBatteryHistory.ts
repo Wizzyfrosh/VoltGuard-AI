@@ -5,6 +5,8 @@ import {
   type ChargingSession,
   getChargingSessions,
 } from './battery.history';
+import { batteryTelemetryProvider } from './expo-battery.provider';
+import { recordBatterySnapshot } from './battery.history';
 
 export function useBatteryHistory() {
   const [enabled, setEnabled] = useState(false);
@@ -31,8 +33,13 @@ export function useBatteryHistory() {
     try {
       await setBatteryHistoryEnabled(nextEnabled);
       setEnabled(nextEnabled);
-      if (!nextEnabled) setSessions([]);
-      else setSessions(await getChargingSessions());
+      if (!nextEnabled) {
+        setSessions([]);
+      } else {
+        const currentSnapshot = await batteryTelemetryProvider.getSnapshot();
+        await recordBatterySnapshot(currentSnapshot);
+        setSessions(await getChargingSessions());
+      }
       setIsAvailable(true);
       return true;
     } catch {
