@@ -7,10 +7,12 @@ import {
 } from './battery.history';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import { recordBatterySnapshot } from './battery.history';
+import { getRecentBatterySamples, type StoredBatterySample } from './battery.repository';
 
 export function useBatteryHistory() {
   const [enabled, setEnabled] = useState(false);
   const [sessions, setSessions] = useState<ChargingSession[]>([]);
+  const [samples, setSamples] = useState<StoredBatterySample[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(true);
 
@@ -20,10 +22,12 @@ export function useBatteryHistory() {
       const nextEnabled = await isBatteryHistoryEnabled();
       setEnabled(nextEnabled);
       setSessions(nextEnabled ? await getChargingSessions() : []);
+      setSamples(nextEnabled ? await getRecentBatterySamples(20) : []);
       setIsAvailable(true);
     } catch {
       setIsAvailable(false);
       setSessions([]);
+      setSamples([]);
     } finally {
       setIsLoading(false);
     }
@@ -35,10 +39,12 @@ export function useBatteryHistory() {
       setEnabled(nextEnabled);
       if (!nextEnabled) {
         setSessions([]);
+        setSamples([]);
       } else {
         const currentSnapshot = await batteryTelemetryProvider.getSnapshot();
         await recordBatterySnapshot(currentSnapshot);
         setSessions(await getChargingSessions());
+        setSamples(await getRecentBatterySamples(20));
       }
       setIsAvailable(true);
       return true;
@@ -50,5 +56,5 @@ export function useBatteryHistory() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  return { enabled, sessions, isLoading, isAvailable, refresh, updateEnabled };
+  return { enabled, sessions, samples, isLoading, isAvailable, refresh, updateEnabled };
 }
