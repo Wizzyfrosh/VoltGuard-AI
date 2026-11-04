@@ -15,6 +15,25 @@ class VoltGuardBatteryModule : Module() {
     Function("getBatteryDiagnostics") {
       readBatteryDiagnostics()
     }
+
+    AsyncFunction("startBackgroundMonitoring") { threshold: Int ->
+      require(threshold in 50..100) { "Threshold must be between 50 and 100" }
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
+        action = VoltGuardBatteryMonitorService.ACTION_START
+        putExtra(VoltGuardBatteryMonitorService.EXTRA_THRESHOLD, threshold)
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent)
+      else context.startService(serviceIntent)
+    }
+
+    AsyncFunction("stopBackgroundMonitoring") {
+      val context = appContext.reactContext ?: return@AsyncFunction
+      val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
+        action = VoltGuardBatteryMonitorService.ACTION_STOP
+      }
+      context.startService(serviceIntent)
+    }
   }
 
   private fun readBatteryDiagnostics(): Map<String, Any?>? {
