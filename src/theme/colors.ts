@@ -25,11 +25,13 @@ export const theme = {
     warning: palette.warning, danger: palette.danger, charging: palette.charging,
     gradientStart: '#2878F0', gradientEnd: '#F5B91B',
   },
+  // Charcoal surfaces follow the compact device-monitor reference without
+  // turning the whole interface into a saturated navy dashboard.
   dark: {
-    background: '#06142F', card: '#102345', text: '#F6F9FF', textSecondary: '#A8B9D3',
-    border: '#29446F', primary: '#3487FF', tint: '#FFFFFF', tabBar: '#0C1D3C',
-    tabBarActive: '#FFFFFF', tabBarInactive: '#8FA6C9', success: '#10D69A',
-    warning: '#F5AD27', danger: '#F05252', charging: '#10D69A',
-    gradientStart: '#1675FF', gradientEnd: '#F5B91B',
+    background: '#202124', card: '#2B2D31', text: '#F2F3F5', textSecondary: '#B0B3B8',
+    border: '#3B3D42', primary: '#58A65C', tint: '#FFFFFF', tabBar: '#292B30',
+    tabBarActive: '#68B96D', tabBarInactive: '#A0A3A8', success: '#68B96D',
+    warning: '#F5B942', danger: '#F05252', charging: '#68B96D',
+    gradientStart: '#3487FF', gradientEnd: '#68B96D',
   },
 };
