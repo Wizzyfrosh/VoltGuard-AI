@@ -80,7 +80,17 @@ export default function SettingsScreen() {
             ))}
           </View>
           <Text style={[styles.privacy, { color: colors.textSecondary }]}>{Platform.OS === 'android' ? 'An ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions, or manufacturer power management can still interrupt delivery.' : Platform.OS === 'ios' ? 'iOS checks battery thresholds only while VoltGuard is open; continuous background battery monitoring is not available.' : 'Charging alerts are not available on web.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
-          {alerts.monitoringError && <Text style={[styles.error, { color: colors.warning }]}>Background monitoring could not be started or restored. Check notification permissions and Android battery restrictions, then try enabling the alert again.</Text>}
+          {alerts.monitoringError && (
+            <View style={[styles.errorPanel, { borderColor: colors.warning }]}>
+              <Text style={[styles.error, { color: colors.warning, fontWeight: '700' }]}>Background monitoring failed</Text>
+              <Text selectable style={[styles.error, { color: colors.textSecondary }]}>
+                {alerts.monitoringErrorMessage ?? 'Android did not provide a reason. Rebuild and reinstall the latest VoltGuard APK, then retry.'}
+              </Text>
+              <Text style={[styles.error, { color: colors.textSecondary }]}>
+                On OPPO devices, also check Settings → Battery → App battery management and allow VoltGuard to run in the background.
+              </Text>
+            </View>
+          )}
           {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
           {!alerts.isAvailable && <Text style={[styles.error, { color: colors.warning }]}>Charging alerts are not available on web.</Text>}
         </View>
@@ -113,6 +123,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 13, lineHeight: 19 },
   privacy: { fontSize: 12, lineHeight: 18 },
   error: { fontSize: 12, lineHeight: 18 },
+  errorPanel: { borderWidth: 1, borderRadius: 12, padding: 11, gap: 6 },
   thresholds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
