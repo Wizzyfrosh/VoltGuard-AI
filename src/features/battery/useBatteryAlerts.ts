@@ -50,10 +50,11 @@ export function useBatteryAlerts(monitor = true) {
   }, []);
 
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener(ALERT_PREFERENCES_CHANGED, (change: { enabled?: boolean; threshold?: number; monitoringError?: boolean }) => {
+    const subscription = DeviceEventEmitter.addListener(ALERT_PREFERENCES_CHANGED, (change: { enabled?: boolean; threshold?: number; monitoringError?: boolean; monitoringErrorMessage?: string | null }) => {
       if (typeof change.enabled === 'boolean') setEnabled(change.enabled);
       if (typeof change.threshold === 'number' && isValidBatteryAlertThreshold(change.threshold)) setThreshold(change.threshold);
       if (typeof change.monitoringError === 'boolean') setMonitoringError(change.monitoringError);
+      if (typeof change.monitoringErrorMessage === 'string' || change.monitoringErrorMessage === null) setMonitoringErrorMessage(change.monitoringErrorMessage);
     });
     return () => subscription.remove();
   }, []);
@@ -78,7 +79,7 @@ export function useBatteryAlerts(monitor = true) {
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
       setEnabled(nextEnabled);
-      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled, monitoringError: false });
+      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled, monitoringError: false, monitoringErrorMessage: null });
       return true;
     } catch (error) {
       const message = describeMonitorError(error);
@@ -86,7 +87,7 @@ export function useBatteryAlerts(monitor = true) {
       setMonitoringErrorMessage(message);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
-      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true });
+      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true, monitoringErrorMessage: message });
       if (Platform.OS === 'android' && nextEnabled) await stopBackgroundBatteryMonitoring().catch(() => undefined);
       return false;
     }
@@ -105,7 +106,7 @@ export function useBatteryAlerts(monitor = true) {
       setMonitoringErrorMessage(null);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
-      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { threshold: nextThreshold, monitoringError: false });
+      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { threshold: nextThreshold, monitoringError: false, monitoringErrorMessage: null });
       return true;
     } catch (error) {
       const message = describeMonitorError(error);
@@ -129,7 +130,7 @@ export function useBatteryAlerts(monitor = true) {
             setMonitoringErrorMessage(null);
             await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
             await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
-            DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: false });
+            DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: false, monitoringErrorMessage: null });
           })
           .catch(async (error) => {
             const message = describeMonitorError(error);
