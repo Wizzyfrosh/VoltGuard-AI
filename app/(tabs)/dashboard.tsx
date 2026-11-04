@@ -47,7 +47,7 @@ export default function DashboardScreen() {
         <View style={styles.statusRow}>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Thermometer size={20} color={colors.warning} />
-            <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Temperature</Text>
+            <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Battery temperature</Text>
             <Text style={[styles.statusValue, { color: colors.text }]}>{diagnostics?.temperatureCelsius !== null && diagnostics?.temperatureCelsius !== undefined ? `${diagnostics.temperatureCelsius.toFixed(1)} °C` : 'Unavailable'}</Text>
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -69,6 +69,12 @@ export default function DashboardScreen() {
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
             Android diagnostics are read through Android BatteryManager and battery intent data when supported by this device. iOS and web use their own supported telemetry profile.
           </Text>
+          {diagnostics?.status && diagnostics.status !== 'unknown' && (
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>Android charging status: {diagnostics.status.replace('-', ' ')}</Text>
+          )}
+          {diagnostics?.plugged && diagnostics.plugged !== 'none-or-unknown' && (
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>Power source: {diagnostics.plugged}</Text>
+          )}
           {diagnostics?.currentNowMicroAmps !== null && diagnostics?.currentNowMicroAmps !== undefined && (
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>Instant current: {(diagnostics.currentNowMicroAmps / 1000).toFixed(0)} mA</Text>
           )}
