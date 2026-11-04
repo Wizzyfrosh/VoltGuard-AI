@@ -24,3 +24,7 @@ The SQLite database is local to the device on Android and iOS. Web is explicitly
 - No background sampling or notification workflow exists.
 - No battery-session inference exists.
 - Temperature, voltage, health, cycle count and per-app power usage remain unimplemented in this build.
+
+## Android native diagnostics
+
+The local Expo module at `modules/voltguard-battery` reads Android BatteryManager properties and the sticky battery-changed intent. It can expose temperature (tenths of °C converted to °C), voltage (mV), health/status/plugged state, capacity, instantaneous and average current, charge counter, and energy counter when the device reports them. Unsupported values remain null and capabilities are marked unavailable. Cycle count is intentionally null because it is not consistently exposed across Android versions/devices. These diagnostics require a native Android development/production build; they are not available in Expo Go or the web preview. Physical-device verification is required before production claims.
