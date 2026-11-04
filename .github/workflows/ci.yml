@@ -1,6 +1,8 @@
 name: VoltGuard validation
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main, phase-1/stabilization, phase-2/telemetry-architecture, phase-3/history-sessions, phase-4/android-native-diagnostics]
 
