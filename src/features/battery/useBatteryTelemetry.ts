@@ -21,6 +21,7 @@ const emptySnapshot: BatterySnapshot = {
     cycleCount: 'not-implemented',
     perAppPowerUsage: 'not-implemented',
   },
+  androidDiagnostics: null,
 };
 
 export function useBatteryTelemetry() {
