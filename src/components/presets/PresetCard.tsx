@@ -59,7 +59,7 @@ export const PresetCard: React.FC<PresetCardProps> = ({
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.desc, { color: colors.textSecondary }]}>{desc}</Text>
       
-      {threshold && (
+      {threshold !== undefined && (
         <View style={[styles.tag, { backgroundColor: colors.primary + '20' }]}>
           <Text style={[styles.tagText, { color: colors.primary }]}>Reminder at {threshold}%</Text>
         </View>
