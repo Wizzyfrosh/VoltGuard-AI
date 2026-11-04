@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import * as ExpoBattery from 'expo-battery';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import type { BatterySnapshot } from './battery.types';
@@ -35,6 +36,9 @@ export function useBatteryTelemetry() {
       const nextSnapshot = await batteryTelemetryProvider.getSnapshot();
       setSnapshot(nextSnapshot);
       setHasError(nextSnapshot.source === 'unavailable');
+      void recordBatterySnapshot(nextSnapshot).catch(() => {
+        // Local history storage must not block live diagnostics.
+      });
     } catch {
       setHasError(true);
     } finally {
@@ -79,6 +83,37 @@ export function useBatteryTelemetry() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const startForegroundRefresh = () => {
+      if (interval) clearInterval(interval);
+      void refresh();
+      interval = setInterval(() => {
+        if (AppState.currentState === 'active') void refresh();
+      }, 60_000);
+    };
+
+    const stopForegroundRefresh = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') startForegroundRefresh();
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') startForegroundRefresh();
+      else stopForegroundRefresh();
+    });
+
+    return () => {
+      stopForegroundRefresh();
+      subscription.remove();
+    };
+  }, [refresh]);
 
   return { ...snapshot, isLoading, hasError, refresh };
 }
