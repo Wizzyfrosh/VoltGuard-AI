@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -37,7 +37,7 @@ export default function PresetsScreen() {
         <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>CHARGING AUTOMATION</Text>
           <Text style={[styles.title, { color: colors.text }]}>Charging profiles</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Choose one real notification target. VoltGuard reminds you; it cannot control or stop the phone's charging hardware.</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Choose one real notification target. VoltGuard reminds you; it cannot control or stop the phone&apos;s charging hardware.</Text>
         </View>
         {alerts.isLoading ? <ActivityIndicator color={colors.primary} /> : profiles.map(({ threshold, title, subtitle, icon: Icon }) => {
           const selected = alerts.enabled && alerts.threshold === threshold;
