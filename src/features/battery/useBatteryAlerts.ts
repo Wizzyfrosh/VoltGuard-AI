@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, DeviceEventEmitter, Platform } from 'react-native';
 import * as ExpoBattery from 'expo-battery';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import { getBatteryPreference, setBatteryPreference } from './battery.database';
@@ -9,6 +9,7 @@ import { isValidBatteryAlertThreshold } from './battery.alerts.validation';
 const ENABLED_KEY = 'charging_alert_enabled';
 const THRESHOLD_KEY = 'charging_alert_threshold';
 const DEFAULT_THRESHOLD = 80;
+const ALERT_PREFERENCES_CHANGED = 'voltguard:charging-alert-preferences-changed';
 
 export function useBatteryAlerts(monitor = true) {
   const [enabled, setEnabled] = useState(false);
@@ -35,6 +36,14 @@ export function useBatteryAlerts(monitor = true) {
     return () => { mounted = false; };
   }, []);
 
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(ALERT_PREFERENCES_CHANGED, (change: { enabled?: boolean; threshold?: number }) => {
+      if (typeof change.enabled === 'boolean') setEnabled(change.enabled);
+      if (typeof change.threshold === 'number' && isValidBatteryAlertThreshold(change.threshold)) setThreshold(change.threshold);
+    });
+    return () => subscription.remove();
+  }, []);
+
   const updateEnabled = useCallback(async (nextEnabled: boolean) => {
     if (nextEnabled) {
       try {
@@ -46,6 +55,7 @@ export function useBatteryAlerts(monitor = true) {
     try {
       await setBatteryPreference(ENABLED_KEY, String(nextEnabled));
       setEnabled(nextEnabled);
+      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled });
       return true;
     } catch { return false; }
   }, []);
@@ -55,6 +65,7 @@ export function useBatteryAlerts(monitor = true) {
     try {
       await setBatteryPreference(THRESHOLD_KEY, String(nextThreshold));
       setThreshold(nextThreshold);
+      DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { threshold: nextThreshold });
       return true;
     } catch { return false; }
   }, []);
