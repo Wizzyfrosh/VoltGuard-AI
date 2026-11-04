@@ -169,11 +169,11 @@ class VoltGuardBatteryMonitorService : Service() {
       Notification.Builder(this)
     }
     return builder
-      .setSmallIcon(applicationInfo.icon)
+      .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
       .setContentTitle("VoltGuard is monitoring your battery")
-      .setContentText("Charging threshold alerts are active")
+      .setContentText("Monitoring your selected charging threshold in the background")
       .setContentIntent(pendingIntent)
-      .setOngoing(true)
+      .setPriority(Notification.PRIORITY_LOW)\n      .setOngoing(true)
       .setOnlyAlertOnce(true)
       .build()
   }
@@ -188,8 +188,8 @@ class VoltGuardBatteryMonitorService : Service() {
     val notification = builder
       .setSmallIcon(applicationInfo.icon)
       .setContentTitle("Charging target reached")
-      .setContentText("Battery is at $level%. Unplug your charger if convenient. VoltGuard cannot stop charging.")
-      .setAutoCancel(true)
+      .setContentText("Battery is at $level% (target $threshold%). Unplug your charger if convenient.")
+      .setPriority(Notification.PRIORITY_DEFAULT)\n      .setAutoCancel(true)
       .setOnlyAlertOnce(true)
       .build()
     val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
