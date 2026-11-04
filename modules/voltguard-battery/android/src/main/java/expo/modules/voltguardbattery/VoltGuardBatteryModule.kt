@@ -30,10 +30,6 @@ class VoltGuardBatteryModule : Module() {
         if (alertChannel == null || alertChannel.importance == NotificationManager.IMPORTANCE_NONE) {
           throw IllegalStateException("The Battery threshold alerts notification channel is disabled. Enable it in Android Settings.")
         }
-        val serviceChannel = notifications.getNotificationChannel("battery-monitor-service")
-        if (serviceChannel == null || serviceChannel.importance == NotificationManager.IMPORTANCE_NONE) {
-          throw IllegalStateException("The background monitoring notification channel is disabled. Enable it in Android Settings.")
-        }
       }
       val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_START
