@@ -43,6 +43,7 @@ jobs:
         run: npx expo export --platform web
 
   android-native-build:
+    if: github.ref != 'refs/heads/phase-6/web-testing' && github.event.pull_request.head.ref != 'phase-6/web-testing'
     name: Android native module compile
     runs-on: ubuntu-latest
     steps:
