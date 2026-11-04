@@ -10,10 +10,11 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 interface BatteryGaugeProps {
   percentage: number | null;
   isCharging: boolean;
+  statusLabel: string;
   size?: number;
 }
 
-export const BatteryGauge: React.FC<BatteryGaugeProps> = ({ percentage, isCharging, size = 300 }) => {
+export const BatteryGauge: React.FC<BatteryGaugeProps> = ({ percentage, isCharging, statusLabel, size = 300 }) => {
   const { colors } = useTheme();
   const strokeWidth = Math.max(18, size * 0.055);
   const radius = (size - strokeWidth) / 2;
@@ -28,6 +29,8 @@ export const BatteryGauge: React.FC<BatteryGaugeProps> = ({ percentage, isChargi
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference - circumference * animatedProgress.value,
   }));
+
+  const statusColor = statusLabel === 'Status unavailable' ? colors.textSecondary : colors.success;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -56,10 +59,10 @@ export const BatteryGauge: React.FC<BatteryGaugeProps> = ({ percentage, isChargi
         <Text style={[styles.percentage, { color: colors.text, fontSize: size * 0.19 }]}>
           {percentage === null ? '—' : `${Math.round(safePercentage * 100)}%`}
         </Text>
-        <View style={[styles.statePill, { backgroundColor: '#073D3B', borderColor: '#087A69' }]}>
-          <View style={[styles.dot, { backgroundColor: colors.success }]} />
-          <Text style={[styles.status, { color: colors.success }]}>
-            {percentage === null ? 'Waiting for battery data' : isCharging ? 'Charging' : 'Battery healthy'}
+        <View style={[styles.statePill, { backgroundColor: statusColor === colors.success ? '#073D3B' : colors.card, borderColor: statusColor }]}>
+          <View style={[styles.dot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.status, { color: statusColor }]}>
+            {percentage === null ? 'Waiting for battery data' : statusLabel}
           </Text>
         </View>
       </View>
