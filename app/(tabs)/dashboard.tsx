@@ -7,7 +7,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { BatteryGauge } from '../../src/components/dashboard/BatteryGauge';
 import { DashboardAction } from '../../src/components/dashboard/DashboardAction';
 import { useBatteryTelemetry } from '../../src/features/battery/useBatteryTelemetry';
-import { Bot, Activity, Thermometer, Zap, PlugZap, ShieldCheck, ChevronRight, Smartphone } from 'lucide-react-native';
+import { Bot, Activity, Thermometer, Zap, PlugZap, ShieldCheck, Smartphone } from 'lucide-react-native';
 
 function getChargingLabel(state: Battery.BatteryState): string {
   switch (state) {

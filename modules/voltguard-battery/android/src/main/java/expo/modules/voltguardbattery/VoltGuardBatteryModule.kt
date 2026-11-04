@@ -96,8 +96,18 @@ class VoltGuardBatteryModule : Module() {
 
     val currentNowMicroAmps = intProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
     val currentAverageMicroAmps = intProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
-    val capacityPercent = intProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+    val propertyCapacityPercent = intProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
       ?.takeIf { it in 0..100 }
+    val intentLevel = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+    val intentScale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+    val intentCapacityPercent = if (intentLevel >= 0 && intentScale > 0) {
+      (intentLevel * 100f / intentScale).toInt().coerceIn(0, 100)
+    } else {
+      null
+    }
+    // BatteryManager's capacity property is preferred; the sticky battery intent
+    // is the standard fallback on devices that do not implement that property.
+    val capacityPercent = propertyCapacityPercent ?: intentCapacityPercent
     val chargeCounterMicroAmpHours = intProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
       ?.takeIf { it >= 0 }
 
