@@ -10,7 +10,7 @@ VoltGuard AI is a cross-platform battery monitoring and insights app built with 
 
 ## Charging alerts
 
-Users can opt in to a local notification at a selected charging percentage. Threshold checks are evaluated while VoltGuard is open/in the foreground. Background delivery is not guaranteed. The notification is a reminder only: VoltGuard cannot stop, pause, or limit charging. Users must disconnect the charger themselves.
+On Android, users can opt in to a native foreground service that listens for system battery-change broadcasts while the app is backgrounded or the screen is off. It displays an ongoing notification, stores the selected threshold natively, and restores monitoring after device reboot or app replacement where Android permits it. Android can still stop/defer services due to force-stop, OEM power management, notification restrictions, or system policy. Android 14+ uses the `specialUse` foreground-service type; Google Play reviews this declared use case, so Play Console disclosure and approval are required before release.\n\nOn iOS, threshold checks run only while VoltGuard is open; iOS does not provide an equivalent general-purpose continuous battery-level background monitor. Web does not support this feature.\n\nThreshold notifications are reminders only: VoltGuard cannot stop, pause, or limit charging. Users must disconnect the charger themselves.
 
 ## Development
 
