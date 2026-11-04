@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native';
+import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings2, Info, Database } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -79,7 +79,7 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={[styles.privacy, { color: colors.textSecondary }]}>{alerts.isAvailable ? 'Android: an ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions, or manufacturer power management can still interrupt delivery. iOS checks only while VoltGuard is open.' : 'Charging alerts are not available on web.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>{Platform.OS === 'android' ? 'An ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions, or manufacturer power management can still interrupt delivery.' : Platform.OS === 'ios' ? 'iOS checks battery thresholds only while VoltGuard is open; continuous background battery monitoring is not available.' : 'Charging alerts are not available on web.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
           {alerts.monitoringError && <Text style={[styles.error, { color: colors.warning }]}>Background monitoring could not be started or restored. Check notification permissions and Android battery restrictions, then try enabling the alert again.</Text>}
           {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
           {!alerts.isAvailable && <Text style={[styles.error, { color: colors.warning }]}>Charging alerts are not available on web.</Text>}
