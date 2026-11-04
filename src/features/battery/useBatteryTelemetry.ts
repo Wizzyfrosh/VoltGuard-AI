@@ -52,28 +52,44 @@ export function useBatteryTelemetry() {
     const unsubscribe = batteryTelemetryProvider.subscribe((nextSnapshot) => {
       if (mounted) {
         receivedLiveUpdate = true;
-        setSnapshot((current) => ({
-          ...nextSnapshot,
-          androidDiagnostics: nextSnapshot.androidDiagnostics ?? current.androidDiagnostics,
-          capabilities: {
-            ...nextSnapshot.capabilities,
-            temperature: current.androidDiagnostics?.temperatureCelsius !== null && current.androidDiagnostics?.temperatureCelsius !== undefined
-              ? 'available'
-              : nextSnapshot.capabilities.temperature,
-            voltage: current.androidDiagnostics?.voltageMilliVolts !== null && current.androidDiagnostics?.voltageMilliVolts !== undefined
-              ? 'available'
-              : nextSnapshot.capabilities.voltage,
-            batteryHealth: current.androidDiagnostics?.health
-              ? 'available'
-              : nextSnapshot.capabilities.batteryHealth,
-          },
-          source: current.androidDiagnostics !== null ? 'native' : nextSnapshot.source,
-        }));
+        setSnapshot((current) => {
+          // A partial Expo event must not erase a valid native BatteryManager reading.
+          const level = nextSnapshot.level ?? current.level;
+          const state = nextSnapshot.state !== ExpoBattery.BatteryState.UNKNOWN
+            ? nextSnapshot.state
+            : current.state;
+          const androidDiagnostics = nextSnapshot.androidDiagnostics ?? current.androidDiagnostics;
+          return {
+            ...nextSnapshot,
+            level,
+            state,
+            lowPowerMode: nextSnapshot.lowPowerMode ?? current.lowPowerMode,
+            androidDiagnostics,
+            capabilities: {
+              ...nextSnapshot.capabilities,
+              batteryLevel: level !== null ? 'available' : nextSnapshot.capabilities.batteryLevel,
+              chargingState: state !== ExpoBattery.BatteryState.UNKNOWN ? 'available' : nextSnapshot.capabilities.chargingState,
+              lowPowerMode: nextSnapshot.lowPowerMode !== null || current.lowPowerMode !== null
+                ? 'available'
+                : nextSnapshot.capabilities.lowPowerMode,
+              temperature: androidDiagnostics?.temperatureCelsius !== null && androidDiagnostics?.temperatureCelsius !== undefined
+                ? 'available'
+                : nextSnapshot.capabilities.temperature,
+              voltage: androidDiagnostics?.voltageMilliVolts !== null && androidDiagnostics?.voltageMilliVolts !== undefined
+                ? 'available'
+                : nextSnapshot.capabilities.voltage,
+              batteryHealth: androidDiagnostics?.health
+                ? 'available'
+                : nextSnapshot.capabilities.batteryHealth,
+            },
+            source: androidDiagnostics !== null ? 'native' : nextSnapshot.source,
+          };
+        });
         setHasError(nextSnapshot.source === 'unavailable');
-        setIsLoading(false);
         void recordBatterySnapshot(nextSnapshot).catch(() => {
           // Telemetry remains available even if local history storage fails.
         });
+        setIsLoading(false);
       }
     });
 

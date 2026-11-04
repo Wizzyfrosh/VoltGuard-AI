@@ -3,6 +3,7 @@ package expo.modules.voltguardbattery
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.app.NotificationManager
 import android.os.BatteryManager
 import android.os.Build
 import expo.modules.kotlin.modules.Module
@@ -19,12 +20,24 @@ class VoltGuardBatteryModule : Module() {
     AsyncFunction("startBackgroundMonitoring") { threshold: Int ->
       require(threshold in 50..100) { "Threshold must be between 50 and 100" }
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val notifications = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        ?: throw IllegalStateException("Android notification service is unavailable")
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !notifications.areNotificationsEnabled()) {
+        throw IllegalStateException("VoltGuard notifications are disabled. Enable app notifications in Android Settings before starting charging alerts.")
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val alertChannel = notifications.getNotificationChannel("battery-threshold-alerts")
+        if (alertChannel == null || alertChannel.importance == NotificationManager.IMPORTANCE_NONE) {
+          throw IllegalStateException("The Battery threshold alerts notification channel is disabled. Enable it in Android Settings.")
+        }
+      }
       val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_START
         putExtra(VoltGuardBatteryMonitorService.EXTRA_THRESHOLD, threshold)
       }
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent)
       else context.startService(serviceIntent)
+      Unit
     }
 
     AsyncFunction("stopBackgroundMonitoring") {
@@ -34,6 +47,7 @@ class VoltGuardBatteryModule : Module() {
         }
         context.startService(serviceIntent)
       }
+      Unit
     }
   }
 
@@ -96,8 +110,18 @@ class VoltGuardBatteryModule : Module() {
 
     val currentNowMicroAmps = intProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
     val currentAverageMicroAmps = intProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
-    val capacityPercent = intProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+    val propertyCapacityPercent = intProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
       ?.takeIf { it in 0..100 }
+    val intentLevel = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+    val intentScale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+    val intentCapacityPercent = if (intentLevel >= 0 && intentScale > 0) {
+      (intentLevel * 100f / intentScale).toInt().coerceIn(0, 100)
+    } else {
+      null
+    }
+    // BatteryManager's capacity property is preferred; the sticky battery intent
+    // is the standard fallback on devices that do not implement that property.
+    val capacityPercent = propertyCapacityPercent ?: intentCapacityPercent
     val chargeCounterMicroAmpHours = intProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
       ?.takeIf { it >= 0 }
 

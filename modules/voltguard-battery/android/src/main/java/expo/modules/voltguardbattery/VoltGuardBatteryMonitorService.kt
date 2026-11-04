@@ -132,8 +132,12 @@ class VoltGuardBatteryMonitorService : Service() {
 
     val threshold = prefs.getInt(KEY_THRESHOLD, 80)
     if (percentage >= threshold && !prefs.getBoolean(KEY_NOTIFIED, false)) {
-      postThresholdNotification(percentage, threshold)
-      prefs.edit().putBoolean(KEY_NOTIFIED, true).apply()
+      // Do not consume the one-alert-per-charge flag when Android has blocked
+      // notifications. A later battery event can retry after permission/channel
+      // access is restored.
+      if (postThresholdNotification(percentage, threshold)) {
+        prefs.edit().putBoolean(KEY_NOTIFIED, true).apply()
+      }
     }
   }
 
@@ -180,23 +184,34 @@ class VoltGuardBatteryMonitorService : Service() {
       .build()
   }
 
-  private fun postThresholdNotification(level: Int, threshold: Int) {
-    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      Notification.Builder(this, ALERT_CHANNEL)
-    } else {
-      @Suppress("DEPRECATION")
-      Notification.Builder(this)
-    }
-    val notification = builder
-      .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
-      .setContentTitle("Charging target reached")
-      .setContentText("Battery is at $level% (target $threshold%). Unplug your charger if convenient.")
-      .setPriority(Notification.PRIORITY_DEFAULT)
-      .setAutoCancel(true)
-      .setOnlyAlertOnce(true)
-      .build()
+  private fun postThresholdNotification(level: Int, threshold: Int): Boolean {
     val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    manager.notify(ALERT_NOTIFICATION_ID, notification)
+    if (!manager.areNotificationsEnabled()) return false
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channel = manager.getNotificationChannel(ALERT_CHANNEL) ?: return false
+      if (channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+    }
+
+    return try {
+      val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Notification.Builder(this, ALERT_CHANNEL)
+      } else {
+        @Suppress("DEPRECATION")
+        Notification.Builder(this)
+      }
+      val notification = builder
+        .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
+        .setContentTitle("Charging target reached")
+        .setContentText("Battery is at $level% (target $threshold%). Unplug your charger if convenient.")
+        .setPriority(Notification.PRIORITY_DEFAULT)
+        .setAutoCancel(true)
+        .setOnlyAlertOnce(true)
+        .build()
+      manager.notify(ALERT_NOTIFICATION_ID, notification)
+      true
+    } catch (_: Exception) {
+      false
+    }
   }
 
   private fun stopMonitoring() {
