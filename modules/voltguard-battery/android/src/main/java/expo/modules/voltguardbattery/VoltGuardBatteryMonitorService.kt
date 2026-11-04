@@ -23,10 +23,8 @@ class VoltGuardBatteryMonitorService : Service() {
     private const val KEY_ENABLED = "enabled"
     private const val KEY_THRESHOLD = "threshold"
     private const val KEY_NOTIFIED = "notified_this_charge"
-    private const val SERVICE_CHANNEL = "battery-monitor-service"
-    private const val ALERT_CHANNEL = "battery-threshold-alerts"
+    private const val SERVICE_CHANNEL = VoltGuardBatteryNotifications.SERVICE_CHANNEL_ID
     private const val SERVICE_NOTIFICATION_ID = 7411
-    private const val ALERT_NOTIFICATION_ID = 7412
   }
 
   private var receiverRegistered = false
@@ -142,19 +140,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun createNotificationChannels() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-    val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    manager.createNotificationChannel(
-      NotificationChannel(SERVICE_CHANNEL, "Background battery monitoring", NotificationManager.IMPORTANCE_LOW).apply {
-        description = "Ongoing notification while VoltGuard monitors your charging threshold"
-        setShowBadge(false)
-      }
-    )
-    manager.createNotificationChannel(
-      NotificationChannel(ALERT_CHANNEL, "Battery threshold alerts", NotificationManager.IMPORTANCE_DEFAULT).apply {
-        description = "Alerts when your selected charging threshold is reached"
-      }
-    )
+    VoltGuardBatteryNotifications.createChannels(this)
   }
 
   private fun buildServiceNotification(): Notification {
@@ -185,33 +171,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun postThresholdNotification(level: Int, threshold: Int): Boolean {
-    val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    if (!manager.areNotificationsEnabled()) return false
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val channel = manager.getNotificationChannel(ALERT_CHANNEL) ?: return false
-      if (channel.importance == NotificationManager.IMPORTANCE_NONE) return false
-    }
-
-    return try {
-      val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        Notification.Builder(this, ALERT_CHANNEL)
-      } else {
-        @Suppress("DEPRECATION")
-        Notification.Builder(this)
-      }
-      val notification = builder
-        .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
-        .setContentTitle("Charging target reached")
-        .setContentText("Battery is at $level% (target $threshold%). Unplug your charger if convenient.")
-        .setPriority(Notification.PRIORITY_DEFAULT)
-        .setAutoCancel(true)
-        .setOnlyAlertOnce(true)
-        .build()
-      manager.notify(ALERT_NOTIFICATION_ID, notification)
-      true
-    } catch (_: Exception) {
-      false
-    }
+    return VoltGuardBatteryNotifications.postChargingTargetAlarm(this, level, threshold)
   }
 
   private fun stopMonitoring() {
