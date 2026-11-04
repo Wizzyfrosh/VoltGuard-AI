@@ -50,30 +50,36 @@ export async function isBatteryHistoryEnabled(): Promise<boolean> {
 
 export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> {
   const db = await getBatteryDatabase();
-  await db.runAsync(
-    `INSERT INTO user_preferences (preference_key, preference_value, updated_at)
-     VALUES (?, ?, CURRENT_TIMESTAMP)
-     ON CONFLICT(preference_key) DO UPDATE SET
-       preference_value = excluded.preference_value,
-       updated_at = CURRENT_TIMESTAMP`,
-    HISTORY_PREFERENCE,
-    enabled ? 'true' : 'false',
-  );
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO user_preferences (preference_key, preference_value, updated_at)
+       VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(preference_key) DO UPDATE SET
+         preference_value = excluded.preference_value,
+         updated_at = CURRENT_TIMESTAMP`,
+      HISTORY_PREFERENCE,
+      enabled ? 'true' : 'false',
+    );
 
-  if (!enabled) {
-    await db.withTransactionAsync(async () => {
+    if (!enabled) {
       await db.runAsync('DELETE FROM battery_samples');
       await db.runAsync('DELETE FROM charging_sessions');
-    });
-  }
+    }
+  });
 }
 
 /** Save foreground telemetry only after explicit opt-in. No background task is registered. */
 export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<void> {
-  if (Platform.OS === 'web' || snapshot.source === 'unavailable' || !(await isBatteryHistoryEnabled())) return;
+  if (Platform.OS === 'web' || snapshot.source === 'unavailable') return;
   const db = await getBatteryDatabase();
 
   await db.withTransactionAsync(async () => {
+    const preference = await db.getFirstAsync<{ preference_value: string }>(
+      'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
+      HISTORY_PREFERENCE,
+    );
+    if (preference?.preference_value !== 'true') return;
+
     await db.runAsync(
       `INSERT INTO battery_samples
        (observed_at, platform, level, battery_state, low_power_mode, source)
