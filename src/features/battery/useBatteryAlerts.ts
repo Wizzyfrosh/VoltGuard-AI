@@ -80,7 +80,7 @@ export function useBatteryAlerts() {
       active = state === 'active';
       if (active) void batteryTelemetryProvider.getSnapshot().then(evaluate).catch(() => undefined);
     });
-    return () => { unsubscribe(); appStateSubscription.remove(); void lastLevel; };
+    return () => { unsubscribe(); appStateSubscription.remove(); };
   }, [enabled, threshold, isAvailable]);
 
   return { enabled, threshold, isLoading, permissionDenied, isAvailable, updateEnabled, updateThreshold };
