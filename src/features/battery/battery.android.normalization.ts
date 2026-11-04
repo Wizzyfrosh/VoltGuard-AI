@@ -11,6 +11,7 @@ export interface AndroidBatteryDiagnosticsRaw {
   chargeCounterMicroAmpHours?: number | null;
   energyCounterNanoWattHours?: number | null;
   cycleCount?: number | null;
+  technology?: string | null;
 }
 
 export interface AndroidBatteryDiagnostics {
@@ -26,6 +27,11 @@ export interface AndroidBatteryDiagnostics {
   chargeCounterMicroAmpHours: number | null;
   energyCounterNanoWattHours: number | null;
   cycleCount: number | null;
+  technology: string | null;
+  currentNowMilliAmps: number | null;
+  currentAverageMilliAmps: number | null;
+  remainingChargeMilliAmpHours: number | null;
+  energyCounterMilliWattHours: number | null;
 }
 
 function finiteOrNull(value: unknown): number | null {
@@ -65,5 +71,10 @@ export function normalizeAndroidBatteryDiagnostics(
     chargeCounterMicroAmpHours: nonNegativeOrNull(raw.chargeCounterMicroAmpHours),
     energyCounterNanoWattHours: nonNegativeOrNull(raw.energyCounterNanoWattHours),
     cycleCount: nonNegativeOrNull(raw.cycleCount),
+    technology: typeof raw.technology === 'string' && raw.technology.trim().length > 0 ? raw.technology.trim() : null,
+    currentNowMilliAmps: finiteOrNull(raw.currentNowMicroAmps) === null ? null : Math.round((raw.currentNowMicroAmps as number) / 1000),
+    currentAverageMilliAmps: finiteOrNull(raw.currentAverageMicroAmps) === null ? null : Math.round((raw.currentAverageMicroAmps as number) / 1000),
+    remainingChargeMilliAmpHours: nonNegativeOrNull(raw.chargeCounterMicroAmpHours) === null ? null : Math.round((raw.chargeCounterMicroAmpHours as number) / 1000),
+    energyCounterMilliWattHours: nonNegativeOrNull(raw.energyCounterNanoWattHours) === null ? null : Math.round((raw.energyCounterNanoWattHours as number) / 1000000),
   };
 }
