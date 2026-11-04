@@ -10,7 +10,7 @@ const ENABLED_KEY = 'charging_alert_enabled';
 const THRESHOLD_KEY = 'charging_alert_threshold';
 const DEFAULT_THRESHOLD = 80;
 
-export function useBatteryAlerts() {
+export function useBatteryAlerts(monitor = true) {
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +60,7 @@ export function useBatteryAlerts() {
   }, []);
 
   useEffect(() => {
-    if (!enabled || !isAvailable) return;
+    if (!monitor || !enabled || !isAvailable) return;
     let wasCharging = false;
     let notifiedThisSession = false;
     let active = AppState.currentState === 'active';
@@ -88,7 +88,7 @@ export function useBatteryAlerts() {
       if (active) void batteryTelemetryProvider.getSnapshot().then(evaluate).catch(() => undefined);
     });
     return () => { unsubscribe(); appStateSubscription.remove(); };
-  }, [enabled, threshold, isAvailable]);
+  }, [enabled, threshold, isAvailable, monitor]);
 
   return { enabled, threshold, isLoading, permissionDenied, isAvailable, updateEnabled, updateThreshold };
 }
