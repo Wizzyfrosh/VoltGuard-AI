@@ -41,7 +41,6 @@ class VoltGuardBatteryMonitorService : Service() {
   override fun onCreate() {
     super.onCreate()
     createNotificationChannels()
-    registerBatteryReceiver()
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -119,15 +118,17 @@ class VoltGuardBatteryMonitorService : Service() {
     if (level < 0 || scale <= 0) return
 
     val percentage = (level * 100f / scale).toInt().coerceIn(0, 100)
-    val charging = plugged != 0 && (
+    val connectedToPower = plugged != 0
+    val charging = connectedToPower && (
       status == BatteryManager.BATTERY_STATUS_CHARGING ||
       status == BatteryManager.BATTERY_STATUS_FULL
     )
 
-    if (!charging) {
-      prefs.edit().putBoolean(KEY_NOTIFIED, false).apply()
+    if (!connectedToPower) {
+      if (prefs.getBoolean(KEY_NOTIFIED, false)) prefs.edit().putBoolean(KEY_NOTIFIED, false).apply()
       return
     }
+    if (!charging) return
 
     val threshold = prefs.getInt(KEY_THRESHOLD, 80)
     if (percentage >= threshold && !prefs.getBoolean(KEY_NOTIFIED, false)) {
