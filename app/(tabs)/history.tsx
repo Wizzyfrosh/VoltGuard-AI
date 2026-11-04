@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import * as Battery from 'expo-battery';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock3, Info, BatteryCharging, BatteryFull } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -10,6 +11,13 @@ function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Time unavailable';
   return date.toLocaleString();
+}
+
+function formatBatteryState(value: number): string {
+  if (value === Battery.BatteryState.CHARGING) return 'Charging';
+  if (value === Battery.BatteryState.FULL) return 'Full';
+  if (value === Battery.BatteryState.UNPLUGGED) return 'On battery';
+  return 'Unknown';
 }
 
 function formatPercent(value: number | null): string {
@@ -104,6 +112,20 @@ export default function HistoryScreen() {
             ))}
           </View>
         )}
+        {history.enabled && history.samples.length > 0 && (
+          <View style={styles.sampleSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent battery readings</Text>
+            {history.samples.slice(0, 10).map((sample) => (
+              <View key={sample.id} style={[styles.sampleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.sampleCopy}>
+                  <Text style={[styles.sampleLevel, { color: colors.text }]}>{formatPercent(sample.level)}</Text>
+                  <Text style={[styles.date, { color: colors.textSecondary }]}>{formatDate(sample.observedAt)}</Text>
+                </View>
+                <Text style={[styles.sampleState, { color: colors.textSecondary }]}>{formatBatteryState(sample.batteryState)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <View style={styles.note}>
           <Info size={17} color={colors.textSecondary} />
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
@@ -124,6 +146,12 @@ const styles = StyleSheet.create({
   body: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
   loading: { minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 12 },
   list: { gap: 12 },
+  sampleSection: { gap: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginTop: 8 },
+  sampleRow: { borderWidth: 1, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  sampleCopy: { flex: 1, gap: 3 },
+  sampleLevel: { fontSize: 16, fontWeight: '700' },
+  sampleState: { fontSize: 12, fontWeight: '600' },
   session: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
   sessionHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   sessionTitle: { fontSize: 15, fontWeight: '700' },
