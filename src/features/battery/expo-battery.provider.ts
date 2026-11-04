@@ -3,20 +3,12 @@ import {
   getBatteryPlatform,
   getInitialBatteryCapabilities,
 } from './battery.capabilities';
+import { normalizeBatteryLevel, isKnownBatteryState } from './battery.normalization';
 import type {
   BatterySnapshot,
   BatteryTelemetryProvider,
   BatterySnapshotListener,
 } from './battery.types';
-
-function normalizeLevel(value: number): number | null {
-  if (!Number.isFinite(value) || value < 0 || value > 1) return null;
-  return value;
-}
-
-function isKnownState(state: ExpoBattery.BatteryState): boolean {
-  return state !== ExpoBattery.BatteryState.UNKNOWN;
-}
 
 export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
   async getSnapshot(): Promise<BatterySnapshot> {
@@ -27,7 +19,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
     ]);
 
     const level = levelResult.status === 'fulfilled'
-      ? normalizeLevel(levelResult.value)
+      ? normalizeBatteryLevel(levelResult.value)
       : null;
     const state = stateResult.status === 'fulfilled'
       ? stateResult.value
@@ -38,7 +30,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
 
     const capabilities = getInitialBatteryCapabilities();
     capabilities.batteryLevel = level === null ? 'unavailable' : 'available';
-    capabilities.chargingState = isKnownState(state) ? 'available' : 'unavailable';
+    capabilities.chargingState = isKnownBatteryState(state, ExpoBattery.BatteryState.UNKNOWN) ? 'available' : 'unavailable';
     capabilities.lowPowerMode = lowPowerMode === null ? 'unavailable' : 'available';
 
     return {
@@ -47,7 +39,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       state,
       lowPowerMode,
       observedAt: new Date().toISOString(),
-      source: level !== null || isKnownState(state) || lowPowerMode !== null
+      source: level !== null || isKnownBatteryState(state) || lowPowerMode !== null
         ? 'expo-battery'
         : 'unavailable',
       capabilities,
@@ -78,7 +70,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
 
     try {
       subscriptions.push(ExpoBattery.addBatteryLevelListener(({ batteryLevel }) => {
-        const level = normalizeLevel(batteryLevel);
+        const level = normalizeBatteryLevel(batteryLevel);
         publish({
           level,
           source: level === null && current.state === ExpoBattery.BatteryState.UNKNOWN
@@ -95,8 +87,8 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       subscriptions.push(ExpoBattery.addBatteryStateListener(({ batteryState }) => {
         publish({
           state: batteryState,
-          source: isKnownState(batteryState) || current.level !== null ? 'expo-battery' : current.source,
-          capabilities: { ...current.capabilities, chargingState: isKnownState(batteryState) ? 'available' : 'unavailable' },
+          source: isKnownBatteryState(batteryState, ExpoBattery.BatteryState.UNKNOWN) || current.level !== null ? 'expo-battery' : current.source,
+          capabilities: { ...current.capabilities, chargingState: isKnownBatteryState(batteryState) ? 'available' : 'unavailable' },
         });
       }));
     } catch {
