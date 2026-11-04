@@ -42,8 +42,10 @@ export function useBatteryTelemetry() {
 
   useEffect(() => {
     let mounted = true;
+    let receivedLiveUpdate = false;
     const unsubscribe = batteryTelemetryProvider.subscribe((nextSnapshot) => {
       if (mounted) {
+        receivedLiveUpdate = true;
         setSnapshot(nextSnapshot);
         setHasError(nextSnapshot.source === 'unavailable');
         setIsLoading(false);
@@ -52,7 +54,7 @@ export function useBatteryTelemetry() {
 
     void batteryTelemetryProvider.getSnapshot()
       .then((nextSnapshot) => {
-        if (mounted) {
+        if (mounted && !receivedLiveUpdate) {
           setSnapshot(nextSnapshot);
           setHasError(nextSnapshot.source === 'unavailable');
         }
