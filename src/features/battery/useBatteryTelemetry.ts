@@ -87,9 +87,9 @@ export function useBatteryTelemetry() {
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
 
-    const startForegroundRefresh = () => {
+    const startForegroundRefresh = (refreshImmediately: boolean) => {
       if (interval) clearInterval(interval);
-      void refresh();
+      if (refreshImmediately) void refresh();
       interval = setInterval(() => {
         if (AppState.currentState === 'active') void refresh();
       }, 60_000);
@@ -102,10 +102,10 @@ export function useBatteryTelemetry() {
       }
     };
 
-    if (AppState.currentState === 'active') startForegroundRefresh();
+    if (AppState.currentState === 'active') startForegroundRefresh(false);
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') startForegroundRefresh();
+      if (state === 'active') startForegroundRefresh(true);
       else stopForegroundRefresh();
     });
 
