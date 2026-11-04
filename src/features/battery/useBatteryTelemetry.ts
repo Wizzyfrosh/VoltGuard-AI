@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import * as ExpoBattery from 'expo-battery';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import type { BatterySnapshot } from './battery.types';
+import { recordBatterySnapshot } from './battery.history';
 
 const emptySnapshot: BatterySnapshot = {
   platform: 'unknown',
@@ -49,6 +50,9 @@ export function useBatteryTelemetry() {
         setSnapshot(nextSnapshot);
         setHasError(nextSnapshot.source === 'unavailable');
         setIsLoading(false);
+        void recordBatterySnapshot(nextSnapshot).catch(() => {
+          // Telemetry remains available even if local history storage fails.
+        });
       }
     });
 
@@ -57,6 +61,9 @@ export function useBatteryTelemetry() {
         if (mounted && !receivedLiveUpdate) {
           setSnapshot(nextSnapshot);
           setHasError(nextSnapshot.source === 'unavailable');
+          void recordBatterySnapshot(nextSnapshot).catch(() => {
+            // Storage failures must not break live battery monitoring.
+          });
         }
       })
       .catch(() => {
