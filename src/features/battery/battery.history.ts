@@ -1,6 +1,7 @@
 import * as Battery from 'expo-battery';
 import { getBatteryDatabase } from './battery.database';
 import type { BatterySnapshot } from './battery.types';
+import { getChargingTransition } from './battery.session';
 
 const HISTORY_PREFERENCE = 'battery_history_enabled';
 const RETENTION_DAYS = 30;
@@ -93,8 +94,9 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
     const isCharging = snapshot.state === Battery.BatteryState.CHARGING ||
       snapshot.state === Battery.BatteryState.FULL;
     const isUnplugged = snapshot.state === Battery.BatteryState.UNPLUGGED;
+    const transition = getChargingTransition(isCharging, isUnplugged, Boolean(active));
 
-    if (isCharging && !active) {
+    if (transition === 'start') {
       await db.runAsync(
         `INSERT INTO charging_sessions (started_at, start_level, end_level, status, source)
          VALUES (?, ?, ?, 'charging', ?)`,
@@ -103,9 +105,9 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
         snapshot.level,
         snapshot.source === 'native' ? 'native' : 'expo-battery',
       );
-    } else if (isCharging && active) {
+    } else if (transition === 'update' && active) {
       await db.runAsync('UPDATE charging_sessions SET end_level = ? WHERE id = ?', snapshot.level, active.id);
-    } else if (isUnplugged && active) {
+    } else if (transition === 'finish' && active) {
       await db.runAsync(
         `UPDATE charging_sessions
          SET ended_at = ?, end_level = ?, status = 'completed'
@@ -128,6 +130,12 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
 export async function getChargingSessions(limit = 50): Promise<ChargingSession[]> {
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
   const db = await getBatteryDatabase();
+  const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
+  await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
+  await db.runAsync(
+    "DELETE FROM charging_sessions WHERE started_at < ? AND status = 'completed'",
+    cutoff,
+  );
   const rows = await db.getAllAsync<ChargingSessionRow>(
     `SELECT id, started_at, ended_at, start_level, end_level, status, source
      FROM charging_sessions ORDER BY started_at DESC LIMIT ?`,
