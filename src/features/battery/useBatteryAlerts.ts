@@ -57,7 +57,6 @@ export function useBatteryAlerts() {
 
   useEffect(() => {
     if (!enabled || !isAvailable) return;
-    let lastLevel: number | null = null;
     let wasCharging = false;
     let notifiedThisSession = false;
     let active = AppState.currentState === 'active';
@@ -75,7 +74,6 @@ export function useBatteryAlerts() {
         notifiedThisSession = true;
         void sendBatteryThresholdNotification(level * 100, threshold).catch(() => undefined);
       }
-      if (level !== null) lastLevel = level;
       wasCharging = charging;
     };
 
