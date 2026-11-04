@@ -25,7 +25,7 @@ Use the user-provided Android hardware-monitor screenshot as visual inspiration,
 | Battery level, charging state | Read from platform APIs; show unavailable on failure. |
 | Battery voltage, temperature, health/status, plugged source, current, charge counter, energy counter | Android BatteryManager values are device-dependent. Preserve units and nulls; verify on physical devices before claiming support. |
 | Battery technology / design capacity / full-charge capacity | Android public APIs do not consistently expose these. Show only if a supported device/API supplies a real value; do not infer chemistry or design capacity from model name. |
-| Cycle count | Android API/device-dependent; current code intentionally returns null. Only implement where a supported public API gives a real value. |
+| Cycle count | Current native code reads `EXTRA_CYCLE_COUNT` on Android 14+ when the sticky battery intent returns a valid non-negative value. It remains unavailable on devices/OS versions that do not expose it. |
 | OS-reported battery health vs estimated health | Keep separate. OS health status (GOOD/OVERHEAT/DEAD/etc.) is not a battery capacity/wear percentage. Any wear estimate requires valid design/full-charge capacity and must be labelled estimate. |
 | Per-app battery mAh | Android's detailed BatteryStats access is privileged/restricted. Ordinary apps cannot promise precise per-app mAh. Investigate supported UsageStats/user-granted access, but distinguish app foreground time from actual energy consumption. Do not fabricate mAh or ranking. |
 | Screen-on/off and deep sleep | Requires reliable time-series/OS counters. App foreground samples alone cannot infer CPU deep sleep. Show only actual supported counters; otherwise unavailable. |
@@ -44,14 +44,16 @@ Statuses reflect source inspection, not physical-device verification.
 - [x] Existing five-tab navigation retained: Home, Analytics, Profiles, History, Settings.
 - [x] Cross-platform telemetry provider and capability model exist.
 - [x] Android BatteryManager adapter exists for device-dependent diagnostics.
+- [x] Native cycle-count read is implemented conditionally for Android 14+; actual availability remains device-dependent.
 - [x] Charging threshold preferences/alerts and Android foreground monitoring service exist in code.
 - [x] Local opt-in history and charging-session inference exist in code (30-day retention).
 - [x] Browser testing path exists on phase-6 branch; browser Battery Status API is optional and limited.
+- [x] Analytics breakdown explicitly removed prototype/sample app-consumption values; current UI correctly explains that per-app power data is not accessible.
 - [ ] Physical Android verification of native diagnostics, threshold alert sound, screen-off operation, reboot recovery, and OEM behaviour.
-- [ ] Web history persistence: currently explicitly unavailable in Settings/docs.
+- [ ] Web history persistence: verify current browser database adapter end-to-end; feature README still describes web history as unsupported, so documentation and implementation must be reconciled.
 - [ ] Production Vercel preview verification for the current web branch.
 - [ ] Resolve/verify prior native splash/startup issue on physical device.
-- [ ] Audit and reconcile contradictory README claims around cycle count and capability support.
+- [ ] Update stale `src/features/battery/README.md`: it says cycle count is intentionally null, while native code now attempts Android 14+ `EXTRA_CYCLE_COUNT`; it also describes the old web storage limitation.
 - [ ] Dependency/security audit and remediation with current lockfile and CI evidence.
 - [ ] No dedicated daily battery-care reminder exists.
 - [ ] No evidence-backed battery drain analysis engine exists.
@@ -68,7 +70,7 @@ Statuses reflect source inspection, not physical-device verification.
 ## 4. Workstreams and acceptance criteria
 
 ### A. Stabilization and platform capability foundation
-- [ ] Reconcile docs, implementation and capability flags (especially cycle count).
+- [ ] Reconcile docs, implementation and capability flags (especially cycle count and web history).
 - [ ] Add capability provenance: platform, API/source, observed timestamp, supported/unavailable/not-implemented.
 - [ ] Add stale-data/error states; a failed refresh must not silently display stale readings as live.
 - [ ] Validate Android native module on physical devices and record device model, Android version, supported fields and test outcome without collecting personal identifiers.
@@ -170,6 +172,15 @@ For every workstream:
 
 **Current status:** planning/documentation committed on `roadmap/production-feature-program`; no new product feature implementation has been started in this program yet.
 
-**Next action:** complete Phase 0 audit. Inspect current `phase-6/web-testing` PR state and latest CI, reconcile capability and README discrepancies, inspect telemetry/history/alerts implementation end-to-end, and record an actionable bug list. Then implement the first Phase 0 fixes in a focused PR.
+**Audit findings from source inspection:**
+- Native Kotlin currently attempts to read Android 14+ `BatteryManager.EXTRA_CYCLE_COUNT`; README and feature README disagree, and the feature README is stale.
+- The Analytics breakdown explicitly removed prototype/sample app-consumption values. Per-app energy is not available; this is correct and must not be regressed with fabricated values.
+- The telemetry capability model includes per-app power usage as `not-implemented`.
+- Charging threshold monitoring and foreground service exist in code, but audible behaviour, screen-off operation, reboot recovery and OEM behaviour still require physical-device testing.
+- Local SQLite history and inferred charging sessions exist; the browser adapter/docs need an end-to-end reconciliation and test.
+- PR #6 remains open at baseline; CI run `41927519795` passed for commit `17024adcf921352c887b416c3cc0ed0bbc07ee0d`. This run does not prove physical Android behaviour.
+- The repository homepage currently points to `https://voltguard-iota.vercel.app`; the preview/deployment must be checked directly before claiming the web testing environment is production-ready.
+
+**Next action:** complete Phase 0 audit. Reconcile capability and README discrepancies, inspect telemetry/history/alerts implementation end-to-end, verify latest CI and Vercel preview, and record an actionable bug list. Then implement the first Phase 0 fixes in a focused PR.
 
 **Important:** do not begin by building the reminder UI. First establish reliable telemetry, native alert behaviour and production build health. Read this file before continuing after a chat reset.
