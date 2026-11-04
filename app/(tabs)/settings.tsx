@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform } from 'react-native';
+import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings2, Info, Database } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -22,7 +22,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 124 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.row}>
@@ -97,16 +97,16 @@ export default function SettingsScreen() {
             Additional appearance controls will be added in a later update.
           </Text>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, gap: 16 },
-  title: { fontSize: 28, fontWeight: '800', marginBottom: 8 },
-  card: { borderWidth: 1, borderRadius: 20, padding: 18, gap: 14 },
+  content: { paddingHorizontal: 18, paddingTop: 18, gap: 14 },
+  title: { fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  card: { borderWidth: 1, borderRadius: 18, padding: 15, gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   copy: { flex: 1, gap: 4 },
   heading: { fontSize: 16, fontWeight: '700' },
