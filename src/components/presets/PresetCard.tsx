@@ -61,7 +61,7 @@ export const PresetCard: React.FC<PresetCardProps> = ({
       
       {threshold && (
         <View style={[styles.tag, { backgroundColor: colors.primary + '20' }]}>
-          <Text style={[styles.tagText, { color: colors.primary }]}>Stops at {threshold}%</Text>
+          <Text style={[styles.tagText, { color: colors.primary }]}>Reminder at {threshold}%</Text>
         </View>
       )}
     </Animated.View>
