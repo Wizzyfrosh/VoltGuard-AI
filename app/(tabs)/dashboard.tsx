@@ -27,16 +27,11 @@ function normalizeBatteryLevel(level: number): number | null {
 
 function getChargingLabel(state: Battery.BatteryState): string {
   switch (state) {
-    case Battery.BatteryState.CHARGING:
-      return 'Charging';
-    case Battery.BatteryState.FULL:
-      return 'Fully charged';
-    case Battery.BatteryState.DISCHARGING:
-      return 'Discharging';
-    case Battery.BatteryState.UNPLUGGED:
-      return 'Not connected';
-    default:
-      return 'Status unavailable';
+    case Battery.BatteryState.CHARGING: return 'Charging';
+    case Battery.BatteryState.FULL: return 'Fully charged';
+    case Battery.BatteryState.DISCHARGING: return 'Discharging';
+    case Battery.BatteryState.UNPLUGGED: return 'Not connected';
+    default: return 'Status unavailable';
   }
 }
 
@@ -49,9 +44,9 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     let active = true;
-    let levelSubscription: Battery.Subscription | undefined;
-    let stateSubscription: Battery.Subscription | undefined;
-    let powerModeSubscription: Battery.Subscription | undefined;
+    let levelSubscription: ReturnType<typeof Battery.addBatteryLevelListener> | undefined;
+    let stateSubscription: ReturnType<typeof Battery.addBatteryStateListener> | undefined;
+    let powerModeSubscription: ReturnType<typeof Battery.addLowPowerModeListener> | undefined;
 
     const loadInitialReading = async () => {
       try {
@@ -61,11 +56,7 @@ export default function DashboardScreen() {
           Battery.isLowPowerModeEnabledAsync(),
         ]);
         if (!active) return;
-        setReading({
-          level: normalizeBatteryLevel(level),
-          state,
-          lowPowerMode,
-        });
+        setReading({ level: normalizeBatteryLevel(level), state, lowPowerMode });
         setLoadError(false);
       } catch {
         if (active) setLoadError(true);
@@ -73,12 +64,9 @@ export default function DashboardScreen() {
     };
 
     void loadInitialReading();
-
     try {
       levelSubscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
-        if (active) {
-          setReading((current) => ({ ...current, level: normalizeBatteryLevel(batteryLevel) }));
-        }
+        if (active) setReading((current) => ({ ...current, level: normalizeBatteryLevel(batteryLevel) }));
       });
       stateSubscription = Battery.addBatteryStateListener(({ batteryState }) => {
         if (active) setReading((current) => ({ ...current, state: batteryState }));
@@ -87,7 +75,7 @@ export default function DashboardScreen() {
         if (active) setReading((current) => ({ ...current, lowPowerMode }));
       });
     } catch {
-      // Some platforms do not expose all native battery listeners.
+      // A platform may not provide every optional battery event listener.
     }
 
     return () => {
@@ -107,22 +95,17 @@ export default function DashboardScreen() {
           <Text style={[styles.greeting, { color: colors.textSecondary }]}>Device overview</Text>
           <Text style={[styles.appName, { color: colors.text }]}>VoltGuard AI</Text>
         </View>
-
         <View style={styles.gaugeContainer}>
           <BatteryGauge percentage={reading.level} isCharging={isCharging} size={280} />
           <View style={[styles.infoPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.infoText, { color: colors.primary }]}>
-              {getChargingLabel(reading.state)}
-            </Text>
+            <Text style={[styles.infoText, { color: colors.primary }]}>{getChargingLabel(reading.state)}</Text>
           </View>
         </View>
-
         {loadError && (
           <Text style={[styles.notice, { color: colors.warning }]}>
             Some battery information could not be loaded. Values will update if the device makes them available.
           </Text>
         )}
-
         <View style={styles.statusRow}>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Thermometer size={20} color={colors.warning} />
@@ -140,11 +123,10 @@ export default function DashboardScreen() {
             <Text style={[styles.statusValue, { color: colors.text }]}>Unavailable</Text>
           </View>
         </View>
-
         <View style={[styles.capabilityNote, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.noteTitle, { color: colors.text }]}>About device readings</Text>
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-            Battery level and charging state are read from the operating system. Temperature, voltage and battery-health diagnostics are not currently available in this cross-platform build.
+            Battery level and charging state come from the operating system. Temperature, voltage and battery-health diagnostics are not exposed by this cross-platform build.
           </Text>
           {reading.lowPowerMode !== null && (
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>
@@ -152,22 +134,9 @@ export default function DashboardScreen() {
             </Text>
           )}
         </View>
-
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-        <DashboardAction
-          title="AI Battery Assistant"
-          subtitle="AI service is not connected yet"
-          icon={Bot}
-          color={colors.primary}
-          onPress={() => router.push('/ai_chat' as any)}
-        />
-        <DashboardAction
-          title="Power Breakdown"
-          subtitle="See what the operating system makes available"
-          icon={Activity}
-          color={colors.warning}
-          onPress={() => router.push('/(tabs)/breakdown')}
-        />
+        <DashboardAction title="AI Battery Assistant" subtitle="AI service is not connected yet" icon={Bot} color={colors.primary} onPress={() => router.push('/ai_chat' as any)} />
+        <DashboardAction title="Power Breakdown" subtitle="View available battery insights" icon={Activity} color={colors.warning} onPress={() => router.push('/(tabs)/breakdown')} />
       </ScrollView>
     </View>
   );
