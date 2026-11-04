@@ -3,6 +3,7 @@ import { AppState, Platform } from 'react-native';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import { getBatteryPreference, setBatteryPreference } from './battery.database';
 import { requestBatteryAlertPermission, sendBatteryThresholdNotification } from './battery.alerts';
+import { isValidBatteryAlertThreshold } from './battery.alerts.validation';
 
 const ENABLED_KEY = 'charging_alert_enabled';
 const THRESHOLD_KEY = 'charging_alert_threshold';
@@ -45,7 +46,7 @@ export function useBatteryAlerts() {
   }, []);
 
   const updateThreshold = useCallback(async (nextThreshold: number) => {
-    if (!Number.isInteger(nextThreshold) || nextThreshold < 50 || nextThreshold > 100) return false;
+    if (!isValidBatteryAlertThreshold(nextThreshold)) return false;
     try {
       await setBatteryPreference(THRESHOLD_KEY, String(nextThreshold));
       setThreshold(nextThreshold);
