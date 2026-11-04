@@ -39,7 +39,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       state,
       lowPowerMode,
       observedAt: new Date().toISOString(),
-      source: level !== null || isKnownBatteryState(state) || lowPowerMode !== null
+      source: level !== null || isKnownBatteryState(state, ExpoBattery.BatteryState.UNKNOWN) || lowPowerMode !== null
         ? 'expo-battery'
         : 'unavailable',
       capabilities,
@@ -88,7 +88,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
         publish({
           state: batteryState,
           source: isKnownBatteryState(batteryState, ExpoBattery.BatteryState.UNKNOWN) || current.level !== null ? 'expo-battery' : current.source,
-          capabilities: { ...current.capabilities, chargingState: isKnownBatteryState(batteryState) ? 'available' : 'unavailable' },
+          capabilities: { ...current.capabilities, chargingState: isKnownBatteryState(batteryState, ExpoBattery.BatteryState.UNKNOWN) ? 'available' : 'unavailable' },
         });
       }));
     } catch {
