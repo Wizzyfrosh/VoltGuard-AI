@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock3, Info, BatteryCharging, BatteryFull } from 'lucide-react-native';
@@ -30,6 +31,10 @@ export default function HistoryScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const history = useBatteryHistory();
+
+  useFocusEffect(useCallback(() => {
+    void history.refresh();
+  }, [history.refresh]));
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
