@@ -79,16 +79,6 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
 
     const subscriptions: Array<{ remove: () => void }> = [];
 
-    void getAndroidBatteryDiagnostics().then((androidDiagnostics) => {
-      if (!androidDiagnostics) return;
-      const capabilities = {
-        ...current.capabilities,
-        temperature: androidDiagnostics.temperatureCelsius === null ? 'unavailable' as const : 'available' as const,
-        voltage: androidDiagnostics.voltageMilliVolts === null ? 'unavailable' as const : 'available' as const,
-        batteryHealth: androidDiagnostics.health === null ? 'unavailable' as const : 'available' as const,
-      };
-      publish({ androidDiagnostics, capabilities, source: 'native' });
-    });
 
     try {
       subscriptions.push(ExpoBattery.addBatteryLevelListener(({ batteryLevel }) => {
