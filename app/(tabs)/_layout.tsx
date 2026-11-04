@@ -8,36 +8,38 @@ import { AnimatedTabIcon } from '../../src/components/navigation/AnimatedTabIcon
 export default function TabLayout() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Keep the tab bar in normal layout flow. Absolute positioning caused
+        // scroll content to render underneath the controls on shorter screens.
         tabBarStyle: {
-          position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: Math.max(insets.bottom, 8) + 8,
-          height: 72,
-          paddingTop: 9,
-          paddingBottom: 8,
+          height: 66 + bottomInset,
+          paddingTop: 7,
+          paddingBottom: bottomInset,
+          marginHorizontal: 12,
+          marginTop: 4,
           backgroundColor: colors.tabBar,
           borderTopWidth: 0,
           borderWidth: 1,
           borderColor: colors.border,
-          borderRadius: 25,
-          elevation: 14,
+          borderRadius: 21,
+          elevation: 10,
           shadowColor: '#000000',
-          shadowOpacity: 0.28,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: -3 },
         },
-        tabBarItemStyle: { borderRadius: 18, marginHorizontal: 3 },
+        tabBarItemStyle: { borderRadius: 15, marginHorizontal: 2 },
         tabBarShowLabel: true,
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 2 },
-        tabBarBackground: () => <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 25, backgroundColor: colors.tabBar }]} />,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 1 },
+        tabBarHideOnKeyboard: true,
+        tabBarBackground: () => <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 21, backgroundColor: colors.tabBar }]} />,
       }}
     >
       <Tabs.Screen name="dashboard" options={{ title: 'Home', tabBarIcon: ({ focused }) => <AnimatedTabIcon focused={focused} icon={Home} /> }} />
