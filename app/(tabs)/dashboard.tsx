@@ -81,6 +81,9 @@ export default function DashboardScreen() {
           {diagnostics?.chargeCounterMicroAmpHours !== null && diagnostics?.chargeCounterMicroAmpHours !== undefined && (
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>Charge counter: {diagnostics.chargeCounterMicroAmpHours.toLocaleString()} µAh</Text>
           )}
+          {reading.platform === 'android' && (
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>Battery cycle count: {diagnostics?.cycleCount !== null && diagnostics?.cycleCount !== undefined ? `${diagnostics.cycleCount.toLocaleString()} cycles (Android-reported)` : 'Unavailable on this device, OS version, or current build'}</Text>
+          )}
           {reading.lowPowerMode !== null && (
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>
               Low Power Mode: {reading.lowPowerMode ? 'On' : 'Off'}
