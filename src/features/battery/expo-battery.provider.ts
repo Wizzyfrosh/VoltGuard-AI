@@ -38,6 +38,9 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       capabilities.temperature = androidDiagnostics.temperatureCelsius === null ? 'unavailable' : 'available';
       capabilities.voltage = androidDiagnostics.voltageMilliVolts === null ? 'unavailable' : 'available';
       capabilities.batteryHealth = androidDiagnostics.health === null ? 'unavailable' : 'available';
+      capabilities.cycleCount = androidDiagnostics.cycleCount !== null
+        ? 'available'
+        : (androidDiagnostics.apiLevel !== null && androidDiagnostics.apiLevel >= 34 ? 'unavailable' : 'not-implemented');
     }
 
     return {
