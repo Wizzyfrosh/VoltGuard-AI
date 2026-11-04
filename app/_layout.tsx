@@ -4,6 +4,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 // Separate component to access useTheme hook
 function RootLayoutNav() {
