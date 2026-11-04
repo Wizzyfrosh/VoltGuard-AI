@@ -47,9 +47,11 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       state,
       lowPowerMode,
       observedAt: new Date().toISOString(),
-      source: level !== null || isKnownBatteryState(state, ExpoBattery.BatteryState.UNKNOWN) || lowPowerMode !== null
-        ? 'expo-battery'
-        : 'unavailable',
+      source: androidDiagnostics !== null
+        ? 'native'
+        : level !== null || isKnownBatteryState(state, ExpoBattery.BatteryState.UNKNOWN) || lowPowerMode !== null
+          ? 'expo-battery'
+          : 'unavailable',
       capabilities,
       androidDiagnostics,
     };
@@ -77,6 +79,18 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
     };
 
     const subscriptions: Array<{ remove: () => void }> = [];
+
+    void getAndroidBatteryDiagnostics().then((androidDiagnostics) => {
+      if (!androidDiagnostics) return;
+      const capabilities = {
+        ...current.capabilities,
+        temperature: androidDiagnostics.temperatureCelsius === null ? 'unavailable' as const : 'available' as const,
+        voltage: androidDiagnostics.voltageMilliVolts === null ? 'unavailable' as const : 'available' as const,
+        batteryHealth: androidDiagnostics.health === null ? 'unavailable' as const : 'available' as const,
+        cycleCount: androidDiagnostics.cycleCount === null ? 'unavailable' as const : 'available' as const,
+      };
+      publish({ androidDiagnostics, capabilities, source: 'native' });
+    });
 
     try {
       subscriptions.push(ExpoBattery.addBatteryLevelListener(({ batteryLevel }) => {
