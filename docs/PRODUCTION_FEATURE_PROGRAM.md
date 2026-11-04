@@ -184,3 +184,29 @@ For every workstream:
 **Next action:** complete Phase 0 audit. Reconcile capability and README discrepancies, inspect telemetry/history/alerts implementation end-to-end, verify latest CI and Vercel preview, and record an actionable bug list. Then implement the first Phase 0 fixes in a focused PR.
 
 **Important:** do not begin by building the reminder UI. First establish reliable telemetry, native alert behaviour and production build health. Read this file before continuing after a chat reset.
+
+
+## 8. Phase 0 audit update — 2026-11-05
+
+**Work branch:** `phase-0/stabilization-audit`
+
+### Completed in this audit commit
+- [x] Corrected `src/features/battery/README.md`: documents Android 14+ conditional cycle-count read; clearly separates web localStorage preferences from unsupported web SQLite history; clarifies opt-in local sampling, 30-day retention and foreground-only refresh.
+- [x] Updated `.github/workflows/ci.yml` so pull requests targeting `phase-6/web-testing` are included in CI, and push validation runs on the roadmap/stabilization branches.
+- [x] Confirmed PR #6 is open, clean/mergeable, and has successful TypeScript, unit-test, lint and web-export CI at commit `17024adcf921352c887b416c3cc0ed0bbc07ee0d`.
+- [x] Confirmed PR #7 is open and clean/mergeable; this stabilization branch is based on the roadmap branch and will include its tracker.
+
+### Findings still requiring work or device evidence
+- [ ] Android threshold alarm currently sends a notification from the native service; actual audible output depends on channel sound, notification permission, user channel settings, DND, volume and OEM policy. Inspect service implementation and add robust channel diagnostics/test path; physical-device test remains mandatory.
+- [ ] Native Android diagnostics have not been physically verified on the target device.
+- [ ] No trustworthy per-app mAh/energy API is implemented. The breakdown screen correctly states this limitation.
+- [ ] Web battery-history database remains unsupported. The Settings/history hook catches storage errors; UI behaviour needs review to ensure the unsupported state is clearly communicated.
+- [ ] Investigate current sample recording cadence and possible duplicate writes in `useBatteryTelemetry`/history layer before using samples for drain analytics.
+- [ ] Inspect README root and package/dependency lockfile for security findings; no dependency remediation has been performed yet.
+- [ ] Native splash/startup issue remains unverified.
+
+### CI status for this branch
+The workflow change has been committed, but its new Actions run has not yet been observed at the time of this update. Do not report it green until GitHub Actions confirms success.
+
+### Next implementation step
+Inspect native foreground service and notification channel creation end-to-end. Verify channel ID/importance/sound, one-alert-per-charge-session rearming, permission error reporting, service start/stop and reboot receiver behaviour. Add tests where logic can be isolated. Do not claim sound works until physical-device verification.
