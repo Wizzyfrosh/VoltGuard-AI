@@ -173,7 +173,8 @@ class VoltGuardBatteryMonitorService : Service() {
       .setContentTitle("VoltGuard is monitoring your battery")
       .setContentText("Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
       .setContentIntent(pendingIntent)
-      .setPriority(Notification.PRIORITY_LOW)\n      .setOngoing(true)
+      .setPriority(Notification.PRIORITY_LOW)
+      .setOngoing(true)
       .setOnlyAlertOnce(true)
       .build()
   }
@@ -189,7 +190,8 @@ class VoltGuardBatteryMonitorService : Service() {
       .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
       .setContentTitle("Charging target reached")
       .setContentText("Battery is at $level% (target $threshold%). Unplug your charger if convenient.")
-      .setPriority(Notification.PRIORITY_DEFAULT)\n      .setAutoCancel(true)
+      .setPriority(Notification.PRIORITY_DEFAULT)
+      .setAutoCancel(true)
       .setOnlyAlertOnce(true)
       .build()
     val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
