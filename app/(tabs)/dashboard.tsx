@@ -29,7 +29,7 @@ function getChargingLabel(state: Battery.BatteryState): string {
   switch (state) {
     case Battery.BatteryState.CHARGING: return 'Charging';
     case Battery.BatteryState.FULL: return 'Fully charged';
-    case Battery.BatteryState.UNPLUGGED: return 'Not connected';
+    case Battery.BatteryState.UNPLUGGED: return 'On battery';
     default: return 'Status unavailable';
   }
 }
