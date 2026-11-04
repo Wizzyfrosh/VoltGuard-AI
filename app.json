@@ -41,7 +41,8 @@
       ],
       "expo-sqlite",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./modules/voltguard-battery"
     ],
     "experiments": {
       "typedRoutes": true,
