@@ -13,7 +13,6 @@ async function openBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
 
   const database = await databasePromise;
   await database.execAsync(`
-    PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS battery_samples (
