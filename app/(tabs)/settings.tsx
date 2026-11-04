@@ -1,6 +1,5 @@
 import React from 'react';
-import { Pressable } from 'react-native';
-import { View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native';
+import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings2, Info, Database } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -15,6 +14,10 @@ export default function SettingsScreen() {
 
   const handleHistoryChange = async (enabled: boolean) => {
     await history.updateEnabled(enabled);
+  };
+
+  const handleAlertChange = async (enabled: boolean) => {
+    await alerts.updateEnabled(enabled);
   };
 
   return (
@@ -109,6 +112,8 @@ const styles = StyleSheet.create({
   body: { fontSize: 13, lineHeight: 19 },
   privacy: { fontSize: 12, lineHeight: 18 },
   error: { fontSize: 12, lineHeight: 18 },
-  thresholds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },\n  thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },\n  note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  thresholds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },
+  note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   noteText: { flex: 1, fontSize: 12, lineHeight: 18 },
 });
