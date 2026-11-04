@@ -74,12 +74,17 @@ export function useBatteryAlerts(monitor = true) {
       await setBatteryPreference(ENABLED_KEY, String(nextEnabled));
       if (Platform.OS === 'android' && !nextEnabled) await stopBackgroundBatteryMonitoring();
       setMonitoringError(false);
+      setMonitoringErrorMessage(null);
+      await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
       setEnabled(nextEnabled);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled, monitoringError: false });
       return true;
-    } catch {
+    } catch (error) {
+      const message = describeMonitorError(error);
       setMonitoringError(true);
+      setMonitoringErrorMessage(message);
+      await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true });
       if (Platform.OS === 'android' && nextEnabled) await stopBackgroundBatteryMonitoring().catch(() => undefined);
@@ -97,11 +102,16 @@ export function useBatteryAlerts(monitor = true) {
       await setBatteryPreference(THRESHOLD_KEY, String(nextThreshold));
       setThreshold(nextThreshold);
       setMonitoringError(false);
+      setMonitoringErrorMessage(null);
+      await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { threshold: nextThreshold, monitoringError: false });
       return true;
-    } catch {
+    } catch (error) {
+      const message = describeMonitorError(error);
       setMonitoringError(true);
+      setMonitoringErrorMessage(message);
+      await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true });
       if (Platform.OS === 'android' && enabled) await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
@@ -116,11 +126,16 @@ export function useBatteryAlerts(monitor = true) {
           .then(async (started) => {
             if (!started) throw new Error('Native background monitoring is unavailable');
             setMonitoringError(false);
+            setMonitoringErrorMessage(null);
+            await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
             await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
             DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: false });
           })
-          .catch(async () => {
+          .catch(async (error) => {
+            const message = describeMonitorError(error);
             setMonitoringError(true);
+            setMonitoringErrorMessage(message);
+            await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
             await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
             DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true });
           });
