@@ -11,7 +11,8 @@ This local Expo module reads Android's public `BatteryManager` properties and th
 - Capacity percentage
 - Instantaneous and average current (µA)
 - Charge counter (µAh)
-- Energy counter (nWh), when supported by the device\n- OS-reported battery cycle count on Android 14 (API 34) and later, when exposed by the device
+- Energy counter (nWh), when supported by the device
+- OS-reported battery cycle count on Android 14 (API 34) and later, when exposed by the device
 
 ## Important limitations
 
