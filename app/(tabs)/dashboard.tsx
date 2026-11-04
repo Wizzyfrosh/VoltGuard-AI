@@ -26,7 +26,8 @@ export default function DashboardScreen() {
   const reading = useBatteryTelemetry();
   const isCharging = reading.state === Battery.BatteryState.CHARGING;
   const diagnostics = reading.androidDiagnostics;
-  const gaugeSize = Math.min(width - 76, 360);
+  const gaugeSize = Math.max(220, Math.min(width - 76, 360));
+  const chargingLabel = getChargingLabel(reading.state);
   const cardBackground = colors.card;
 
   return (
@@ -42,7 +43,7 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.gaugeSection}>
-          <BatteryGauge percentage={reading.level} isCharging={isCharging} size={gaugeSize} />
+          <BatteryGauge percentage={reading.level} isCharging={isCharging} statusLabel={chargingLabel} size={gaugeSize} />
           <Text style={[styles.gaugeLabel, { color: colors.text }]}>Battery level</Text>
           <Text style={[styles.gaugeSubLabel, { color: colors.textSecondary }]}>
             {reading.level === null ? 'Waiting for device telemetry' : isCharging ? 'Charging in progress' : 'Live device reading'}
@@ -136,10 +137,10 @@ const styles = StyleSheet.create({
   gaugeSubLabel: { fontSize: 12, fontWeight: '600' },
   notice: { padding: 13, borderWidth: 1, borderRadius: 14 },
   noticeText: { fontSize: 12, lineHeight: 18, textAlign: 'center' },
-  metricsRow: { flexDirection: 'row', gap: 9 },
-  metricCard: { flex: 1, minWidth: 0, borderWidth: 1, borderRadius: 20, paddingVertical: 13, paddingHorizontal: 5, alignItems: 'center', gap: 7 },
+  metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  metricCard: { flexGrow: 1, flexBasis: 0, minWidth: 86, borderWidth: 1, borderRadius: 20, paddingVertical: 13, paddingHorizontal: 5, alignItems: 'center', gap: 7 },
   metricIcon: { width: 45, height: 45, borderRadius: 23, backgroundColor: '#17345B', alignItems: 'center', justifyContent: 'center' },
-  metricLabel: { fontSize: 10, fontWeight: '700' },
+  metricLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
   metricValue: { fontSize: 14, fontWeight: '900', textAlign: 'center' },
   metricHint: { fontSize: 9, fontWeight: '600' },
   chargingCard: { borderWidth: 1, borderRadius: 20, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 12 },
