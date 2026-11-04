@@ -20,10 +20,11 @@ The SQLite database is local to the device on Android and iOS. Web is explicitly
 
 ## Current limitations
 
-- No native Kotlin/Swift adapter exists yet.
+- Android native diagnostics are implemented but require a custom native build and physical-device verification.
+- No native iOS diagnostics adapter exists.
 - No background sampling or notification workflow exists.
-- No battery-session inference exists.
-- Temperature, voltage, health, cycle count and per-app power usage remain unimplemented in this build.
+- Charging sessions are inferred from observed foreground charging-state changes and may be incomplete.
+- Cycle count and per-app power usage remain unimplemented.
 
 ## Android native diagnostics
 
