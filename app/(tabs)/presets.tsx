@@ -1,118 +1,52 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { PresetCard } from '../../src/components/presets/PresetCard';
-import { Zap, Moon, BatteryCharging, Plus } from 'lucide-react-native';
+import { Zap, Moon, Activity } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 export default function PresetsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  
-  // State for active profile
   const [activePreset, setActivePreset] = useState<string>('optimized');
 
-  const handleToggle = (id: string) => {
-    setActivePreset(id);
-    // TODO: Save to SQLite
-  };
+  const handleSelect = (id: string) => setActivePreset(id);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Smart Charging</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Charging Profiles</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Automate your charging habits to extend battery lifespan.
+            Choose a reminder preference. These profiles do not control charging hardware or change charging speed.
           </Text>
         </View>
-
+        <View style={[styles.disclaimer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.disclaimerText, { color: colors.textSecondary }]}>
+            Profile selection is currently temporary and resets when the app restarts. Notifications and profile automation are not implemented yet.
+          </Text>
+        </View>
+        <Animated.View entering={FadeInUp.delay(100)}>
+          <PresetCard id="optimized" title="80% Reminder" desc="A future reminder preference for users who want to unplug around 80%." icon={Activity} isActive={activePreset === 'optimized'} onToggle={handleSelect} threshold={80} />
+        </Animated.View>
         <Animated.View entering={FadeInUp.delay(200)}>
-          <PresetCard
-            id="optimized"
-            title="Optimized Health"
-            desc="Alerts you to unplug at 80% to reduce chemical aging of the Lithium-Ion battery."
-            icon={Activity}
-            isActive={activePreset === 'optimized'}
-            onToggle={handleToggle}
-            threshold={80}
-          />
+          <PresetCard id="overnight" title="Overnight Reminder" desc="A future reminder preference for overnight charging routines. It cannot slow charging or schedule the device's charging controller." icon={Moon} isActive={activePreset === 'overnight'} onToggle={handleSelect} />
         </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(400)}>
-          <PresetCard
-            id="overnight"
-            title="Overnight Care"
-            desc="Learns your wake-up time. Charges slowly and finishes right before you wake up."
-            icon={Moon}
-            isActive={activePreset === 'overnight'}
-            onToggle={handleToggle}
-          />
+        <Animated.View entering={FadeInUp.delay(300)}>
+          <PresetCard id="full" title="Full Charge Reminder" desc="A future reminder preference for users who want a notification when the operating system reports a full battery." icon={Zap} isActive={activePreset === 'full'} onToggle={handleSelect} threshold={100} />
         </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(600)}>
-          <PresetCard
-            id="fast"
-            title="Max Performance"
-            desc="Charges to 100% as fast as possible. Useful for long travel days."
-            icon={Zap}
-            isActive={activePreset === 'fast'}
-            onToggle={handleToggle}
-            threshold={100}
-          />
-        </Animated.View>
-
       </ScrollView>
-
-      {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: colors.primary, bottom: 20 + 75 }]} // 75 is roughly tab bar height
-        activeOpacity={0.8}
-        onPress={() => alert('Custom Profile Modal coming soon!')}
-      >
-        <Plus color="#fff" size={28} />
-      </TouchableOpacity>
     </View>
   );
 }
 
-// Helper icon
-import { Activity } from 'lucide-react-native';
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 100,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  fab: {
-    position: 'absolute',
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
+  container: { flex: 1 },
+  scrollContent: { padding: 24, paddingBottom: 40 },
+  header: { marginBottom: 18 },
+  title: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 15, lineHeight: 22 },
+  disclaimer: { padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 20 },
+  disclaimerText: { fontSize: 13, lineHeight: 19 },
 });
