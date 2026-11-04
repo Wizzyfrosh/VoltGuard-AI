@@ -49,32 +49,57 @@ export default function DashboardScreen() {
 
     const loadInitialReading = async () => {
       try {
-        const [level, state, lowPowerMode] = await Promise.all([
+        // Read each capability independently: one unsupported API must not
+        // hide battery level or charging state on another platform.
+        const [levelResult, stateResult, powerModeResult] = await Promise.allSettled([
           Battery.getBatteryLevelAsync(),
           Battery.getBatteryStateAsync(),
           Battery.isLowPowerModeEnabledAsync(),
         ]);
         if (!active) return;
-        setReading({ level: normalizeBatteryLevel(level), state, lowPowerMode });
-        setLoadError(false);
+
+        setReading((current) => ({
+          level: levelResult.status === 'fulfilled'
+            ? normalizeBatteryLevel(levelResult.value)
+            : current.level,
+          state: stateResult.status === 'fulfilled' ? stateResult.value : current.state,
+          lowPowerMode: powerModeResult.status === 'fulfilled'
+            ? powerModeResult.value
+            : current.lowPowerMode,
+        }));
+        setLoadError(
+          levelResult.status === 'rejected' ||
+          stateResult.status === 'rejected' ||
+          powerModeResult.status === 'rejected',
+        );
       } catch {
         if (active) setLoadError(true);
       }
     };
 
     void loadInitialReading();
+    // Subscribe independently so one unavailable event API cannot prevent
+    // the other readings from continuing to update.
     try {
       levelSubscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
         if (active) setReading((current) => ({ ...current, level: normalizeBatteryLevel(batteryLevel) }));
       });
+    } catch {
+      // Battery-level events are not supported on every platform.
+    }
+    try {
       stateSubscription = Battery.addBatteryStateListener(({ batteryState }) => {
         if (active) setReading((current) => ({ ...current, state: batteryState }));
       });
+    } catch {
+      // Charging-state events are not supported on every platform.
+    }
+    try {
       powerModeSubscription = Battery.addLowPowerModeListener(({ lowPowerMode }) => {
         if (active) setReading((current) => ({ ...current, lowPowerMode }));
       });
     } catch {
-      // A platform may not provide every optional battery event listener.
+      // Low-power-mode events are not supported on every platform.
     }
 
     return () => {
