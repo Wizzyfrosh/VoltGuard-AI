@@ -171,7 +171,7 @@ class VoltGuardBatteryMonitorService : Service() {
     return builder
       .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
       .setContentTitle("VoltGuard is monitoring your battery")
-      .setContentText("Monitoring your selected charging threshold in the background")
+      .setContentText("Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
       .setContentIntent(pendingIntent)
       .setPriority(Notification.PRIORITY_LOW)\n      .setOngoing(true)
       .setOnlyAlertOnce(true)
