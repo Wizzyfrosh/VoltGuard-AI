@@ -1,14 +1,17 @@
 import React from 'react';
+import { Pressable } from 'react-native';
 import { View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings2, Info, Database } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBatteryHistory } from '../../src/features/battery/useBatteryHistory';
+import { useBatteryAlerts } from '../../src/features/battery/useBatteryAlerts';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const history = useBatteryHistory();
+  const alerts = useBatteryAlerts();
 
   const handleHistoryChange = async (enabled: boolean) => {
     await history.updateEnabled(enabled);
@@ -49,6 +52,34 @@ export default function SettingsScreen() {
             </Text>
           )}
         </View>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.row}>
+            <Info size={22} color={colors.primary} />
+            <View style={styles.copy}>
+              <Text style={[styles.heading, { color: colors.text }]}>Charging target alert</Text>
+              <Text style={[styles.body, { color: colors.textSecondary }]}>Get a notification when charging reaches your chosen level.</Text>
+            </View>
+            {alerts.isLoading ? <ActivityIndicator color={colors.primary} /> : (
+              <Switch value={alerts.enabled} onValueChange={handleAlertChange} disabled={!alerts.isAvailable}
+                trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF"
+                accessibilityLabel="Enable charging target notification" />
+            )}
+          </View>
+          <Text style={[styles.body, { color: colors.textSecondary }]}>Notify me at</Text>
+          <View style={styles.thresholds}>
+            {[70, 80, 85, 90, 95, 100].map((value) => (
+              <Pressable key={value} onPress={() => { void alerts.updateThreshold(value); }}
+                accessibilityRole="button" accessibilityState={{ selected: alerts.threshold === value }}
+                style={[styles.thresholdButton, { borderColor: alerts.threshold === value ? colors.primary : colors.border,
+                  backgroundColor: alerts.threshold === value ? colors.primary : 'transparent' }]}>
+                <Text style={{ color: alerts.threshold === value ? '#FFFFFF' : colors.text, fontWeight: '700' }}>{value}%</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>Alerts are checked while VoltGuard is open. Background alerts are not guaranteed. This is a reminder only: VoltGuard cannot stop or limit charging. Unplug the charger yourself when notified.</Text>
+          {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
+          {!alerts.isAvailable && <Text style={[styles.error, { color: colors.warning }]}>Charging alerts are not available on web.</Text>}
+        </View>
         <View style={styles.note}>
           <Info size={17} color={colors.textSecondary} />
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
@@ -78,6 +109,6 @@ const styles = StyleSheet.create({
   body: { fontSize: 13, lineHeight: 19 },
   privacy: { fontSize: 12, lineHeight: 18 },
   error: { fontSize: 12, lineHeight: 18 },
-  note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  thresholds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },\n  thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },\n  note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   noteText: { flex: 1, fontSize: 12, lineHeight: 18 },
 });
