@@ -122,7 +122,7 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
     await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
     await db.runAsync(
-      "DELETE FROM charging_sessions WHERE started_at < ? AND status = 'completed'",
+      "DELETE FROM charging_sessions WHERE started_at < ?",
       cutoff,
     );
   });
@@ -134,7 +134,7 @@ export async function getChargingSessions(limit = 50): Promise<ChargingSession[]
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
   await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
   await db.runAsync(
-    "DELETE FROM charging_sessions WHERE started_at < ? AND status = 'completed'",
+    "DELETE FROM charging_sessions WHERE started_at < ?",
     cutoff,
   );
   const rows = await db.getAllAsync<ChargingSessionRow>(
