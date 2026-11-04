@@ -1,12 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
-function isValidThreshold(value) {
-  return Number.isInteger(value) && value >= 50 && value <= 100;
-}
+import { isValidBatteryAlertThreshold } from '../src/features/battery/battery.alerts.validation.ts';
 
 test('accepts supported charging alert thresholds', () => {
-  for (const value of [50, 70, 80, 85, 90, 100]) assert.equal(isValidThreshold(value), true);
+  for (const value of [50, 70, 80, 85, 90, 100]) assert.equal(isValidBatteryAlertThreshold(value), true);
 });
 
 test('rejects invalid charging alert thresholds', () => {
