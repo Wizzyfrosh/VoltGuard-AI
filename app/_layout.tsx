@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { useBatteryAlerts } from '../src/features/battery/useBatteryAlerts';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,6 +19,7 @@ Notifications.setNotificationHandler({
 // Separate component to access useTheme hook
 function RootLayoutNav() {
   const { colors, isDark } = useTheme();
+  useBatteryAlerts();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
