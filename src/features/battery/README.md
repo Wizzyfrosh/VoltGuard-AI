@@ -14,7 +14,7 @@
 
 ## Local storage
 
-The SQLite database is local to the device. `battery.repository.ts` exposes parameterized operations for explicit sample writes, bounded reads and retention deletion.
+The SQLite database is local to the device on Android and iOS. Web is explicitly guarded until a browser-specific persistence adapter is added; Expo SQLite web support has additional browser-isolation requirements and must not silently fail at runtime. `battery.repository.ts` exposes parameterized operations for explicit sample writes, bounded reads and retention deletion.
 
 **Important:** creating the database does not start collection. Do not add periodic/background collection until the user has a clear opt-in, retention controls and a privacy explanation. Do not upload samples to a server as part of this local repository.
 
