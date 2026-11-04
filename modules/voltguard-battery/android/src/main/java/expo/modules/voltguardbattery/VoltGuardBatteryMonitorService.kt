@@ -186,7 +186,7 @@ class VoltGuardBatteryMonitorService : Service() {
       Notification.Builder(this)
     }
     val notification = builder
-      .setSmallIcon(applicationInfo.icon)
+      .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
       .setContentTitle("Charging target reached")
       .setContentText("Battery is at $level% (target $threshold%). Unplug your charger if convenient.")
       .setPriority(Notification.PRIORITY_DEFAULT)\n      .setAutoCancel(true)
