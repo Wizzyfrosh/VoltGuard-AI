@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
+import * as ExpoBattery from 'expo-battery';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import { getBatteryPreference, setBatteryPreference } from './battery.database';
 import { requestBatteryAlertPermission, sendBatteryThresholdNotification } from './battery.alerts';
@@ -64,7 +65,10 @@ export function useBatteryAlerts() {
     const evaluate = (snapshot: Awaited<ReturnType<typeof batteryTelemetryProvider.getSnapshot>>) => {
       if (!active) return;
       const level = snapshot.level;
-      const charging = snapshot.state === 2 || snapshot.androidDiagnostics?.status === 'charging';
+      const charging = snapshot.state === ExpoBattery.BatteryState.CHARGING
+        || snapshot.state === ExpoBattery.BatteryState.FULL
+        || snapshot.androidDiagnostics?.status === 'charging'
+        || (snapshot.androidDiagnostics?.status === 'full' && snapshot.androidDiagnostics.plugged !== 'none-or-unknown');
       if (!charging) notifiedThisSession = false;
       if (charging && !wasCharging) notifiedThisSession = false;
       if (charging && level !== null && level * 100 >= threshold && !notifiedThisSession) {
