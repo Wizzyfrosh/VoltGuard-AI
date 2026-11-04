@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { getChargingAlarmStatus, sendTestChargingAlarm } from '../../../modules/voltguard-battery';
 
-const CHANNEL_ID = 'battery-threshold-alerts';
+
 
 export async function requestBatteryAlertPermission(): Promise<boolean> {
   if (Platform.OS === 'web') {
@@ -12,16 +13,29 @@ export async function requestBatteryAlertPermission(): Promise<boolean> {
     return permission === 'granted';
   }
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Battery threshold alerts',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 200, 100, 200],
-      sound: 'default',
-    });
+    // Native code owns the channel configuration for alarm sound and importance.
+    getChargingAlarmStatus();
   }
   const current = await Notifications.getPermissionsAsync();
   const permission = current.granted ? current : await Notifications.requestPermissionsAsync();
-  return permission.granted;
+  if (!permission.granted) return false;
+  if (Platform.OS === 'android') {
+    const status = getChargingAlarmStatus();
+    if (!status?.alarmReady) {
+      throw new Error(
+        !status?.notificationsEnabled
+          ? 'VoltGuard notifications are disabled in Android Settings.'
+          : !status?.channelEnabled
+            ? 'Enable the Charging target alarm notification channel in Android Settings.'
+            : !status?.highImportance
+              ? 'Set Charging target alarm importance to High in Android Settings.'
+              : !status?.soundEnabled
+                ? 'Charging target alarm is silent. Choose an alarm sound in Android Settings.'
+                : 'Charging target alarm is not ready. Check Android notification settings.'
+      );
+    }
+  }
+  return true;
 }
 
 export async function sendBatteryThresholdNotification(level: number, threshold: number): Promise<void> {
@@ -43,4 +57,14 @@ export async function sendBatteryThresholdNotification(level: number, threshold:
     },
     trigger: null,
   });
+}
+
+export async function sendChargingAlarmTest(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  return sendTestChargingAlarm();
+}
+
+export function getChargingAlarmReadiness() {
+  if (Platform.OS !== 'android') return null;
+  return getChargingAlarmStatus();
 }
