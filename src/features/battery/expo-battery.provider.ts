@@ -38,7 +38,6 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       capabilities.temperature = androidDiagnostics.temperatureCelsius === null ? 'unavailable' : 'available';
       capabilities.voltage = androidDiagnostics.voltageMilliVolts === null ? 'unavailable' : 'available';
       capabilities.batteryHealth = androidDiagnostics.health === null ? 'unavailable' : 'available';
-      capabilities.cycleCount = androidDiagnostics.cycleCount === null ? 'unavailable' : 'available';
     }
 
     return {
@@ -87,7 +86,6 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
         temperature: androidDiagnostics.temperatureCelsius === null ? 'unavailable' as const : 'available' as const,
         voltage: androidDiagnostics.voltageMilliVolts === null ? 'unavailable' as const : 'available' as const,
         batteryHealth: androidDiagnostics.health === null ? 'unavailable' as const : 'available' as const,
-        cycleCount: androidDiagnostics.cycleCount === null ? 'unavailable' as const : 'available' as const,
       };
       publish({ androidDiagnostics, capabilities, source: 'native' });
     });
