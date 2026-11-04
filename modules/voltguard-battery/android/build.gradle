@@ -3,5 +3,9 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
+android {
+  namespace 'expo.modules.voltguardbattery'
+}
+
 group = 'expo.modules.voltguardbattery'
 version = '1.0.0'
