@@ -24,3 +24,8 @@ npm run start
 ```
 
 The Android diagnostics module requires a custom Expo development or production build; it is not included in Expo Go. Run `npm test`, `npm run typecheck`, and `npm run lint` before release, then validate native readings and notifications on physical Android devices. OEM and hardware support varies.
+
+
+## Android device validation build
+
+The pull-request CI workflow assembles a debug APK and uploads it as the `voltguard-android-debug-apk` artifact for seven days. Install that APK on a physical Android device to validate screen-off charging alerts, reboot recovery, notification permission behavior, force-stop handling, and manufacturer battery restrictions. This debug build is for testing only, not Play Store distribution.
