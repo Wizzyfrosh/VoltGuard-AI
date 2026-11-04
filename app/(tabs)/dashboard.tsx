@@ -26,13 +26,13 @@ export default function DashboardScreen() {
   const reading = useBatteryTelemetry();
   const isCharging = reading.state === Battery.BatteryState.CHARGING;
   const diagnostics = reading.androidDiagnostics;
-  const gaugeSize = Math.max(220, Math.min(width - 76, 360));
+  const gaugeSize = Math.max(176, Math.min(width - 112, 250));
   const chargingLabel = getChargingLabel(reading.state);
   const cardBackground = colors.card;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 118 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 22 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.brandMark}><Zap size={25} color="#F5B91B" fill="#F5B91B" /></View>
           <View style={styles.brandCopy}>
@@ -125,21 +125,21 @@ function Capability({ label, value, colors }: { label: string; value: string; co
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 22, paddingTop: 18, gap: 18 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 20, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 2 },
-  brandMark: { width: 52, height: 52, borderRadius: 16, backgroundColor: '#102E5D', borderWidth: 1, borderColor: '#2863A8', alignItems: 'center', justifyContent: 'center' },
+  brandMark: { width: 46, height: 46, borderRadius: 14, backgroundColor: '#102E5D', borderWidth: 1, borderColor: '#2863A8', alignItems: 'center', justifyContent: 'center' },
   brandCopy: { flex: 1, gap: 1 },
   greeting: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4 },
-  appName: { fontSize: 27, fontWeight: '900', letterSpacing: -1 },
+  appName: { fontSize: 23, fontWeight: '900', letterSpacing: -1 },
   tagline: { fontSize: 11, fontWeight: '600' },
   gaugeSection: { alignItems: 'center', paddingTop: 3, paddingBottom: 3, gap: 3 },
-  gaugeLabel: { fontSize: 18, fontWeight: '800', marginTop: 1 },
+  gaugeLabel: { fontSize: 16, fontWeight: '800', marginTop: 1 },
   gaugeSubLabel: { fontSize: 12, fontWeight: '600' },
   notice: { padding: 13, borderWidth: 1, borderRadius: 14 },
   noticeText: { fontSize: 12, lineHeight: 18, textAlign: 'center' },
   metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  metricCard: { flexGrow: 1, flexBasis: 0, minWidth: 86, borderWidth: 1, borderRadius: 20, paddingVertical: 13, paddingHorizontal: 5, alignItems: 'center', gap: 7 },
-  metricIcon: { width: 45, height: 45, borderRadius: 23, backgroundColor: '#17345B', alignItems: 'center', justifyContent: 'center' },
+  metricCard: { flexGrow: 1, flexBasis: 0, minWidth: 86, borderWidth: 1, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 5, alignItems: 'center', gap: 7 },
+  metricIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#17345B', alignItems: 'center', justifyContent: 'center' },
   metricLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
   metricValue: { fontSize: 14, fontWeight: '900', textAlign: 'center' },
   metricHint: { fontSize: 9, fontWeight: '600' },
@@ -159,5 +159,5 @@ const styles = StyleSheet.create({
   capabilityLabel: { fontSize: 10, fontWeight: '600' },
   capabilityValue: { fontSize: 10, fontWeight: '800', textTransform: 'capitalize', flexShrink: 1 },
   capabilityFootnote: { fontSize: 11, lineHeight: 17 },
-  sectionTitle: { fontSize: 19, fontWeight: '900', marginBottom: -8 },
+  sectionTitle: { fontSize: 17, fontWeight: '900', marginBottom: -6 },
 });
