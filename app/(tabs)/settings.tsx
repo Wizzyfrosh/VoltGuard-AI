@@ -10,7 +10,7 @@ export default function SettingsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const history = useBatteryHistory();
-  const alerts = useBatteryAlerts();
+  const alerts = useBatteryAlerts(false);
 
   const handleHistoryChange = async (enabled: boolean) => {
     await history.updateEnabled(enabled);
