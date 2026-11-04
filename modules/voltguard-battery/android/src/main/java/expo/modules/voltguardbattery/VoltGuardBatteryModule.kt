@@ -17,19 +17,23 @@ class VoltGuardBatteryModule : Module() {
       readBatteryDiagnostics()
     }
 
+    Function("getChargingAlarmStatus") {
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      VoltGuardBatteryNotifications.getChargingAlarmStatus(context)
+    }
+
+    Function("sendTestChargingAlarm") {
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      VoltGuardBatteryNotifications.postTestAlarm(context)
+    }
+
     AsyncFunction("startBackgroundMonitoring") { threshold: Int ->
       require(threshold in 50..100) { "Threshold must be between 50 and 100" }
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
-      val notifications = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        ?: throw IllegalStateException("Android notification service is unavailable")
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !notifications.areNotificationsEnabled()) {
-        throw IllegalStateException("VoltGuard notifications are disabled. Enable app notifications in Android Settings before starting charging alerts.")
-      }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val alertChannel = notifications.getNotificationChannel("battery-threshold-alerts")
-        if (alertChannel == null || alertChannel.importance == NotificationManager.IMPORTANCE_NONE) {
-          throw IllegalStateException("The Battery threshold alerts notification channel is disabled. Enable it in Android Settings.")
-        }
+      VoltGuardBatteryNotifications.createChannels(context)
+      val alarmStatus = VoltGuardBatteryNotifications.getChargingAlarmStatus(context)
+      if (alarmStatus["alarmReady"] != true) {
+        throw IllegalStateException(VoltGuardBatteryNotifications.describeAlarmStatus(alarmStatus))
       }
       val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_START
