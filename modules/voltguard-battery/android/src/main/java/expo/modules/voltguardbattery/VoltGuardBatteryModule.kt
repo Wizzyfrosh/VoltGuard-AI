@@ -37,6 +37,7 @@ class VoltGuardBatteryModule : Module() {
       }
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent)
       else context.startService(serviceIntent)
+      Unit
     }
 
     AsyncFunction("stopBackgroundMonitoring") {
@@ -46,6 +47,7 @@ class VoltGuardBatteryModule : Module() {
         }
         context.startService(serviceIntent)
       }
+      Unit
     }
   }
 
