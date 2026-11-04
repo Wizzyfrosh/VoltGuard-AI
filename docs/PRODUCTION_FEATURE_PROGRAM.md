@@ -210,3 +210,23 @@ The workflow change has been committed, but its new Actions run has not yet been
 
 ### Next implementation step
 Inspect native foreground service and notification channel creation end-to-end. Verify channel ID/importance/sound, one-alert-per-charge-session rearming, permission error reporting, service start/stop and reboot receiver behaviour. Add tests where logic can be isolated. Do not claim sound works until physical-device verification.
+
+
+### Charging alarm hardening implementation update — 2026-11-05
+
+**Implemented in source on `phase-0/stabilization-audit`; CI and device validation pending.**
+- [x] Added a dedicated Android `battery-threshold-alarm-v2` notification channel at HIGH importance.
+- [x] Configured alarm-category audio attributes, system alarm sound URI, vibration pattern and lights at channel creation.
+- [x] Added native channel readiness diagnostics: app notification permission, channel enabled state, high importance, sound and vibration.
+- [x] Added a native test-alarm action and Settings button so users can verify audible output on their own device.
+- [x] Routed background threshold notifications through the same shared native notification builder/channel.
+- [x] Added explicit JS/web stubs so browser builds do not attempt to invoke Android native APIs.
+- [x] Preserved one-alert-per-charge-session and unplug re-arming logic in the foreground service.
+- [ ] Verify Kotlin compile and TypeScript checks on the latest commit; Actions runs `41937640739` and `41937632241` are pending.
+- [ ] Test on a physical Android device: test alarm with screen on/off, confirm sound and vibration, change channel to silent/low importance and verify VoltGuard explains the issue, then restore settings and verify delivery.
+- [ ] Verify OPPO/OEM battery-management settings and reboot restoration. Do not claim OEM-independent reliability.
+- [ ] Verify upgrade behaviour: Android channel settings are user-controlled and immutable by app after channel creation. The new channel ID avoids inheriting the old default-importance channel; users can still silence it.
+
+**Important limitations:** the app does not bypass Do Not Disturb, alarm volume, notification permission, channel settings, force-stop, or OEM background restrictions. A test notification being posted is not proof that the phone physically played sound; the user must confirm audibility. No exact-alarm permission is required for this event-driven foreground-service threshold check.
+
+**Next:** wait for CI. If green, merge the stabilization PR after review. Then install the new Android build and physically test the alarm. Only after that move to Phase 1 Device & Battery Information.
