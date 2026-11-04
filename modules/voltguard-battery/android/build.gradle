@@ -5,6 +5,10 @@ plugins {
 
 android {
   namespace 'expo.modules.voltguardbattery'
+
+  defaultConfig {
+    versionName '1.0.0'
+  }
 }
 
 group = 'expo.modules.voltguardbattery'
