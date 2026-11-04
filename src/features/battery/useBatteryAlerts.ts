@@ -18,6 +18,10 @@ export function useBatteryAlerts() {
   const [isAvailable] = useState(Platform.OS !== 'web');
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      setIsLoading(false);
+      return;
+    }
     let mounted = true;
     void Promise.all([getBatteryPreference(ENABLED_KEY), getBatteryPreference(THRESHOLD_KEY)])
       .then(([savedEnabled, savedThreshold]) => {
