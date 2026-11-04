@@ -51,7 +51,7 @@ export default function SettingsScreen() {
           </Text>
           {!history.isAvailable && (
             <Text style={[styles.error, { color: colors.warning }]}>
-              Local history storage is unavailable on this platform or device.
+              Local history storage is unavailable here. Browser-based history storage will be added separately; no readings are being saved.
             </Text>
           )}
         </View>
@@ -79,7 +79,7 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={[styles.privacy, { color: colors.textSecondary }]}>{Platform.OS === 'android' ? 'An ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions, or manufacturer power management can still interrupt delivery.' : Platform.OS === 'ios' ? 'iOS checks battery thresholds only while VoltGuard is open; continuous background battery monitoring is not available.' : 'Charging alerts are not available on web.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>{Platform.OS === 'android' ? 'An ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions, or manufacturer power management can still interrupt delivery.' : Platform.OS === 'ios' ? 'iOS checks battery thresholds only while VoltGuard is open; continuous background battery monitoring is not available.' : 'Web testing uses browser battery APIs where supported and sends notifications only while this page is open. Browser support varies; closing the tab stops monitoring.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
           {alerts.monitoringError && (
             <View style={[styles.errorPanel, { borderColor: colors.warning }]}>
               <Text style={[styles.error, { color: colors.warning, fontWeight: '700' }]}>Background monitoring failed</Text>
@@ -92,7 +92,7 @@ export default function SettingsScreen() {
             </View>
           )}
           {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
-          {!alerts.isAvailable && <Text style={[styles.error, { color: colors.warning }]}>Charging alerts are not available on web.</Text>}
+          
         </View>
         <View style={styles.note}>
           <Info size={17} color={colors.textSecondary} />

@@ -21,8 +21,31 @@ function batteryStateFromAndroidStatus(status: string | null): ExpoBattery.Batte
   }
 }
 
+type BrowserBattery = EventTarget & { level: number; charging: boolean };
+type BatteryNavigator = Navigator & { getBattery?: () => Promise<BrowserBattery> };
+
+function unavailableWebSnapshot(): BatterySnapshot {
+  return {
+    platform: 'web', level: null, state: ExpoBattery.BatteryState.UNKNOWN, lowPowerMode: null,
+    observedAt: new Date().toISOString(), source: 'unavailable', capabilities: getInitialBatteryCapabilities(),
+    androidDiagnostics: null,
+  };
+}
+
 export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
   async getSnapshot(): Promise<BatterySnapshot> {
+    if (getBatteryPlatform() === 'web') {
+      try {
+        const battery = await (navigator as BatteryNavigator).getBattery?.();
+        if (!battery) return unavailableWebSnapshot();
+        const level = normalizeBatteryLevel(battery.level);
+        const state = battery.charging ? ExpoBattery.BatteryState.CHARGING : ExpoBattery.BatteryState.UNPLUGGED;
+        const capabilities = getInitialBatteryCapabilities();
+        capabilities.batteryLevel = level === null ? 'unavailable' : 'available';
+        capabilities.chargingState = 'available';
+        return { platform: 'web', level, state, lowPowerMode: null, observedAt: new Date().toISOString(), source: level === null ? 'unavailable' : 'expo-battery', capabilities, androidDiagnostics: null };
+      } catch { return unavailableWebSnapshot(); }
+    }
     const [levelResult, stateResult, lowPowerResult, androidDiagnostics] = await Promise.all([
       ExpoBattery.getBatteryLevelAsync().then(value => ({ status: 'fulfilled' as const, value })).catch(() => ({ status: 'rejected' as const })),
       ExpoBattery.getBatteryStateAsync().then(value => ({ status: 'fulfilled' as const, value })).catch(() => ({ status: 'rejected' as const })),
@@ -78,6 +101,26 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
   }
 
   subscribe(listener: BatterySnapshotListener): () => void {
+    if (getBatteryPlatform() === 'web') {
+      let active = true;
+      let battery: BrowserBattery | null = null;
+      const publish = () => {
+        if (!active || !battery) return;
+        const level = normalizeBatteryLevel(battery.level);
+        const capabilities = getInitialBatteryCapabilities();
+        capabilities.batteryLevel = level === null ? 'unavailable' : 'available';
+        capabilities.chargingState = 'available';
+        listener({ platform: 'web', level, state: battery.charging ? ExpoBattery.BatteryState.CHARGING : ExpoBattery.BatteryState.UNPLUGGED, lowPowerMode: null, observedAt: new Date().toISOString(), source: level === null ? 'unavailable' : 'expo-battery', capabilities, androidDiagnostics: null });
+      };
+      void (navigator as BatteryNavigator).getBattery?.().then((value) => {
+        if (!active) return;
+        battery = value;
+        battery.addEventListener('levelchange', publish);
+        battery.addEventListener('chargingchange', publish);
+        publish();
+      }).catch(() => undefined);
+      return () => { active = false; battery?.removeEventListener('levelchange', publish); battery?.removeEventListener('chargingchange', publish); };
+    }
     let current: BatterySnapshot = {
       platform: getBatteryPlatform(),
       level: null,
