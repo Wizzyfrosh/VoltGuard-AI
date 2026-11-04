@@ -1,9 +1,14 @@
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 const DATABASE_NAME = 'voltguard.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 async function openBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (Platform.OS === 'web') {
+    throw new Error('Local battery history is not enabled on web yet. A browser-specific persistence adapter is required.');
+  }
+
   if (!databasePromise) {
     databasePromise = SQLite.openDatabaseAsync(DATABASE_NAME).catch((error) => {
       databasePromise = null;
