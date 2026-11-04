@@ -5,6 +5,18 @@ type VoltGuardBatteryNativeModule = {
   getBatteryDiagnostics: () => Record<string, unknown> | null;
   startBackgroundMonitoring: (threshold: number) => Promise<void>;
   stopBackgroundMonitoring: () => Promise<void>;
+  getChargingAlarmStatus: () => ChargingAlarmStatus;
+  sendTestChargingAlarm: () => boolean;
+};
+
+export type ChargingAlarmStatus = {
+  channelId: string;
+  notificationsEnabled: boolean;
+  channelEnabled: boolean;
+  highImportance: boolean;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  alarmReady: boolean;
 };
 
 let nativeModule: VoltGuardBatteryNativeModule | null = null;
@@ -28,4 +40,16 @@ export async function stopBackgroundBatteryMonitoring(): Promise<boolean> {
   if (!module) return false;
   await module.stopBackgroundMonitoring();
   return true;
+}
+
+export function getChargingAlarmStatus(): ChargingAlarmStatus | null {
+  if (Platform.OS !== 'android') return null;
+  return getNativeModule()?.getChargingAlarmStatus() ?? null;
+}
+
+export async function sendTestChargingAlarm(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  const module = getNativeModule();
+  if (!module) return false;
+  return module.sendTestChargingAlarm();
 }
