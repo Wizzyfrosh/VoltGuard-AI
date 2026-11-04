@@ -52,7 +52,7 @@ export default function DashboardScreen() {
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Activity size={20} color={colors.success} />
-            <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Battery health</Text>
+            <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Battery condition</Text>
             <Text style={[styles.statusValue, { color: colors.text }]}>{diagnostics?.health ? diagnostics.health.replace('-', ' ') : 'Unavailable'}</Text>
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
