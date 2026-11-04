@@ -5,6 +5,7 @@ import { batteryTelemetryProvider } from './expo-battery.provider';
 import { getBatteryPreference, setBatteryPreference } from './battery.database';
 import { requestBatteryAlertPermission, sendBatteryThresholdNotification } from './battery.alerts';
 import { isValidBatteryAlertThreshold } from './battery.alerts.validation';
+import { startBackgroundBatteryMonitoring, stopBackgroundBatteryMonitoring } from '../../../modules/voltguard-battery';
 
 const ENABLED_KEY = 'charging_alert_enabled';
 const THRESHOLD_KEY = 'charging_alert_threshold';
@@ -54,24 +55,36 @@ export function useBatteryAlerts(monitor = true) {
     }
     try {
       await setBatteryPreference(ENABLED_KEY, String(nextEnabled));
+      if (Platform.OS === 'android') {
+        if (nextEnabled) await startBackgroundBatteryMonitoring(threshold);
+        else await stopBackgroundBatteryMonitoring();
+      }
       setEnabled(nextEnabled);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled });
       return true;
     } catch { return false; }
-  }, []);
+  }, [threshold]);
 
   const updateThreshold = useCallback(async (nextThreshold: number) => {
     if (!isValidBatteryAlertThreshold(nextThreshold)) return false;
     try {
       await setBatteryPreference(THRESHOLD_KEY, String(nextThreshold));
+      if (Platform.OS === 'android' && enabled) await startBackgroundBatteryMonitoring(nextThreshold);
       setThreshold(nextThreshold);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { threshold: nextThreshold });
       return true;
     } catch { return false; }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    if (!monitor || !enabled || !isAvailable) return;
+    if (monitor && Platform.OS === 'android' && !isLoading) {
+      if (enabled) void startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      else void stopBackgroundBatteryMonitoring().catch(() => undefined);
+    }
+  }, [monitor, enabled, threshold, isLoading]);
+
+  useEffect(() => {
+    if (!monitor || Platform.OS === 'android' || !enabled || !isAvailable) return;
     let wasCharging = false;
     let notifiedThisSession = false;
     let active = AppState.currentState === 'active';
