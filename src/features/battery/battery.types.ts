@@ -1,4 +1,5 @@
 import type { BatteryState } from 'expo-battery';
+import type { AndroidBatteryDiagnostics } from './battery.android.normalization';
 
 export type BatteryPlatform = 'android' | 'ios' | 'web' | 'unknown';
 export type TelemetrySource = 'expo-battery' | 'native' | 'unavailable';
@@ -34,6 +35,7 @@ export interface BatterySnapshot {
   observedAt: string;
   source: TelemetrySource;
   capabilities: BatteryCapabilities;
+  androidDiagnostics: AndroidBatteryDiagnostics | null;
 }
 
 export type BatterySnapshotListener = (snapshot: BatterySnapshot) => void;

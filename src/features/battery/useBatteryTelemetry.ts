@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import * as ExpoBattery from 'expo-battery';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import type { BatterySnapshot } from './battery.types';
@@ -21,6 +22,7 @@ const emptySnapshot: BatterySnapshot = {
     cycleCount: 'not-implemented',
     perAppPowerUsage: 'not-implemented',
   },
+  androidDiagnostics: null,
 };
 
 export function useBatteryTelemetry() {
@@ -34,6 +36,9 @@ export function useBatteryTelemetry() {
       const nextSnapshot = await batteryTelemetryProvider.getSnapshot();
       setSnapshot(nextSnapshot);
       setHasError(nextSnapshot.source === 'unavailable');
+      void recordBatterySnapshot(nextSnapshot).catch(() => {
+        // Local history storage must not block live diagnostics.
+      });
     } catch {
       setHasError(true);
     } finally {
@@ -47,7 +52,23 @@ export function useBatteryTelemetry() {
     const unsubscribe = batteryTelemetryProvider.subscribe((nextSnapshot) => {
       if (mounted) {
         receivedLiveUpdate = true;
-        setSnapshot(nextSnapshot);
+        setSnapshot((current) => ({
+          ...nextSnapshot,
+          androidDiagnostics: nextSnapshot.androidDiagnostics ?? current.androidDiagnostics,
+          capabilities: {
+            ...nextSnapshot.capabilities,
+            temperature: current.androidDiagnostics?.temperatureCelsius !== null && current.androidDiagnostics?.temperatureCelsius !== undefined
+              ? 'available'
+              : nextSnapshot.capabilities.temperature,
+            voltage: current.androidDiagnostics?.voltageMilliVolts !== null && current.androidDiagnostics?.voltageMilliVolts !== undefined
+              ? 'available'
+              : nextSnapshot.capabilities.voltage,
+            batteryHealth: current.androidDiagnostics?.health
+              ? 'available'
+              : nextSnapshot.capabilities.batteryHealth,
+          },
+          source: current.androidDiagnostics !== null ? 'native' : nextSnapshot.source,
+        }));
         setHasError(nextSnapshot.source === 'unavailable');
         setIsLoading(false);
         void recordBatterySnapshot(nextSnapshot).catch(() => {
@@ -58,12 +79,36 @@ export function useBatteryTelemetry() {
 
     void batteryTelemetryProvider.getSnapshot()
       .then((nextSnapshot) => {
-        if (mounted && !receivedLiveUpdate) {
-          setSnapshot(nextSnapshot);
+        if (mounted) {
+          setSnapshot((current) => ({
+            ...nextSnapshot,
+            level: current.level ?? nextSnapshot.level,
+            state: current.state !== ExpoBattery.BatteryState.UNKNOWN ? current.state : nextSnapshot.state,
+            lowPowerMode: current.lowPowerMode ?? nextSnapshot.lowPowerMode,
+            androidDiagnostics: nextSnapshot.androidDiagnostics ?? current.androidDiagnostics,
+            capabilities: {
+              ...nextSnapshot.capabilities,
+              batteryLevel: current.level !== null ? 'available' : nextSnapshot.capabilities.batteryLevel,
+              chargingState: current.state !== ExpoBattery.BatteryState.UNKNOWN ? 'available' : nextSnapshot.capabilities.chargingState,
+              lowPowerMode: current.lowPowerMode !== null ? 'available' : nextSnapshot.capabilities.lowPowerMode,
+              temperature: current.androidDiagnostics?.temperatureCelsius !== null && current.androidDiagnostics?.temperatureCelsius !== undefined
+                ? 'available'
+                : nextSnapshot.capabilities.temperature,
+              voltage: current.androidDiagnostics?.voltageMilliVolts !== null && current.androidDiagnostics?.voltageMilliVolts !== undefined
+                ? 'available'
+                : nextSnapshot.capabilities.voltage,
+              batteryHealth: current.androidDiagnostics?.health
+                ? 'available'
+                : nextSnapshot.capabilities.batteryHealth,
+            },
+            source: current.androidDiagnostics !== null ? 'native' : nextSnapshot.source,
+          }));
           setHasError(nextSnapshot.source === 'unavailable');
-          void recordBatterySnapshot(nextSnapshot).catch(() => {
-            // Storage failures must not break live battery monitoring.
-          });
+          if (!receivedLiveUpdate) {
+            void recordBatterySnapshot(nextSnapshot).catch(() => {
+              // Storage failures must not break live battery monitoring.
+            });
+          }
         }
       })
       .catch(() => {
@@ -78,6 +123,37 @@ export function useBatteryTelemetry() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const startForegroundRefresh = (refreshImmediately: boolean) => {
+      if (interval) clearInterval(interval);
+      if (refreshImmediately) void refresh();
+      interval = setInterval(() => {
+        if (AppState.currentState === 'active') void refresh();
+      }, 60_000);
+    };
+
+    const stopForegroundRefresh = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') startForegroundRefresh(false);
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') startForegroundRefresh(true);
+      else stopForegroundRefresh();
+    });
+
+    return () => {
+      stopForegroundRefresh();
+      subscription.remove();
+    };
+  }, [refresh]);
 
   return { ...snapshot, isLoading, hasError, refresh };
 }

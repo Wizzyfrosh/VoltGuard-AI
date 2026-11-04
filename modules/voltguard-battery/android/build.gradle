@@ -1,0 +1,15 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+android {
+  namespace 'expo.modules.voltguardbattery'
+
+  defaultConfig {
+    versionName '1.0.0'
+  }
+}
+
+group = 'expo.modules.voltguardbattery'
+version = '1.0.0'

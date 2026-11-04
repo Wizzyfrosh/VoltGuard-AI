@@ -54,3 +54,21 @@ async function openBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
 export async function getBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
   return openBatteryDatabase();
 }
+
+export async function getBatteryPreference(key: string): Promise<string | null> {
+  const database = await openBatteryDatabase();
+  const row = await database.getFirstAsync<{ preference_value: string }>(
+    'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
+    key,
+  );
+  return row?.preference_value ?? null;
+}
+
+export async function setBatteryPreference(key: string, value: string): Promise<void> {
+  const database = await openBatteryDatabase();
+  await database.runAsync(
+    'INSERT INTO user_preferences (preference_key, preference_value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(preference_key) DO UPDATE SET preference_value = excluded.preference_value, updated_at = CURRENT_TIMESTAMP',
+    key,
+    value,
+  );
+}

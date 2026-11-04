@@ -16,11 +16,16 @@
 
 The SQLite database is local to the device on Android and iOS. Web is explicitly guarded until a browser-specific persistence adapter is added; Expo SQLite web support has additional browser-isolation requirements and must not silently fail at runtime. `battery.repository.ts` exposes parameterized operations for explicit sample writes, bounded reads and retention deletion.
 
-**Important:** creating the database does not start collection. Do not add periodic/background collection until the user has a clear opt-in, retention controls and a privacy explanation. Do not upload samples to a server as part of this local repository.
+**Important:** creating the database does not start persistence. Battery diagnostics refresh while the app is foregrounded (on resume and every 60 seconds) for the live dashboard; samples are written to SQLite only after explicit history opt-in. No background task is registered and no telemetry is uploaded to a server.
 
 ## Current limitations
 
-- No native Kotlin/Swift adapter exists yet.
+- Android native diagnostics are implemented but require a custom native build and physical-device verification.
+- No native iOS diagnostics adapter exists.
 - No background sampling or notification workflow exists.
-- No battery-session inference exists.
-- Temperature, voltage, health, cycle count and per-app power usage remain unimplemented in this build.
+- Charging sessions are inferred from observed foreground charging-state changes and may be incomplete.
+- Cycle count and per-app power usage remain unimplemented.
+
+## Android native diagnostics
+
+The local Expo module at `modules/voltguard-battery` reads Android BatteryManager properties and the sticky battery-changed intent. It can expose temperature (tenths of °C converted to °C), voltage (mV), health/status/plugged state, capacity, instantaneous and average current, charge counter, and energy counter when the device reports them. Unsupported values remain null and capabilities are marked unavailable. Cycle count is intentionally null because it is not consistently exposed across Android versions/devices. These diagnostics require a native Android development/production build; they are not available in Expo Go or the web preview. Physical-device verification is required before production claims.
