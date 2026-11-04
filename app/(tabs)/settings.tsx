@@ -71,7 +71,7 @@ export default function SettingsScreen() {
           <Text style={[styles.body, { color: colors.textSecondary }]}>Notify me at</Text>
           <View style={styles.thresholds}>
             {[70, 80, 85, 90, 95, 100].map((value) => (
-              <Pressable key={value} onPress={() => { void alerts.updateThreshold(value); }}
+              <Pressable key={value} disabled={!alerts.isAvailable} onPress={() => { void alerts.updateThreshold(value); }}
                 accessibilityRole="button" accessibilityState={{ selected: alerts.threshold === value }}
                 style={[styles.thresholdButton, { borderColor: alerts.threshold === value ? colors.primary : colors.border,
                   backgroundColor: alerts.threshold === value ? colors.primary : 'transparent' }]}>
@@ -93,7 +93,7 @@ export default function SettingsScreen() {
           <Settings2 size={22} color={colors.primary} />
           <Text style={[styles.heading, { color: colors.text }]}>Other settings</Text>
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Notification preferences and additional appearance controls will be added when their features are implemented.
+            Additional appearance controls will be added in a later update.
           </Text>
         </View>
       </View>
