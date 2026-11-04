@@ -12,6 +12,13 @@ const THRESHOLD_KEY = 'charging_alert_threshold';
 const DEFAULT_THRESHOLD = 80;
 const ALERT_PREFERENCES_CHANGED = 'voltguard:charging-alert-preferences-changed';
 const ALERT_MONITOR_ERROR = 'charging_alert_monitor_error';
+const ALERT_MONITOR_MESSAGE = 'charging_alert_monitor_message';
+
+function describeMonitorError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (typeof error === 'string' && error.trim()) return error;
+  return 'Android rejected the background monitoring request. Check notification permission, battery restrictions and app build compatibility.';
+}
 
 export function useBatteryAlerts(monitor = true) {
   const [enabled, setEnabled] = useState(false);
@@ -19,6 +26,7 @@ export function useBatteryAlerts(monitor = true) {
   const [isLoading, setIsLoading] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [monitoringError, setMonitoringError] = useState(false);
+  const [monitoringErrorMessage, setMonitoringErrorMessage] = useState<string | null>(null);
   const [isAvailable] = useState(Platform.OS !== 'web');
 
   useEffect(() => {
@@ -27,12 +35,13 @@ export function useBatteryAlerts(monitor = true) {
       return;
     }
     let mounted = true;
-    void Promise.all([getBatteryPreference(ENABLED_KEY), getBatteryPreference(THRESHOLD_KEY), getBatteryPreference(ALERT_MONITOR_ERROR)])
-      .then(([savedEnabled, savedThreshold, savedMonitorError]) => {
+    void Promise.all([getBatteryPreference(ENABLED_KEY), getBatteryPreference(THRESHOLD_KEY), getBatteryPreference(ALERT_MONITOR_ERROR), getBatteryPreference(ALERT_MONITOR_MESSAGE)])
+      .then(([savedEnabled, savedThreshold, savedMonitorError, savedMonitorMessage]) => {
         if (!mounted) return;
         const parsed = Number(savedThreshold);
         setEnabled(savedEnabled === 'true');
         setMonitoringError(savedMonitorError === 'true');
+        setMonitoringErrorMessage(savedMonitorMessage);
         setThreshold(Number.isInteger(parsed) && parsed >= 50 && parsed <= 100 ? parsed : DEFAULT_THRESHOLD);
       })
       .catch(() => { if (mounted) setPermissionDenied(true); })
@@ -53,7 +62,7 @@ export function useBatteryAlerts(monitor = true) {
     if (nextEnabled) {
       try {
         const granted = await requestBatteryAlertPermission();
-        if (!granted) { setPermissionDenied(true); return false; }
+        if (!granted) { setPermissionDenied(true); setMonitoringErrorMessage('Notification permission was not granted. Allow notifications for VoltGuard in Android settings, then try again.'); return false; }
         setPermissionDenied(false);
       } catch { setPermissionDenied(true); return false; }
     }
@@ -152,5 +161,5 @@ export function useBatteryAlerts(monitor = true) {
     return () => { unsubscribe(); appStateSubscription.remove(); };
   }, [enabled, threshold, isAvailable, monitor]);
 
-  return { enabled, threshold, isLoading, permissionDenied, monitoringError, isAvailable, updateEnabled, updateThreshold };
+  return { enabled, threshold, isLoading, permissionDenied, monitoringError, monitoringErrorMessage, isAvailable, updateEnabled, updateThreshold };
 }
