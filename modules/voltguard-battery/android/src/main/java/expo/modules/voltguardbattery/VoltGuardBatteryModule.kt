@@ -136,6 +136,10 @@ class VoltGuardBatteryModule : Module() {
       null
     }
 
+    val technology = batteryIntent
+      ?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY)
+      ?.takeIf { it.isNotBlank() }
+
     val cycleCount = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       batteryIntent
         ?.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1)
@@ -156,7 +160,8 @@ class VoltGuardBatteryModule : Module() {
       "currentAverageMicroAmps" to currentAverageMicroAmps,
       "chargeCounterMicroAmpHours" to chargeCounterMicroAmpHours,
       "energyCounterNanoWattHours" to energyCounterNanoWattHours,
-      "cycleCount" to cycleCount
+      "cycleCount" to cycleCount,
+      "technology" to technology
     )
   }
 }
