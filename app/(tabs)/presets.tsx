@@ -9,9 +9,9 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 export default function PresetsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [activePreset, setActivePreset] = useState<string>('optimized');
+  const [activePreset, setActivePreset] = useState<string | null>('optimized');
 
-  const handleSelect = (id: string) => setActivePreset(id);
+  const handleSelect = (id: string) => setActivePreset((current) => current === id ? null : id);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
