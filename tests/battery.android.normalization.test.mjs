@@ -39,6 +39,11 @@ test('rejects unsupported and out-of-range hardware values', () => {
   assert.equal(result.cycleCount, null);
 });
 
+test('preserves a valid Android-reported battery cycle count', () => {
+  const result = normalizeAndroidBatteryDiagnostics({ apiLevel: 34, cycleCount: 412 });
+  assert.equal(result.cycleCount, 412);
+});
+
 test('returns null for missing native module data', () => {
   assert.equal(normalizeAndroidBatteryDiagnostics(null), null);
   assert.equal(normalizeAndroidBatteryDiagnostics(undefined), null);
