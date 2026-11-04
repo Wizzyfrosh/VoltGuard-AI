@@ -24,6 +24,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const reading = useBatteryTelemetry();
   const isCharging = reading.state === Battery.BatteryState.CHARGING;
+  const diagnostics = reading.androidDiagnostics;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -47,17 +48,17 @@ export default function DashboardScreen() {
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Thermometer size={20} color={colors.warning} />
             <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Temperature</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>Not supported</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>{diagnostics?.temperatureCelsius !== null && diagnostics?.temperatureCelsius !== undefined ? `${diagnostics.temperatureCelsius.toFixed(1)} °C` : 'Unavailable'}</Text>
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Activity size={20} color={colors.success} />
             <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Battery health</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>Not supported</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>{diagnostics?.health ? diagnostics.health.replace('-', ' ') : 'Unavailable'}</Text>
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Zap size={20} color={colors.primary} />
             <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Voltage</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>Not supported</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>{diagnostics?.voltageMilliVolts ? `${(diagnostics.voltageMilliVolts / 1000).toFixed(2)} V` : 'Unavailable'}</Text>
           </View>
         </View>
         <View style={[styles.capabilityNote, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -66,8 +67,14 @@ export default function DashboardScreen() {
             Current platform: {reading.platform}. Battery level: {reading.capabilities.batteryLevel}. Charging state: {reading.capabilities.chargingState}.
           </Text>
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-            Advanced diagnostics require platform-specific native integrations and are not enabled in this build.
+            Android diagnostics are read through Android BatteryManager and battery intent data when supported by this device. iOS and web use their own supported telemetry profile.
           </Text>
+          {diagnostics?.currentNowMicroAmps !== null && diagnostics?.currentNowMicroAmps !== undefined && (
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>Instant current: {(diagnostics.currentNowMicroAmps / 1000).toFixed(0)} mA</Text>
+          )}
+          {diagnostics?.chargeCounterMicroAmpHours !== null && diagnostics?.chargeCounterMicroAmpHours !== undefined && (
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>Charge counter: {diagnostics.chargeCounterMicroAmpHours.toLocaleString()} µAh</Text>
+          )}
           {reading.lowPowerMode !== null && (
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>
               Low Power Mode: {reading.lowPowerMode ? 'On' : 'Off'}
