@@ -27,13 +27,9 @@ export function useBatteryAlerts(monitor = true) {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [monitoringError, setMonitoringError] = useState(false);
   const [monitoringErrorMessage, setMonitoringErrorMessage] = useState<string | null>(null);
-  const [isAvailable] = useState(Platform.OS !== 'web');
+  const [isAvailable] = useState(true);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      setIsLoading(false);
-      return;
-    }
     let mounted = true;
     void Promise.all([getBatteryPreference(ENABLED_KEY), getBatteryPreference(THRESHOLD_KEY), getBatteryPreference(ALERT_MONITOR_ERROR), getBatteryPreference(ALERT_MONITOR_MESSAGE)])
       .then(([savedEnabled, savedThreshold, savedMonitorError, savedMonitorMessage]) => {
@@ -148,6 +144,34 @@ export function useBatteryAlerts(monitor = true) {
 
   useEffect(() => {
     if (!monitor || Platform.OS === 'android' || !enabled || !isAvailable) return;
+    if (Platform.OS === 'web') {
+      let active = true;
+      let notified = false;
+      type BrowserBattery = EventTarget & { level: number; charging: boolean };
+      type BatteryNavigator = Navigator & { getBattery?: () => Promise<BrowserBattery> };
+      let battery: BrowserBattery | null = null;
+      const evaluate = () => {
+        if (!active || !battery || !battery.charging) { notified = false; return; }
+        const level = Math.round(battery.level * 100);
+        if (level >= threshold && !notified) {
+          notified = true;
+          void sendBatteryThresholdNotification(level, threshold).catch(() => undefined);
+        }
+      };
+      const onChange = () => evaluate();
+      void (navigator as BatteryNavigator).getBattery?.().then((value) => {
+        if (!active) return;
+        battery = value;
+        battery.addEventListener('levelchange', onChange);
+        battery.addEventListener('chargingchange', onChange);
+        evaluate();
+      }).catch(() => undefined);
+      return () => {
+        active = false;
+        battery?.removeEventListener('levelchange', onChange);
+        battery?.removeEventListener('chargingchange', onChange);
+      };
+    }
     let wasCharging = false;
     let notifiedThisSession = false;
     let active = AppState.currentState === 'active';
