@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Battery from 'expo-battery';
@@ -6,24 +6,8 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { BatteryGauge } from '../../src/components/dashboard/BatteryGauge';
 import { DashboardAction } from '../../src/components/dashboard/DashboardAction';
+import { useBatteryTelemetry } from '../../src/features/battery/useBatteryTelemetry';
 import { Bot, Activity, Thermometer, Zap } from 'lucide-react-native';
-
-type BatteryReading = {
-  level: number | null;
-  state: Battery.BatteryState;
-  lowPowerMode: boolean | null;
-};
-
-const initialReading: BatteryReading = {
-  level: null,
-  state: Battery.BatteryState.UNKNOWN,
-  lowPowerMode: null,
-};
-
-function normalizeBatteryLevel(level: number): number | null {
-  if (!Number.isFinite(level) || level < 0 || level > 1) return null;
-  return level;
-}
 
 function getChargingLabel(state: Battery.BatteryState): string {
   switch (state) {
@@ -38,78 +22,7 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [reading, setReading] = useState<BatteryReading>(initialReading);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    let levelSubscription: ReturnType<typeof Battery.addBatteryLevelListener> | undefined;
-    let stateSubscription: ReturnType<typeof Battery.addBatteryStateListener> | undefined;
-    let powerModeSubscription: ReturnType<typeof Battery.addLowPowerModeListener> | undefined;
-
-    const loadInitialReading = async () => {
-      try {
-        // Read each capability independently: one unsupported API must not
-        // hide battery level or charging state on another platform.
-        const [levelResult, stateResult, powerModeResult] = await Promise.allSettled([
-          Battery.getBatteryLevelAsync(),
-          Battery.getBatteryStateAsync(),
-          Battery.isLowPowerModeEnabledAsync(),
-        ]);
-        if (!active) return;
-
-        setReading((current) => ({
-          level: levelResult.status === 'fulfilled'
-            ? normalizeBatteryLevel(levelResult.value)
-            : current.level,
-          state: stateResult.status === 'fulfilled' ? stateResult.value : current.state,
-          lowPowerMode: powerModeResult.status === 'fulfilled'
-            ? powerModeResult.value
-            : current.lowPowerMode,
-        }));
-        setLoadError(
-          levelResult.status === 'rejected' ||
-          stateResult.status === 'rejected' ||
-          powerModeResult.status === 'rejected',
-        );
-      } catch {
-        if (active) setLoadError(true);
-      }
-    };
-
-    void loadInitialReading();
-    // Subscribe independently so one unavailable event API cannot prevent
-    // the other readings from continuing to update.
-    try {
-      levelSubscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
-        if (active) setReading((current) => ({ ...current, level: normalizeBatteryLevel(batteryLevel) }));
-      });
-    } catch {
-      // Battery-level events are not supported on every platform.
-    }
-    try {
-      stateSubscription = Battery.addBatteryStateListener(({ batteryState }) => {
-        if (active) setReading((current) => ({ ...current, state: batteryState }));
-      });
-    } catch {
-      // Charging-state events are not supported on every platform.
-    }
-    try {
-      powerModeSubscription = Battery.addLowPowerModeListener(({ lowPowerMode }) => {
-        if (active) setReading((current) => ({ ...current, lowPowerMode }));
-      });
-    } catch {
-      // Low-power-mode events are not supported on every platform.
-    }
-
-    return () => {
-      active = false;
-      levelSubscription?.remove();
-      stateSubscription?.remove();
-      powerModeSubscription?.remove();
-    };
-  }, []);
-
+  const reading = useBatteryTelemetry();
   const isCharging = reading.state === Battery.BatteryState.CHARGING;
 
   return (
@@ -125,32 +38,35 @@ export default function DashboardScreen() {
             <Text style={[styles.infoText, { color: colors.primary }]}>{getChargingLabel(reading.state)}</Text>
           </View>
         </View>
-        {loadError && (
+        {reading.hasError && (
           <Text style={[styles.notice, { color: colors.warning }]}>
-            Some battery information could not be loaded. Values will update if the device makes them available.
+            Some battery information is unavailable on this device or platform. Available readings will continue to update.
           </Text>
         )}
         <View style={styles.statusRow}>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Thermometer size={20} color={colors.warning} />
             <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Temperature</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>Unavailable</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>Not supported</Text>
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Activity size={20} color={colors.success} />
             <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Battery health</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>Not exposed</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>Not supported</Text>
           </View>
           <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Zap size={20} color={colors.primary} />
             <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Voltage</Text>
-            <Text style={[styles.statusValue, { color: colors.text }]}>Unavailable</Text>
+            <Text style={[styles.statusValue, { color: colors.text }]}>Not supported</Text>
           </View>
         </View>
         <View style={[styles.capabilityNote, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.noteTitle, { color: colors.text }]}>About device readings</Text>
+          <Text style={[styles.noteTitle, { color: colors.text }]}>Device capabilities</Text>
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-            Battery level and charging state come from the operating system. Temperature, voltage and battery-health diagnostics are not exposed by this cross-platform build.
+            Current platform: {reading.platform}. Battery level: {reading.capabilities.batteryLevel}. Charging state: {reading.capabilities.chargingState}.
+          </Text>
+          <Text style={[styles.noteText, { color: colors.textSecondary }]}>
+            Advanced diagnostics require platform-specific native integrations and are not enabled in this build.
           </Text>
           {reading.lowPowerMode !== null && (
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>
