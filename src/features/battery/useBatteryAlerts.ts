@@ -41,7 +41,7 @@ export function useBatteryAlerts(monitor = true) {
   }, []);
 
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener(ALERT_PREFERENCES_CHANGED, (change: { enabled?: boolean; threshold?: number }) => {
+    const subscription = DeviceEventEmitter.addListener(ALERT_PREFERENCES_CHANGED, (change: { enabled?: boolean; threshold?: number; monitoringError?: boolean }) => {
       if (typeof change.enabled === 'boolean') setEnabled(change.enabled);
       if (typeof change.threshold === 'number' && isValidBatteryAlertThreshold(change.threshold)) setThreshold(change.threshold);
       if (typeof change.monitoringError === 'boolean') setMonitoringError(change.monitoringError);
