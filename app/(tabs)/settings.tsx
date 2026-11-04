@@ -79,14 +79,15 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={[styles.privacy, { color: colors.textSecondary }]}>Alerts are checked while VoltGuard is open. Background alerts are not guaranteed. This is a reminder only: VoltGuard cannot stop or limit charging. Unplug the charger yourself when notified.</Text>
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>{alerts.isAvailable ? 'Android: an ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions, or manufacturer power management can still interrupt delivery. iOS checks only while VoltGuard is open.' : 'Charging alerts are not available on web.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
+          {alerts.monitoringError && <Text style={[styles.error, { color: colors.warning }]}>Background monitoring could not be started or restored. Check notification permissions and Android battery restrictions, then try enabling the alert again.</Text>}
           {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
           {!alerts.isAvailable && <Text style={[styles.error, { color: colors.warning }]}>Charging alerts are not available on web.</Text>}
         </View>
         <View style={styles.note}>
           <Info size={17} color={colors.textSecondary} />
           <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-            Automatic background collection and cloud uploads are not enabled.
+            Background monitoring runs only when charging alerts are enabled. Battery history remains foreground-only; no cloud upload is performed.
           </Text>
         </View>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
