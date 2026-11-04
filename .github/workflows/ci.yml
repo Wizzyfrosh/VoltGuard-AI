@@ -2,7 +2,7 @@ name: VoltGuard validation
 
 on:
   pull_request:
-    branches: [main, phase-1/stabilization]
+    branches: [main, phase-1/stabilization, phase-2/telemetry-architecture]
 
 permissions:
   contents: read
