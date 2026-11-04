@@ -1,4 +1,5 @@
 import * as Battery from 'expo-battery';
+import { Platform } from 'react-native';
 import { getBatteryDatabase } from './battery.database';
 import type { BatterySnapshot } from './battery.types';
 import { getChargingTransition } from './battery.session';
@@ -69,7 +70,7 @@ export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> 
 
 /** Save foreground telemetry only after explicit opt-in. No background task is registered. */
 export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<void> {
-  if (snapshot.source === 'unavailable' || !(await isBatteryHistoryEnabled())) return;
+  if (Platform.OS === 'web' || snapshot.source === 'unavailable' || !(await isBatteryHistoryEnabled())) return;
   const db = await getBatteryDatabase();
 
   await db.withTransactionAsync(async () => {
