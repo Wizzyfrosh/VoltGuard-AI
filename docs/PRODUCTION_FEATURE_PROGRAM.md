@@ -338,3 +338,37 @@ Run CI and fix all failures. Then continue with Charging Detect & Optimization H
 - [ ] Confirm permission denial and rescheduling errors are clearly visible in Settings.
 - [ ] Physical Android alarm audibility still requires user confirmation through the Settings test button.
 - [ ] Do not promise exact-to-the-minute delivery or guaranteed alarm-volume bypass; Do Not Disturb, channel settings, Focus modes and OS battery policies remain in control.
+
+
+## Phase 5 — Android app foreground-usage insights — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source — validation pending
+- [x] Declared Android `PACKAGE_USAGE_STATS` special access in the native module manifest; it is not requested as a normal runtime permission.
+- [x] Added an explicit Usage Access settings shortcut and native permission-state check using AppOps.
+- [x] Queried Android `UsageStatsManager` for a rolling 24-hour window and returned per-package foreground duration and last-used timestamp.
+- [x] Aggregated duplicate daily interval rows by package, sorted by foreground duration and capped the UI result at 20 apps.
+- [x] Excluded VoltGuard itself from the list.
+- [x] Added app label resolution with package-name fallback when Android package visibility prevents resolving a label.
+- [x] Added a breakdown-screen permission explanation, grant-settings action, refresh control, foreground-time list and explicit date-window/coverage caveats.
+- [x] Added typed native bridge methods and web stubs; web/iOS do not call Android Usage Access.
+- [x] No app-usage events are persisted or uploaded; the query is on demand and local.
+
+### Privacy, platform and product constraints
+- Usage Access reveals app-usage patterns and must remain optional, user-initiated and revocable.
+- Google Play distribution requires a policy review of the declared Usage Access purpose and prominent disclosure. Do not assume permission declaration alone guarantees Play approval.
+- Android's usage summaries may be delayed, bucketed, incomplete or unavailable immediately after access is granted.
+- Foreground duration is not battery drain. Do not convert it to mAh, drain percentages, or a “top battery consumers” ranking.
+- Package names may be displayed where app labels cannot be resolved due to Android package visibility; do not add `QUERY_ALL_PACKAGES` merely to improve labels.
+- No background surveillance, screen contents, keystroke collection, message access or remote upload is implemented.
+
+### Validation gate
+- [ ] TypeScript, lint, unit tests and web export must pass on the latest branch commit.
+- [ ] Android Kotlin compile must pass on the same commit.
+- [ ] Physical-device test on target Android: no access, grant access, return to app, refresh, revoke access, and test empty/partial usage history.
+- [ ] Verify package label fallback and duration aggregation against Android Settings > Digital Wellbeing / App usage for a comparable time window.
+- [ ] Review Play Console Usage Access policy and prominent disclosure before public distribution.
+
+### Next
+Implement real RAM and storage diagnostics only where native platform APIs provide valid totals/available values. Do not turn free RAM into a “boost score,” promise performance improvements, or add a task-killer/cleaner.
