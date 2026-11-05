@@ -372,3 +372,20 @@ Run CI and fix all failures. Then continue with Charging Detect & Optimization H
 
 ### Next
 Implement real RAM and storage diagnostics only where native platform APIs provide valid totals/available values. Do not turn free RAM into a “boost score,” promise performance improvements, or add a task-killer/cleaner.
+
+
+## Android device resource diagnostics — 2026-11-05
+
+### Implemented in source — validation pending
+- [x] Added Android `ActivityManager.MemoryInfo` reads for total RAM, available RAM and low-memory state.
+- [x] Added Android `StatFs` reads for total and available internal data-partition storage.
+- [x] Added typed bridge methods and web/iOS-safe null implementations.
+- [x] Displayed resource readings in the existing Analytics screen; no new navigation tab.
+- [x] Explicitly avoided synthetic boost scores, task killing, memory cleaning or performance claims.
+
+### Limitations and validation
+- [ ] Confirm Kotlin compilation and all JS checks on the latest commit.
+- [ ] Compare RAM values with Android system memory diagnostics and storage values with Android Settings on a physical device.
+- [ ] These are system-wide snapshots and can change between reads; they are not app-specific memory use.
+- [ ] Available RAM is not a target to maximize. Android intentionally uses free memory for cache and background process management.
+- [ ] Storage values represent the app-visible data partition reported by StatFs, not necessarily every removable or adopted storage volume.
