@@ -230,3 +230,34 @@ Inspect native foreground service and notification channel creation end-to-end. 
 **Important limitations:** the app does not bypass Do Not Disturb, alarm volume, notification permission, channel settings, force-stop, or OEM background restrictions. A test notification being posted is not proof that the phone physically played sound; the user must confirm audibility. No exact-alarm permission is required for this event-driven foreground-service threshold check.
 
 **Next:** wait for CI. If green, merge the stabilization PR after review. Then install the new Android build and physically test the alarm. Only after that move to Phase 1 Device & Battery Information.
+
+
+## Phase 1 — Device & Battery Information progress — 2026-11-05
+
+**Implementation branch:** `phase-0/stabilization-audit`
+
+### Completed in source
+- [x] Added Android battery technology from `BatteryManager.EXTRA_TECHNOLOGY`.
+- [x] Normalized signed battery current into mA for instantaneous and average current; charging/discharging direction is retained.
+- [x] Normalized charge counter into mAh and energy counter into mWh.
+- [x] Exposed new capability flags for battery technology, current, remaining charge and energy counter.
+- [x] Extended the dashboard with a Battery hardware details card: technology, available charge, instantaneous/average battery current, energy counter and cycle count.
+- [x] Kept unavailable readings explicitly unavailable; no sample or inferred hardware values added.
+- [x] Added unit tests for conversions and null/unavailable values.
+
+### Engineering caveats
+- BatteryManager current is battery-side current, not a verified USB adapter input-current measurement. The UI labels it accordingly.
+- `BATTERY_PROPERTY_CHARGE_COUNTER` is remaining charge reported by the fuel gauge, not nominal/design battery capacity.
+- `BATTERY_PROPERTY_ENERGY_COUNTER` is optional and vendor dependent.
+- Android's cycle count is only read when API level is 34+ and the battery intent supplies a valid non-negative value.
+- Android's `EXTRA_HEALTH` is OS-reported status, not a percentage-based battery health/capacity estimate.
+- These Android fields are not exposed on web/iOS by this adapter.
+
+### Pending validation
+- [ ] Latest CI run must pass TypeScript, unit tests, lint, web export and Android Kotlin compilation.
+- [ ] Physical-device validation on the user's OPPO device is still required to confirm which fuel-gauge fields are supported and their units/signs.
+- [ ] Review capability state preservation in live event updates and ensure web build does not reference native-only fields incorrectly.
+- [ ] Add model/manufacturer/API metadata to the diagnostics screen only if available from a stable API and necessary for troubleshooting.
+
+### Next Phase 1 work
+Improve battery health presentation: distinguish Android OS-reported health state from estimated battery capacity/condition. Do not manufacture a health percentage when the OS does not expose one. Then add battery drain trend analysis based only on timestamped local samples, with confidence/coverage indicators and no fabricated per-app attribution.
