@@ -5,7 +5,7 @@ import * as Battery from 'expo-battery';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock3, Info, BatteryCharging, BatteryFull, TrendingUp } from 'lucide-react-native';
 import { useBatterySessionAnalytics } from '../../src/features/battery/useBatterySessionAnalytics';
-import { getChargingSessionRate } from '../../src/features/battery/battery.session.analytics';
+import { getObservedLevelChangeRate } from '../../src/features/battery/battery.session.analytics';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBatteryHistory } from '../../src/features/battery/useBatteryHistory';
 
@@ -70,14 +70,14 @@ export default function HistoryScreen() {
                     <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.current.sessionCount} sessions</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.current.averageGainPercent === null ? '—' : sessionAnalytics.comparison.current.averageGainPercent + '%'}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.current.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.current.averageDurationMinutes * 60000)}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Rate {sessionAnalytics.comparison.current.averageChargeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.current.averageChargeRatePercentPerHour + '%/hr'}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Level change {sessionAnalytics.comparison.current.averageLevelChangeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.current.averageLevelChangeRatePercentPerHour + '%/hr'}</Text>
                   </View>
                   <View style={styles.comparisonColumn}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Previous 7 days</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.previous.sessionCount} sessions</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.previous.averageGainPercent === null ? '—' : sessionAnalytics.comparison.previous.averageGainPercent + '%'}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.previous.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.previous.averageDurationMinutes * 60000)}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Rate {sessionAnalytics.comparison.previous.averageChargeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.previous.averageChargeRatePercentPerHour + '%/hr'}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Level change {sessionAnalytics.comparison.previous.averageLevelChangeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.previous.averageLevelChangeRatePercentPerHour + '%/hr'}</Text>
                   </View>
                 </View>
                 <Text style={[styles.body, { color: colors.textSecondary }]}>{sessionAnalytics.comparison.explanation}</Text>
@@ -151,7 +151,7 @@ export default function HistoryScreen() {
                 )}
                 {session.status === 'completed' && (
                   <Text style={[styles.source, { color: colors.textSecondary }]}>
-                    Observed level change rate: {getChargingSessionRate(session) === null ? 'Unavailable' : getChargingSessionRate(session) + ' percentage points/hour'}
+                    Observed level change rate: {getObservedLevelChangeRate(session) === null ? 'Unavailable' : getObservedLevelChangeRate(session) + ' percentage points/hour'}
                   </Text>
                 )}
                 {session.status === 'charging' && (
