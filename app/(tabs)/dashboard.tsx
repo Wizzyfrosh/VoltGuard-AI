@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, useWindowDimensions, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Battery from 'expo-battery';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,8 @@ import { DashboardAction } from '../../src/components/dashboard/DashboardAction'
 import { useBatteryTelemetry } from '../../src/features/battery/useBatteryTelemetry';
 import { getBatteryDrainAnalysis } from '../../src/features/battery/battery.history';
 import { explainBatteryHealth, type BatteryDrainAnalysis } from '../../src/features/battery/battery.analysis';
-import { Bot, Activity, Thermometer, Zap, PlugZap, ShieldCheck, Smartphone } from 'lucide-react-native';
+import { Bot, Activity, Thermometer, Zap, PlugZap, ShieldCheck, Smartphone, Sun, MapPin, Bluetooth, Radio, RefreshCw } from 'lucide-react-native';
+import { getOptimizationDiagnostics, openOptimizationSetting, type OptimizationDiagnostics } from '../../modules/voltguard-battery';
 
 function getChargingLabel(state: Battery.BatteryState): string {
   switch (state) {
@@ -29,6 +30,10 @@ export default function DashboardScreen() {
   const isCharging = reading.state === Battery.BatteryState.CHARGING;
   const diagnostics = reading.androidDiagnostics;
   const [drainAnalysis, setDrainAnalysis] = useState<BatteryDrainAnalysis | null>(null);
+  const [optimization, setOptimization] = useState<OptimizationDiagnostics | null>(null);
+  useEffect(() => {
+    try { setOptimization(getOptimizationDiagnostics()); } catch { setOptimization(null); }
+  }, [reading.observedAt]);
   useEffect(() => {
     let active = true;
     void getBatteryDrainAnalysis().then((result) => { if (active) setDrainAnalysis(result); }).catch(() => {
@@ -120,6 +125,22 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
+        <View style={[styles.hardwareCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
+          <View style={styles.hardwareHeader}>
+            <Zap size={20} color={colors.primary} />
+            <Text style={[styles.capabilityTitle, { color: colors.text }]}>Charging detect & optimization</Text>
+          </View>
+          <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>
+            Live power source and battery-side current are shown above. These checks identify settings that may contribute to background or display power use; they do not directly increase charger output.
+          </Text>
+          <OptimizationRow icon={<Sun size={17} color={colors.primary} />} label="Automatic brightness" value={optimization?.automaticBrightnessEnabled == null ? 'Unavailable' : optimization.automaticBrightnessEnabled ? 'Enabled' : 'Disabled'} action="brightness" colors={colors} />
+          <OptimizationRow icon={<MapPin size={17} color={colors.primary} />} label="Location services" value={optimization?.locationEnabled == null ? 'Unavailable' : optimization.locationEnabled ? 'Enabled' : 'Disabled'} action="location" colors={colors} />
+          <OptimizationRow icon={<Bluetooth size={17} color={colors.primary} />} label="Bluetooth" value={optimization?.bluetoothEnabled == null ? 'Unavailable' : optimization.bluetoothEnabled ? 'Enabled' : 'Disabled'} action="bluetooth" colors={colors} />
+          <OptimizationRow icon={<Radio size={17} color={colors.primary} />} label="NFC" value={optimization?.nfcEnabled == null ? 'Unavailable' : optimization.nfcEnabled ? 'Enabled' : 'Disabled'} action="nfc" colors={colors} />
+          <OptimizationRow icon={<RefreshCw size={17} color={colors.primary} />} label="Background system sync" value={optimization?.masterSyncEnabled == null ? 'Unavailable' : optimization.masterSyncEnabled ? 'Enabled' : 'Disabled'} action="sync" colors={colors} />
+          {Platform.OS !== 'android' && <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>These system checks and shortcuts are available only in the Android app.</Text>}
+        </View>
+
         <View style={[styles.chargingCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
           <View style={styles.plugIcon}><PlugZap size={34} color="#3487FF" /></View>
           <View style={styles.chargingCopy}>
@@ -166,6 +187,29 @@ function MetricCard({ icon, label, value, hint, colors }: { icon: React.ReactNod
       <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>{label}</Text>
       <Text style={[styles.metricValue, { color: colors.text }]} numberOfLines={1}>{value}</Text>
       <Text style={[styles.metricHint, { color: colors.textSecondary }]} numberOfLines={1}>{hint}</Text>
+    </View>
+  );
+}
+
+function OptimizationRow({ icon, label, value, action, colors }: { icon: React.ReactNode; label: string; value: string; action: 'brightness' | 'location' | 'bluetooth' | 'nfc' | 'sync'; colors: any }) {
+  return (
+    <View style={styles.optimizationRow}>
+      <View style={styles.optimizationCopy}>
+        {icon}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[styles.hardwareLabel, { color: colors.text }]}>{label}</Text>
+          <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>{value}</Text>
+        </View>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${label} settings`}
+        onPress={() => openOptimizationSetting(action)}
+        disabled={Platform.OS !== 'android'}
+        style={({ pressed }) => [styles.settingsShortcut, { borderColor: colors.border, opacity: pressed ? 0.65 : Platform.OS === 'android' ? 1 : 0.4 }]}
+      >
+        <Text style={[styles.settingsShortcutText, { color: colors.primary }]}>Settings</Text>
+      </Pressable>
     </View>
   );
 }
@@ -222,6 +266,10 @@ const styles = StyleSheet.create({
   insightCard: { borderWidth: 1, borderRadius: 22, padding: 17, gap: 10 },
   insightValue: { fontSize: 21, fontWeight: '900', textTransform: 'capitalize' },
   hardwareHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  optimizationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: 5 },
+  optimizationCopy: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingsShortcut: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  settingsShortcutText: { fontSize: 11, fontWeight: '800' },
   hardwareGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
   hardwareValue: { width: '50%', gap: 4, paddingRight: 8 },
   hardwareLabel: { fontSize: 11, fontWeight: '600' },
