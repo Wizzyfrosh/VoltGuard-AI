@@ -3,7 +3,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import * as Battery from 'expo-battery';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Clock3, Info, BatteryCharging, BatteryFull } from 'lucide-react-native';
+import { Clock3, Info, BatteryCharging, BatteryFull, TrendingUp } from 'lucide-react-native';
+import { useBatterySessionAnalytics } from '../../src/features/battery/useBatterySessionAnalytics';
+import { getChargingSessionRate } from '../../src/features/battery/battery.session.analytics';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBatteryHistory } from '../../src/features/battery/useBatteryHistory';
 
@@ -39,15 +41,55 @@ export default function HistoryScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const history = useBatteryHistory();
+  const sessionAnalytics = useBatterySessionAnalytics();
 
   useFocusEffect(useCallback(() => {
     void history.refresh();
-  }, [history.refresh]));
+    void sessionAnalytics.refresh();
+  }, [history.refresh, sessionAnalytics.refresh]));
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.text }]}>Battery History</Text>
+        {history.enabled && (
+          <View style={[styles.comparisonCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.comparisonHeader}>
+              <TrendingUp size={21} color={colors.primary} />
+              <Text style={[styles.heading, { color: colors.text }]}>Charging session comparison</Text>
+            </View>
+            {sessionAnalytics.isLoading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : sessionAnalytics.error ? (
+              <Text style={[styles.body, { color: colors.textSecondary }]}>{sessionAnalytics.error}</Text>
+            ) : sessionAnalytics.comparison ? (
+              <>
+                <View style={styles.comparisonColumns}>
+                  <View style={styles.comparisonColumn}>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Last 7 days</Text>
+                    <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.current.sessionCount} sessions</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.current.averageGainPercent === null ? '—' : sessionAnalytics.comparison.current.averageGainPercent + '%'}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg duration {sessionAnalytics.comparison.current.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.current.averageDurationMinutes * 60000)}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Rate {sessionAnalytics.comparison.current.averageChargeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.current.averageChargeRatePercentPerHour + '%/hr'}</Text>
+                  </View>
+                  <View style={styles.comparisonColumn}>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Previous 7 days</Text>
+                    <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.previous.sessionCount} sessions</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.previous.averageGainPercent === null ? '—' : sessionAnalytics.comparison.previous.averageGainPercent + '%'}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg duration {sessionAnalytics.comparison.previous.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.previous.averageDurationMinutes * 60000)}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Rate {sessionAnalytics.comparison.previous.averageChargeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.previous.averageChargeRatePercentPerHour + '%/hr'}</Text>
+                  </View>
+                </View>
+                <Text style={[styles.body, { color: colors.textSecondary }]}>{sessionAnalytics.comparison.explanation}</Text>
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>
+                  {sessionAnalytics.comparison.gainChangePercentPoints === null
+                    ? 'Period-to-period change unavailable.'
+                    : 'Average gain change: ' + (sessionAnalytics.comparison.gainChangePercentPoints > 0 ? '+' : '') + sessionAnalytics.comparison.gainChangePercentPoints + ' percentage points'}
+                </Text>
+              </>
+            ) : null}
+          </View>
+        )}
         {!history.isAvailable ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Info size={28} color={colors.warning} />
@@ -96,7 +138,7 @@ export default function HistoryScreen() {
                     <Text style={[styles.metricValue, { color: colors.text }]}>{formatPercent(session.startLevel)}</Text>
                   </View>
                   <View style={styles.metric}>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Latest</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{session.status === 'charging' ? 'Last observed' : 'End'}</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{formatPercent(session.endLevel)}</Text>
                   </View>
                   <View style={styles.metric}>
@@ -107,7 +149,15 @@ export default function HistoryScreen() {
                 {session.endedAt && (
                   <Text style={[styles.date, { color: colors.textSecondary }]}>Ended {formatDate(session.endedAt)}</Text>
                 )}
-                <Text style={[styles.source, { color: colors.textSecondary }]}>Inferred from observed device charging state</Text>
+                {session.status === 'completed' && (
+                  <Text style={[styles.source, { color: colors.textSecondary }]}>
+                    Observed charge rate: {getChargingSessionRate(session) === null ? 'Unavailable' : getChargingSessionRate(session) + '% per hour'}
+                  </Text>
+                )}
+                {session.status === 'charging' && (
+                  <Text style={[styles.source, { color: colors.textSecondary }]}>Session may be stale if VoltGuard was closed or Android stopped background updates.</Text>
+                )}
+                <Text style={[styles.source, { color: colors.textSecondary }]}>Inferred from observed device charging state; not a charger wattage measurement.</Text>
               </View>
             ))}
           </View>
@@ -146,6 +196,10 @@ const styles = StyleSheet.create({
   body: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
   loading: { minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 12 },
   list: { gap: 12 },
+  comparisonCard: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
+  comparisonHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  comparisonColumns: { flexDirection: 'row', gap: 10 },
+  comparisonColumn: { flex: 1, gap: 7, backgroundColor: 'rgba(128,128,128,0.07)', borderRadius: 12, padding: 11 },
   sampleSection: { gap: 10 },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginTop: 8 },
   sampleRow: { borderWidth: 1, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
