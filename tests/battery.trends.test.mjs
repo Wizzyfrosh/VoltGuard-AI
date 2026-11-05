@@ -47,6 +47,7 @@ test('monthly report creates five weekly buckets for a 30-day window', () => {
   assert.equal(report.buckets.length, 5);
   assert.equal(report.period, 'month');
   assert.equal(report.sampleCount, 0);
+  assert.equal(report.observedDays, 0);
   assert.equal(report.coverage, 'low');
   assert.match(report.explanation, /not enough saved readings/i);
 });
@@ -79,4 +80,17 @@ test('ignores samples outside the requested 30-day window', () => {
 
   assert.equal(report.sampleCount, 2);
   assert.equal(report.dischargedPercent, 10);
+});
+
+
+test('coverage is based on distinct observed days, not just a long elapsed span', () => {
+  const report = buildBatteryTrendReport([
+    sample(at(-6, 8), 0.9, 1),
+    sample(at(-6, 9), 0.8, 1),
+    sample(at(-1, 8), 0.7, 1),
+    sample(at(-1, 9), 0.6, 1),
+  ], [], 'week', now);
+
+  assert.equal(report.observedDays, 2);
+  assert.equal(report.coverage, 'low');
 });
