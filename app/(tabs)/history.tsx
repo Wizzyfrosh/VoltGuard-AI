@@ -69,14 +69,14 @@ export default function HistoryScreen() {
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Last 7 days</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.current.sessionCount} sessions</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.current.averageGainPercent === null ? '—' : sessionAnalytics.comparison.current.averageGainPercent + '%'}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg duration {sessionAnalytics.comparison.current.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.current.averageDurationMinutes * 60000)}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.current.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.current.averageDurationMinutes * 60000)}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Rate {sessionAnalytics.comparison.current.averageChargeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.current.averageChargeRatePercentPerHour + '%/hr'}</Text>
                   </View>
                   <View style={styles.comparisonColumn}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Previous 7 days</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.previous.sessionCount} sessions</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.previous.averageGainPercent === null ? '—' : sessionAnalytics.comparison.previous.averageGainPercent + '%'}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg duration {sessionAnalytics.comparison.previous.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.previous.averageDurationMinutes * 60000)}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.previous.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.previous.averageDurationMinutes * 60000)}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Rate {sessionAnalytics.comparison.previous.averageChargeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.previous.averageChargeRatePercentPerHour + '%/hr'}</Text>
                   </View>
                 </View>
@@ -142,7 +142,7 @@ export default function HistoryScreen() {
                     <Text style={[styles.metricValue, { color: colors.text }]}>{formatPercent(session.endLevel)}</Text>
                   </View>
                   <View style={styles.metric}>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Duration</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Observed interval</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{formatDuration(session.startedAt, session.endedAt)}</Text>
                   </View>
                 </View>
@@ -151,13 +151,13 @@ export default function HistoryScreen() {
                 )}
                 {session.status === 'completed' && (
                   <Text style={[styles.source, { color: colors.textSecondary }]}>
-                    Observed charge rate: {getChargingSessionRate(session) === null ? 'Unavailable' : getChargingSessionRate(session) + '% per hour'}
+                    Observed level change rate: {getChargingSessionRate(session) === null ? 'Unavailable' : getChargingSessionRate(session) + ' percentage points/hour'}
                   </Text>
                 )}
                 {session.status === 'charging' && (
                   <Text style={[styles.source, { color: colors.textSecondary }]}>Session may be stale if VoltGuard was closed or Android stopped background updates.</Text>
                 )}
-                <Text style={[styles.source, { color: colors.textSecondary }]}>Inferred from observed device charging state; not a charger wattage measurement.</Text>
+                <Text style={[styles.source, { color: colors.textSecondary }]}>Elapsed time is between observed states; this is not adapter input current, wattage or a laboratory charging-speed measurement.</Text>
               </View>
             ))}
           </View>
