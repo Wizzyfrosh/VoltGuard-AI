@@ -1,7 +1,7 @@
 export interface BatteryDrainSample {
   observedAt: string;
   level: number | null;
-  batteryState: number;
+  isUnplugged: boolean;
 }
 
 export interface BatteryDrainAnalysis {
@@ -37,7 +37,7 @@ export function analyzeBatteryDrain(samples: BatteryDrainSample[]): BatteryDrain
       const elapsed = valid[j].timestamp - valid[i].timestamp;
       if (elapsed > MAX_INTERVAL_MS) break;
       if (elapsed < MIN_INTERVAL_MS) continue;
-      const unplugged = valid.slice(i, j + 1).every((s) => s.batteryState === 0);
+      const unplugged = valid.slice(i, j + 1).every((s) => s.isUnplugged);
       if (!unplugged) continue;
       if (!best || elapsed > best.end.timestamp - best.start.timestamp) {
         best = { start: valid[i], end: valid[j] };
