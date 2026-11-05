@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { getBatteryDatabase } from './battery.database';
 import type { BatterySnapshot } from './battery.types';
 import { getChargingTransition } from './battery.session';
+import { analyzeBatteryDrain, type BatteryDrainAnalysis } from './battery.analysis';
 
 const HISTORY_PREFERENCE = 'battery_history_enabled';
 const RETENTION_DAYS = 30;
@@ -157,4 +158,23 @@ export async function clearBatteryHistory(): Promise<void> {
     await db.runAsync('DELETE FROM battery_samples');
     await db.runAsync('DELETE FROM charging_sessions');
   });
+}
+
+export async function getBatteryDrainAnalysis(): Promise<BatteryDrainAnalysis> {
+  if (Platform.OS === 'web') {
+    return analyzeBatteryDrain([]);
+  }
+  const db = await getBatteryDatabase();
+  const enabled = await isBatteryHistoryEnabled();
+  if (!enabled) return analyzeBatteryDrain([]);
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const rows = await db.getAllAsync<{ observed_at: string; level: number | null; battery_state: number }>(
+    'SELECT observed_at, level, battery_state FROM battery_samples WHERE observed_at >= ? ORDER BY observed_at ASC LIMIT 500',
+    cutoff,
+  );
+  return analyzeBatteryDrain(rows.map((row) => ({
+    observedAt: row.observed_at,
+    level: row.level,
+    isUnplugged: row.battery_state === Battery.BatteryState.UNPLUGGED,
+  })));
 }
