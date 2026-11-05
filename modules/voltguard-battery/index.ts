@@ -12,6 +12,7 @@ type VoltGuardBatteryNativeModule = {
   hasUsageAccess: () => boolean;
   openUsageAccessSettings: () => boolean;
   getAppUsageStats: () => AppUsageSnapshot;
+  getSystemResourceDiagnostics: () => SystemResourceDiagnostics;
 };
 
 export type ChargingAlarmStatus = {
@@ -31,6 +32,19 @@ function getNativeModule(): VoltGuardBatteryNativeModule | null {
   return nativeModule;
 }
 
+
+export type SystemResourceDiagnostics = {
+  totalRamBytes: number | null;
+  availableRamBytes: number | null;
+  lowMemory: boolean | null;
+  totalStorageBytes: number | null;
+  availableStorageBytes: number | null;
+};
+
+export function getSystemResourceDiagnostics(): SystemResourceDiagnostics | null {
+  if (Platform.OS !== 'android') return null;
+  return getNativeModule()?.getSystemResourceDiagnostics() ?? null;
+}
 
 export type AppUsageEntry = {
   packageName: string;
