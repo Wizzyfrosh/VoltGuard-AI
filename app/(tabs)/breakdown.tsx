@@ -4,11 +4,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { Info, Battery, Smartphone, Clock3, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react-native';
 import { getAppUsageStats, getSystemResourceDiagnostics, hasUsageAccess, openUsageAccessSettings, type AppUsageSnapshot, type SystemResourceDiagnostics } from '../../modules/voltguard-battery';
+import { useBatteryTrends } from '../../src/features/battery/useBatteryTrends';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null || !Number.isFinite(bytes) || bytes < 0) return 'Unavailable';
   const gib = bytes / (1024 ** 3);
   return gib >= 1 ? `${gib.toFixed(1)} GB` : `${(bytes / (1024 ** 2)).toFixed(0)} MB`;
+}
+
+function formatPercent(value: number | null): string {
+  return value === null ? '—' : value.toFixed(1) + '%';
 }
 
 function formatDuration(milliseconds: number): string {
@@ -25,6 +30,7 @@ export default function BreakdownScreen() {
   const [usageGranted, setUsageGranted] = useState(false);
   const [loadingUsage, setLoadingUsage] = useState(false);
   const [resources, setResources] = useState<SystemResourceDiagnostics | null>(null);
+  const trends = useBatteryTrends();
 
   const refreshUsage = useCallback(() => {
     if (Platform.OS !== 'android') return;
@@ -50,6 +56,78 @@ export default function BreakdownScreen() {
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Reliable power attribution is not available through the current cross-platform APIs.
         </Text>
+
+        <View style={[styles.usageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.usageHeader}>
+            <View style={styles.appCopy}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Battery trends</Text>
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>Calculated from saved device readings · No export or cloud upload</Text>
+            </View>
+            <Pressable onPress={() => { void trends.refresh(); }} disabled={trends.isLoading} accessibilityRole="button" accessibilityLabel="Refresh battery trends">
+              {trends.isLoading ? <ActivityIndicator color={colors.primary} /> : <RefreshCw size={19} color={colors.primary} />}
+            </Pressable>
+          </View>
+          <View style={styles.periodToggle}>
+            {(['week', 'month'] as const).map((period) => (
+              <Pressable key={period} onPress={() => trends.setPeriod(period)} accessibilityRole="button"
+                accessibilityState={{ selected: trends.period === period }}
+                style={[styles.periodButton, { backgroundColor: trends.period === period ? colors.primary : 'transparent', borderColor: trends.period === period ? colors.primary : colors.border }]}>
+                <Text style={{ color: trends.period === period ? '#FFFFFF' : colors.text, fontWeight: '700', fontSize: 12 }}>
+                  {period === 'week' ? '7 days' : '30 days'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {trends.isLoading && !trends.report ? <ActivityIndicator color={colors.primary} /> : trends.error ? (
+            <Text style={[styles.body, { color: colors.warning }]}>{trends.error}</Text>
+          ) : trends.report ? (
+            <>
+              <View style={styles.trendSummary}>
+                <View style={[styles.trendMetric, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.caption, { color: colors.textSecondary }]}>Observed charge gain</Text>
+                  <Text style={[styles.metricValue, { color: colors.text }]}>{formatPercent(trends.report.chargedPercent)}</Text>
+                </View>
+                <View style={[styles.trendMetric, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.caption, { color: colors.textSecondary }]}>Observed discharge</Text>
+                  <Text style={[styles.metricValue, { color: colors.text }]}>{formatPercent(trends.report.dischargedPercent)}</Text>
+                </View>
+              </View>
+              <View style={styles.chartLegend}>
+                <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.primary }]} /><Text style={[styles.caption, { color: colors.textSecondary }]}>Charged</Text></View>
+                <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.warning }]} /><Text style={[styles.caption, { color: colors.textSecondary }]}>Discharged</Text></View>
+              </View>
+              <View style={styles.trendChart}>
+                {trends.report.buckets.map((bucket) => {
+                  const maxValue = Math.max(bucket.chargedPercent ?? 0, bucket.dischargedPercent ?? 0, 1);
+                  const chargeHeight = bucket.chargedPercent === null ? '3%' : Math.max(3, (bucket.chargedPercent / maxValue) * 100) + '%';
+                  const dischargeHeight = bucket.dischargedPercent === null ? '3%' : Math.max(3, (bucket.dischargedPercent / maxValue) * 100) + '%';
+                  return (
+                    <View key={bucket.key} style={styles.chartColumn}>
+                      <View style={styles.barPair}>
+                        <View style={[styles.chartBar, { height: chargeHeight, backgroundColor: bucket.chargedPercent === null ? colors.border : colors.primary, opacity: bucket.chargedPercent === null ? 0.35 : 1 }]} />
+                        <View style={[styles.chartBar, { height: dischargeHeight, backgroundColor: bucket.dischargedPercent === null ? colors.border : colors.warning, opacity: bucket.dischargedPercent === null ? 0.35 : 1 }]} />
+                      </View>
+                      <Text numberOfLines={1} style={[styles.chartLabel, { color: colors.textSecondary }]}>{bucket.label}</Text>
+                      <Text style={[styles.chartCount, { color: colors.textSecondary }]}>{bucket.sampleCount}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.sessionStats}>
+                <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Charging sessions</Text><Text style={[styles.appDuration, { color: colors.text }]}>{trends.report.chargingSessionCount}</Text></View>
+                <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Completed</Text><Text style={[styles.appDuration, { color: colors.text }]}>{trends.report.completedSessionCount}</Text></View>
+                <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Avg. session gain</Text><Text style={[styles.appDuration, { color: colors.text }]}>{formatPercent(trends.report.averageSessionGainPercent)}</Text></View>
+              </View>
+              <View style={styles.usageMeta}>
+                <ShieldCheck size={15} color={colors.primary} />
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>
+                  {trends.report.coverage.toUpperCase()} coverage · {trends.report.sampleCount} readings · Up to 30 days retained
+                </Text>
+              </View>
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>{trends.report.explanation}</Text>
+            </>
+          ) : null}
+        </View>
         <View style={[styles.noticeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Battery size={28} color={colors.primary} />
           <Text style={[styles.cardTitle, { color: colors.text }]}>Battery energy attribution</Text>
@@ -173,6 +251,22 @@ const styles = StyleSheet.create({
   usageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   usageHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   usageMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  periodToggle: { flexDirection: 'row', gap: 8 },
+  periodButton: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  trendSummary: { flexDirection: 'row', gap: 9 },
+  trendMetric: { flex: 1, borderRadius: 12, padding: 12, gap: 4 },
+  metricValue: { fontSize: 20, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  chartLegend: { flexDirection: 'row', gap: 14 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  trendChart: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'space-between', gap: 4, height: 132 },
+  chartColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 5, minWidth: 0 },
+  barPair: { height: 94, width: '100%', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 3 },
+  chartBar: { width: 9, minHeight: 3, maxHeight: '100%', borderRadius: 4 },
+  chartLabel: { fontSize: 9, textAlign: 'center' },
+  chartCount: { fontSize: 9, opacity: 0.75 },
+  sessionStats: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#80808055', paddingTop: 11 },
+  sessionStat: { flex: 1, gap: 4 },
   resourceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appCopy: { flex: 1, gap: 3 },
