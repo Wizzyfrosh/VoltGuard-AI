@@ -26,6 +26,14 @@ function formatPercent(value: number | null): string {
   return value === null ? 'Unavailable' : `${Math.round(value * 100)}%`;
 }
 
+function formatMinutes(milliseconds: number): string {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return 'Unavailable';
+  const minutes = Math.floor(milliseconds / 60000);
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return hours > 0 ? `${hours} hr ${remainingMinutes} min` : `${minutes} min`;
+}
+
 function formatDuration(start: string, end: string | null): string {
   const startTime = new Date(start).getTime();
   const endTime = end ? new Date(end).getTime() : Date.now();
@@ -69,19 +77,19 @@ export default function HistoryScreen() {
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Last 7 days</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.current.sessionCount} sessions</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.current.averageGainPercent === null ? '—' : sessionAnalytics.comparison.current.averageGainPercent + '%'}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.current.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.current.averageDurationMinutes * 60000)}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Level change {sessionAnalytics.comparison.current.averageLevelChangeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.current.averageLevelChangeRatePercentPerHour + '%/hr'}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.current.averageDurationMinutes === null ? '—' : formatMinutes(sessionAnalytics.comparison.current.averageDurationMinutes * 60000)}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Level change {sessionAnalytics.comparison.current.averageLevelChangeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.current.averageLevelChangeRatePercentPerHour + ' percentage points/hr'}</Text>
                   </View>
                   <View style={styles.comparisonColumn}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Previous 7 days</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>{sessionAnalytics.comparison.previous.sessionCount} sessions</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg gain {sessionAnalytics.comparison.previous.averageGainPercent === null ? '—' : sessionAnalytics.comparison.previous.averageGainPercent + '%'}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.previous.averageDurationMinutes === null ? '—' : formatDuration(sessionAnalytics.comparison.previous.averageDurationMinutes * 60000)}</Text>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Level change {sessionAnalytics.comparison.previous.averageLevelChangeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.previous.averageLevelChangeRatePercentPerHour + '%/hr'}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg observed interval {sessionAnalytics.comparison.previous.averageDurationMinutes === null ? '—' : formatMinutes(sessionAnalytics.comparison.previous.averageDurationMinutes * 60000)}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Level change {sessionAnalytics.comparison.previous.averageLevelChangeRatePercentPerHour === null ? '—' : sessionAnalytics.comparison.previous.averageLevelChangeRatePercentPerHour + ' percentage points/hr'}</Text>
                   </View>
                 </View>
                 <Text style={[styles.body, { color: colors.textSecondary }]}>{sessionAnalytics.comparison.explanation}</Text>
-                <Text style={[styles.caption, { color: colors.textSecondary }]}>
+                <Text style={[styles.noteText, { color: colors.textSecondary }]}>
                   {sessionAnalytics.comparison.gainChangePercentPoints === null
                     ? 'Period-to-period change unavailable.'
                     : 'Average gain change: ' + (sessionAnalytics.comparison.gainChangePercentPoints > 0 ? '+' : '') + sessionAnalytics.comparison.gainChangePercentPoints + ' percentage points'}
