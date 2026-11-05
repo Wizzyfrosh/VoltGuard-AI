@@ -117,7 +117,7 @@ export default function BreakdownScreen() {
             <Text style={[styles.body, { color: colors.textSecondary }]}>System RAM and storage diagnostics are available in the Android app only.</Text>
           ) : resources ? (
             <>
-              <View style={styles.resourceRow}>
+              <View style={[styles.resourceRow, { borderTopColor: colors.border }]}>
                 <View style={styles.appCopy}>
                   <Text style={[styles.appName, { color: colors.text }]}>RAM available</Text>
                   <Text style={[styles.caption, { color: colors.textSecondary }]}>Available / total physical memory</Text>
@@ -143,9 +143,9 @@ export default function BreakdownScreen() {
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Info size={20} color={colors.primary} />
           <View style={styles.infoContent}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>What comes next</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Battery trends</Text>
             <Text style={[styles.body, { color: colors.textSecondary }]}>
-              Future versions can provide transparent estimates from locally collected battery-level and charging-session observations. They will be labelled as estimates and will not claim to identify exact app-level drain.
+              VoltGuard can estimate device-level discharge rate from opted-in local battery history. This is separate from app foreground time and does not identify which app consumed energy.
             </Text>
           </View>
         </View>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   usageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   usageHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   usageMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  resourceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#80808055', paddingTop: 11, gap: 12 },
+  resourceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appCopy: { flex: 1, gap: 3 },
   appName: { fontSize: 14, fontWeight: '700' },
