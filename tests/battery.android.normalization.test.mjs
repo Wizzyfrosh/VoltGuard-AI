@@ -60,9 +60,19 @@ test('normalizes native current and charge counters into display units', () => {
   });
   assert.equal(result.currentNowMilliAmps, -326);
   assert.equal(result.currentAverageMilliAmps, 1250);
+  assert.equal(result.currentAverageMilliAmps, 1250);
   assert.equal(result.remainingChargeMilliAmpHours, 4567);
   assert.equal(result.energyCounterMilliWattHours, 1234);
   assert.equal(result.technology, 'Li-ion');
+});
+
+test('rounds negative and positive current magnitudes symmetrically', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    currentNowMicroAmps: -325500,
+    currentAverageMicroAmps: 325500,
+  });
+  assert.equal(result.currentNowMilliAmps, -326);
+  assert.equal(result.currentAverageMilliAmps, 326);
 });
 
 test('does not invent missing native diagnostics', () => {
