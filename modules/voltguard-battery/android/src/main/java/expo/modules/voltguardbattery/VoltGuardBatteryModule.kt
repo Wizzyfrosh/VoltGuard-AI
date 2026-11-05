@@ -9,6 +9,9 @@ import android.bluetooth.BluetoothAdapter
 import android.nfc.NfcAdapter
 import android.content.ContentResolver
 import android.app.NotificationManager
+import android.app.ActivityManager
+import android.os.Environment
+import android.os.StatFs
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.os.Process
@@ -43,6 +46,10 @@ class VoltGuardBatteryModule : Module() {
 
     Function("getAppUsageStats") {
       readAppUsageStats()
+    }
+
+    Function("getSystemResourceDiagnostics") {
+      readSystemResourceDiagnostics()
     }
 
     Function("openOptimizationSetting") { setting: String ->
@@ -97,6 +104,24 @@ class VoltGuardBatteryModule : Module() {
       }
       Unit
     }
+  }
+
+  private fun readSystemResourceDiagnostics(): Map<String, Any?> {
+    val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+    val memory = try {
+      val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+      ActivityManager.MemoryInfo().also { activityManager.getMemoryInfo(it) }
+    } catch (_: Exception) { null }
+    val storage = try {
+      StatFs(Environment.getDataDirectory().path)
+    } catch (_: Exception) { null }
+    return mapOf(
+      "totalRamBytes" to memory?.totalMem,
+      "availableRamBytes" to memory?.availMem,
+      "lowMemory" to memory?.lowMemory,
+      "totalStorageBytes" to storage?.totalBytes,
+      "availableStorageBytes" to storage?.availableBytes
+    )
   }
 
   private fun hasUsageAccess(): Boolean {
