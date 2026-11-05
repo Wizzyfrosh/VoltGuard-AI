@@ -15,6 +15,7 @@ export interface BatteryTrendBucket {
   chargedPercent: number | null;
   dischargedPercent: number | null;
   sampleCount: number;
+  observedDays: number;
   coverage: TrendCoverage;
 }
 
@@ -190,7 +191,15 @@ export function buildBatteryTrendReport(
   const totalSampleCount = valid.length;
   const firstSample = valid[0]?.timestamp ?? null;
   const lastSample = valid[valid.length - 1]?.timestamp ?? null;
-  const coverage = coverageFor(totalSampleCount, firstSample, lastSample);
+  const observedDays = new Set(valid.map((sample) => {
+    const date = new Date(sample.timestamp);
+    return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
+  })).size;
+  const coverage: TrendCoverage = period === 'week'
+    ? observedDays >= 5 && totalSampleCount >= 15 ? 'good'
+      : observedDays >= 3 && totalSampleCount >= 6 ? 'moderate' : 'low'
+    : observedDays >= 20 && totalSampleCount >= 60 ? 'good'
+      : observedDays >= 8 && totalSampleCount >= 24 ? 'moderate' : 'low';
 
   return {
     period,
@@ -205,6 +214,7 @@ export function buildBatteryTrendReport(
       coverage: coverageFor(bucket.sampleCount, bucket.firstSampleAt, bucket.lastSampleAt),
     })),
     sampleCount: totalSampleCount,
+    observedDays,
     coverage,
     chargedPercent: hasAnyCharge ? round(totalCharged) : null,
     dischargedPercent: hasAnyDischarge ? round(totalDischarged) : null,
