@@ -99,8 +99,8 @@ export default function BreakdownScreen() {
               <View style={styles.trendChart}>
                 {trends.report.buckets.map((bucket) => {
                   const maxValue = Math.max(...trends.report!.buckets.flatMap((item) => [item.chargedPercent ?? 0, item.dischargedPercent ?? 0]), 1);
-                  const chargeHeight = bucket.chargedPercent === null ? '3%' : Math.max(3, (bucket.chargedPercent / maxValue) * 100) + '%';
-                  const dischargeHeight = bucket.dischargedPercent === null ? '3%' : Math.max(3, (bucket.dischargedPercent / maxValue) * 100) + '%';
+                  const chargeHeight = bucket.chargedPercent === null ? 3 : Math.max(3, (bucket.chargedPercent / maxValue) * 94);
+                  const dischargeHeight = bucket.dischargedPercent === null ? 3 : Math.max(3, (bucket.dischargedPercent / maxValue) * 94);
                   return (
                     <View key={bucket.key} style={styles.chartColumn}>
                       <View style={styles.barPair}>
