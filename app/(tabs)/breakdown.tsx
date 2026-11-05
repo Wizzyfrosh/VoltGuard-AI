@@ -119,9 +119,9 @@ export default function BreakdownScreen() {
                 <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Avg. session gain</Text><Text style={[styles.appDuration, { color: colors.text }]}>{formatPercent(trends.report.averageSessionGainPercent)}</Text></View>
               </View>
               <View style={styles.sessionDuration}>
-                <Text style={[styles.caption, { color: colors.textSecondary }]}>Completed charging time</Text>
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>Completed observed intervals</Text>
                 <Text style={[styles.appDuration, { color: colors.text }]}>
-                  {trends.report.totalCompletedChargingMinutes === null ? '—' : formatDuration(trends.report.totalCompletedChargingMinutes * 60000)}
+                  {trends.report.totalCompletedObservedMinutes === null ? '—' : formatDuration(trends.report.totalCompletedChargingMinutes * 60000)}
                 </Text>
               </View>
               <View style={styles.usageMeta}>
