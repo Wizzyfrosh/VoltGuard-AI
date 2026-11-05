@@ -31,7 +31,7 @@ export interface BatteryTrendReport {
   chargingSessionCount: number;
   completedSessionCount: number;
   averageSessionGainPercent: number | null;
-  totalCompletedChargingMinutes: number | null;
+  totalCompletedObservedMinutes: number | null;
   explanation: string;
 }
 
@@ -183,10 +183,10 @@ export function buildBatteryTrendReport(
       Number.isFinite(session.startLevel) && Number.isFinite(session.endLevel) &&
       session.endLevel >= session.startLevel)
     .map((session) => (session.endLevel as number - (session.startLevel as number)) * 100);
-  const completedMinutes = completedSessions.reduce((sum, session) => {
-    const duration = Date.parse(session.endedAt as string) - Date.parse(session.startedAt);
-    return sum + (duration > 0 ? duration / 60000 : 0);
-  }, 0);
+  const observedSessionDurations = completedSessions
+    .map((session) => Date.parse(session.endedAt as string) - Date.parse(session.startedAt))
+    .filter((duration) => duration > 0 && duration <= 6 * 60 * 60 * 1000);
+  const completedObservedMinutes = observedSessionDurations.reduce((sum, duration) => sum + duration / 60000, 0);
 
   const totalSampleCount = valid.length;
   const firstSample = valid[0]?.timestamp ?? null;
@@ -223,7 +223,7 @@ export function buildBatteryTrendReport(
     averageSessionGainPercent: sessionGains.length
       ? round(sessionGains.reduce((sum, gain) => sum + gain, 0) / sessionGains.length)
       : null,
-    totalCompletedChargingMinutes: completedSessions.length ? Math.round(completedMinutes) : null,
+    totalCompletedObservedMinutes: observedSessionDurations.length ? Math.round(completedObservedMinutes) : null,
     explanation: totalSampleCount < 2
       ? 'Not enough saved readings for this period. Enable Battery history and keep VoltGuard open to collect real observations.'
       : coverage === 'low'
