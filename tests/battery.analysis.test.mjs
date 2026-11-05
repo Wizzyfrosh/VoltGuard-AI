@@ -29,6 +29,17 @@ test('excludes intervals containing charging observations', () => {
   assert.equal(result.status, 'insufficient-data');
 });
 
+test('does not bridge a charging interval even when later samples are unplugged', () => {
+  const result = analyzeBatteryDrain([
+    sample(0, 0.9),
+    sample(20, 0.8, false),
+    sample(40, 0.7),
+    sample(60, 0.6),
+  ]);
+  assert.equal(result.status, 'insufficient-data');
+  assert.equal(result.drainPercentPerHour, null);
+});
+
 test('does not calculate across sparse gaps greater than six hours', () => {
   const result = analyzeBatteryDrain([
     { observedAt: '2026-11-05T00:00:00.000Z', level: 0.9, isUnplugged: true },
