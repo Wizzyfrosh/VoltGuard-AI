@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 
 type VoltGuardBatteryNativeModule = {
   getBatteryDiagnostics: () => Record<string, unknown> | null;
+  getOptimizationDiagnostics: () => OptimizationDiagnostics | null;
+  openOptimizationSetting: (setting: string) => boolean;
   startBackgroundMonitoring: (threshold: number) => Promise<void>;
   stopBackgroundMonitoring: () => Promise<void>;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
@@ -24,6 +26,25 @@ function getNativeModule(): VoltGuardBatteryNativeModule | null {
   if (Platform.OS !== 'android') return null;
   if (!nativeModule) nativeModule = requireNativeModule<VoltGuardBatteryNativeModule>('VoltGuardBattery');
   return nativeModule;
+}
+
+
+export type OptimizationDiagnostics = {
+  locationEnabled: boolean | null;
+  automaticBrightnessEnabled: boolean | null;
+  bluetoothEnabled: boolean | null;
+  nfcEnabled: boolean | null;
+  masterSyncEnabled: boolean | null;
+};
+
+export function getOptimizationDiagnostics(): OptimizationDiagnostics | null {
+  if (Platform.OS !== 'android') return null;
+  return getNativeModule()?.getOptimizationDiagnostics() ?? null;
+}
+
+export function openOptimizationSetting(setting: 'brightness' | 'location' | 'bluetooth' | 'nfc' | 'sync'): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.openOptimizationSetting(setting) ?? false;
 }
 
 export async function startBackgroundBatteryMonitoring(threshold: number): Promise<boolean> {
