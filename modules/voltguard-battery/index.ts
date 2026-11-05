@@ -9,6 +9,9 @@ type VoltGuardBatteryNativeModule = {
   stopBackgroundMonitoring: () => Promise<void>;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
+  hasUsageAccess: () => boolean;
+  openUsageAccessSettings: () => boolean;
+  getAppUsageStats: () => AppUsageSnapshot;
 };
 
 export type ChargingAlarmStatus = {
@@ -28,6 +31,35 @@ function getNativeModule(): VoltGuardBatteryNativeModule | null {
   return nativeModule;
 }
 
+
+export type AppUsageEntry = {
+  packageName: string;
+  appLabel: string;
+  foregroundTimeMs: number;
+  lastTimeUsed: number;
+};
+
+export type AppUsageSnapshot = {
+  permissionGranted: boolean;
+  windowStart: number;
+  windowEnd: number;
+  apps: AppUsageEntry[];
+};
+
+export function hasUsageAccess(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.hasUsageAccess() ?? false;
+}
+
+export function openUsageAccessSettings(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.openUsageAccessSettings() ?? false;
+}
+
+export function getAppUsageStats(): AppUsageSnapshot | null {
+  if (Platform.OS !== 'android') return null;
+  return getNativeModule()?.getAppUsageStats() ?? null;
+}
 
 export type OptimizationDiagnostics = {
   locationEnabled: boolean | null;
