@@ -290,3 +290,27 @@ Improve battery health presentation: distinguish Android OS-reported health stat
 
 ### Next
 Run CI and fix all failures. Then continue with Charging Detect & Optimization Hub using real current/voltage/source and safe system-setting deep links. Per-app energy, deep sleep and protected-app management remain blocked pending public API feasibility work; do not implement fake versions.
+
+
+## Charging Detect & Optimization Hub checkpoint — 2026-11-05
+
+**Branch:** phase-0/stabilization-audit
+
+### Implemented in source
+- [x] Added native read-only diagnostics for Android location enabled state, automatic brightness mode, Bluetooth adapter state, NFC adapter state and master background sync state. Unsupported/unreadable values remain null.
+- [x] Added a strict allowlist of user-directed Android Settings intents for display, location, Bluetooth, NFC and sync settings. VoltGuard does not toggle these settings itself.
+- [x] Exposed optimization diagnostics and settings shortcuts through the Expo native module bridge.
+- [x] Added a dashboard Charging Detect & Optimization section with real setting states and explicit unavailable states.
+- [x] Kept the existing battery-side current and voltage readings; copy explicitly states current is not USB adapter input current.
+- [x] Web/iOS show platform limitation and do not invoke Android native methods.
+- [ ] Kotlin compile, TypeScript, lint, unit tests and web export must pass on the latest commit.
+- [ ] Verify native Settings intents open correctly on the target Android/OEM version; NFC settings intent may be absent on some devices and should fail gracefully.
+- [ ] Confirm the dashboard refresh cadence does not cause unnecessary native polling; current read is triggered alongside telemetry updates.
+- [ ] Validate current sign convention and source labels against physical device readings.
+- [ ] Adapter input current / USB-PD negotiation is not implemented; Android BatteryManager current remains battery-side current only.
+- [ ] No automatic toggles, forced app termination, RAM cleaner or guaranteed charging-speed claims.
+
+### Next
+1. Run full CI and fix all compile/test issues.
+2. Verify optimization states on a physical Android phone.
+3. Continue with battery-care reminders and usage/deep-sleep feasibility only after checking Android public API access. Per-app mAh and deep-sleep counters remain unimplemented unless supported by a verifiable public API.
