@@ -211,6 +211,15 @@ export function buildBatteryTrendReport(
       chargedPercent: bucket.hasCharge ? round(bucket.charged) : null,
       dischargedPercent: bucket.hasDischarge ? round(bucket.discharged) : null,
       sampleCount: bucket.sampleCount,
+      observedDays: bucket.sampleCount > 0
+        ? new Set(valid.filter((sample) => {
+            const target = bucketFor(sample.timestamp);
+            return target.key === bucket.key;
+          }).map((sample) => {
+            const date = new Date(sample.timestamp);
+            return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
+          })).size
+        : 0,
       coverage: coverageFor(bucket.sampleCount, bucket.firstSampleAt, bucket.lastSampleAt),
     })),
     sampleCount: totalSampleCount,
