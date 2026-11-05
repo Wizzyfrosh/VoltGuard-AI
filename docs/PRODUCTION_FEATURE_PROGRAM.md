@@ -405,7 +405,7 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [x] Calculates discharge only between adjacent readings that both report unplugged state.
 - [x] Excludes invalid levels/timestamps, intervals shorter than five minutes, gaps longer than six hours and cross-state intervals.
 - [x] Exposes sample counts and per-bucket/overall coverage levels; missing periods remain null rather than zero or interpolated.
-- [x] Summarizes locally inferred charging sessions: total sessions, completed sessions, average recorded gain and completed charging duration.
+- [x] Summarizes locally inferred charging sessions: total sessions, completed sessions, average recorded gain and completed observed intervals (intervals longer than six hours excluded from duration totals).
 - [x] Added a local SQLite query for up to 5,000 recent samples in the 30-day window; no background task or upload was introduced.
 - [x] Added weekly/monthly trend controls, summary metrics, comparison bars and coverage explanation to the existing Analytics screen. No new tab.
 - [x] Added automated tests for charge/discharge aggregation, cross-state exclusion, long/small gaps, monthly buckets, session summaries and retention boundaries.
@@ -440,7 +440,7 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [x] Missing battery levels remain gaps; no interpolation or demo values.
 - [x] Improved session copy to distinguish the last observed level and warn that an active session may be stale after the app is closed or background updates stop.
 - [x] Added a Settings action to clear locally saved battery samples and charging sessions while leaving history enabled.
-- [x] Added unit tests for period comparisons, incomplete/invalid sessions, long observation intervals and rate calculations.
+- [x] Added unit tests for period comparisons, incomplete/invalid sessions, long observation intervals, rate calculations and exclusion of sparse intervals from duration totals.
 
 ### Interpretation and retention
 - Session start/end times are observation times. They are not guaranteed to equal the exact physical charger plug/unplug times because collection is foreground-only.
