@@ -9,6 +9,9 @@ import android.bluetooth.BluetoothAdapter
 import android.nfc.NfcAdapter
 import android.content.ContentResolver
 import android.app.NotificationManager
+import android.app.AppOpsManager
+import android.app.usage.UsageStatsManager
+import android.os.Process
 import android.os.BatteryManager
 import android.os.Build
 import expo.modules.kotlin.modules.Module
@@ -24,6 +27,22 @@ class VoltGuardBatteryModule : Module() {
 
     Function("getOptimizationDiagnostics") {
       readOptimizationDiagnostics()
+    }
+
+    Function("hasUsageAccess") {
+      hasUsageAccess()
+    }
+
+    Function("openUsageAccessSettings") {
+      val context = appContext.reactContext ?: return@Function false
+      try {
+        context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+      } catch (_: Exception) { false }
+    }
+
+    Function("getAppUsageStats") {
+      readAppUsageStats()
     }
 
     Function("openOptimizationSetting") { setting: String ->
@@ -78,6 +97,57 @@ class VoltGuardBatteryModule : Module() {
       }
       Unit
     }
+  }
+
+  private fun hasUsageAccess(): Boolean {
+    val context = appContext.reactContext ?: return false
+    return try {
+      val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+      @Suppress("DEPRECATION")
+      appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName) == AppOpsManager.MODE_ALLOWED
+    } catch (_: Exception) { false }
+  }
+
+  private fun readAppUsageStats(): Map<String, Any?> {
+    val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+    if (!hasUsageAccess()) {
+      return mapOf("permissionGranted" to false, "windowStart" to 0L, "windowEnd" to 0L, "apps" to emptyList<Map<String, Any?>>())
+    }
+    val end = System.currentTimeMillis()
+    val start = end - 24L * 60L * 60L * 1000L
+    val manager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+      ?: return mapOf("permissionGranted" to true, "windowStart" to start, "windowEnd" to end, "apps" to emptyList<Map<String, Any?>>())
+    val stats = try {
+      manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
+    } catch (_: Exception) { emptyList() }
+    val ownPackage = context.packageName
+    val apps = stats
+      .asSequence()
+      .filter { it.packageName != ownPackage && it.totalTimeInForeground > 0L }
+      .groupBy { it.packageName }
+      .map { (packageName, rows) ->
+        val foregroundMs = rows.sumOf { it.totalTimeInForeground }
+        val lastUsed = rows.maxOfOrNull { it.lastTimeUsed } ?: 0L
+        val label = try {
+          @Suppress("DEPRECATION")
+          val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
+          context.packageManager.getApplicationLabel(appInfo).toString()
+        } catch (_: Exception) { packageName }
+        mapOf(
+          "packageName" to packageName,
+          "appLabel" to label,
+          "foregroundTimeMs" to foregroundMs,
+          "lastTimeUsed" to lastUsed
+        )
+      }
+      .sortedByDescending { it["foregroundTimeMs"] as Long }
+      .take(20)
+    return mapOf(
+      "permissionGranted" to true,
+      "windowStart" to start,
+      "windowEnd" to end,
+      "apps" to apps
+    )
   }
 
   private fun readOptimizationDiagnostics(): Map<String, Any?>? {
