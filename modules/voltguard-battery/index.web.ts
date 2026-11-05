@@ -46,3 +46,13 @@ export type AppUsageSnapshot = {
 export function hasUsageAccess(): boolean { return false; }
 export function openUsageAccessSettings(): boolean { return false; }
 export function getAppUsageStats(): AppUsageSnapshot | null { return null; }
+
+export type SystemResourceDiagnostics = {
+  totalRamBytes: number | null;
+  availableRamBytes: number | null;
+  lowMemory: boolean | null;
+  totalStorageBytes: number | null;
+  availableStorageBytes: number | null;
+};
+
+export function getSystemResourceDiagnostics(): SystemResourceDiagnostics | null { return null; }
