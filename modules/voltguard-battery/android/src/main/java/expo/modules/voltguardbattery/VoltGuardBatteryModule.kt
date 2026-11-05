@@ -3,6 +3,11 @@ package expo.modules.voltguardbattery
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.provider.Settings
+import android.location.LocationManager
+import android.bluetooth.BluetoothAdapter
+import android.nfc.NfcAdapter
+import android.content.ContentResolver
 import android.app.NotificationManager
 import android.os.BatteryManager
 import android.os.Build
@@ -15,6 +20,10 @@ class VoltGuardBatteryModule : Module() {
 
     Function("getBatteryDiagnostics") {
       readBatteryDiagnostics()
+    }
+
+    Function("getOptimizationDiagnostics") {
+      readOptimizationDiagnostics()
     }
 
     Function("getChargingAlarmStatus") {
@@ -55,6 +64,34 @@ class VoltGuardBatteryModule : Module() {
     }
   }
 
+  private fun readOptimizationDiagnostics(): Map<String, Any?>? {
+    val context = appContext.reactContext ?: return null
+    val resolver = context.contentResolver
+    val locationEnabled = try {
+      val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+      manager?.isLocationEnabled
+    } catch (_: Exception) { null }
+    val automaticBrightnessEnabled = try {
+      Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE) == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
+    } catch (_: Exception) { null }
+    val bluetoothEnabled = try {
+      @Suppress("DEPRECATION")
+      BluetoothAdapter.getDefaultAdapter()?.isEnabled
+    } catch (_: Exception) { null }
+    val nfcEnabled = try {
+      NfcAdapter.getDefaultAdapter(context)?.isEnabled
+    } catch (_: Exception) { null }
+    val masterSyncEnabled = try {
+      ContentResolver.getMasterSyncAutomatically()
+    } catch (_: Exception) { null }
+    return mapOf(
+      "locationEnabled" to locationEnabled,
+      "automaticBrightnessEnabled" to automaticBrightnessEnabled,
+      "bluetoothEnabled" to bluetoothEnabled,
+      "nfcEnabled" to nfcEnabled,
+      "masterSyncEnabled" to masterSyncEnabled
+    )
+  }
   private fun readBatteryDiagnostics(): Map<String, Any?>? {
     val context = appContext.reactContext ?: return null
     val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
