@@ -185,7 +185,7 @@ export default function SettingsScreen() {
             ))}
           </View>
           <Text style={[styles.privacy, { color: colors.textSecondary }]}>
-            Uses your device's local notification scheduler. It does not require an account or send battery data to a server. Android and iOS may delay notifications because of battery-saving or Focus settings.
+            Uses your device&apos;s local notification scheduler. It does not require an account or send battery data to a server. Android and iOS may delay notifications because of battery-saving or Focus settings.
           </Text>
           {Platform.OS === 'web' && (
             <Text style={[styles.error, { color: colors.warning }]}>
