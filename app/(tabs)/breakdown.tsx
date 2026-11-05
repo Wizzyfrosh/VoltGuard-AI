@@ -3,7 +3,13 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndica
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { Info, Battery, Smartphone, Clock3, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react-native';
-import { getAppUsageStats, hasUsageAccess, openUsageAccessSettings, type AppUsageSnapshot } from '../../modules/voltguard-battery';
+import { getAppUsageStats, getSystemResourceDiagnostics, hasUsageAccess, openUsageAccessSettings, type AppUsageSnapshot, type SystemResourceDiagnostics } from '../../modules/voltguard-battery';
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null || !Number.isFinite(bytes) || bytes < 0) return 'Unavailable';
+  const gib = bytes / (1024 ** 3);
+  return gib >= 1 ? `${gib.toFixed(1)} GB` : `${(bytes / (1024 ** 2)).toFixed(0)} MB`;
+}
 
 function formatDuration(milliseconds: number): string {
   const totalMinutes = Math.floor(milliseconds / 60000);
@@ -18,11 +24,13 @@ export default function BreakdownScreen() {
   const [usage, setUsage] = useState<AppUsageSnapshot | null>(null);
   const [usageGranted, setUsageGranted] = useState(false);
   const [loadingUsage, setLoadingUsage] = useState(false);
+  const [resources, setResources] = useState<SystemResourceDiagnostics | null>(null);
 
   const refreshUsage = useCallback(() => {
     if (Platform.OS !== 'android') return;
     setLoadingUsage(true);
     try {
+      setResources(getSystemResourceDiagnostics());
       const granted = hasUsageAccess();
       setUsageGranted(granted);
       setUsage(granted ? getAppUsageStats() : null);
@@ -100,6 +108,38 @@ export default function BreakdownScreen() {
             </>
           )}
         </View>
+        <View style={[styles.usageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.usageHeading}>
+            <Smartphone size={21} color={colors.primary} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Device resources</Text>
+          </View>
+          {Platform.OS !== 'android' ? (
+            <Text style={[styles.body, { color: colors.textSecondary }]}>System RAM and storage diagnostics are available in the Android app only.</Text>
+          ) : resources ? (
+            <>
+              <View style={styles.resourceRow}>
+                <View style={styles.appCopy}>
+                  <Text style={[styles.appName, { color: colors.text }]}>RAM available</Text>
+                  <Text style={[styles.caption, { color: colors.textSecondary }]}>Available / total physical memory</Text>
+                </View>
+                <Text style={[styles.appDuration, { color: colors.text }]}>{formatBytes(resources.availableRamBytes)} / {formatBytes(resources.totalRamBytes)}</Text>
+              </View>
+              <View style={styles.resourceRow}>
+                <View style={styles.appCopy}>
+                  <Text style={[styles.appName, { color: colors.text }]}>Internal storage available</Text>
+                  <Text style={[styles.caption, { color: colors.textSecondary }]}>Available / total data partition</Text>
+                </View>
+                <Text style={[styles.appDuration, { color: colors.text }]}>{formatBytes(resources.availableStorageBytes)} / {formatBytes(resources.totalStorageBytes)}</Text>
+              </View>
+              {resources.lowMemory === true && (
+                <Text style={[styles.body, { color: colors.warning }]}>Android currently reports a low-memory condition.</Text>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.body, { color: colors.textSecondary }]}>Device resource information is temporarily unavailable.</Text>
+          )}
+          <Text style={[styles.caption, { color: colors.textSecondary }]}>These are system resource readings, not a performance score. VoltGuard does not kill apps or claim to clean RAM.</Text>
+        </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Info size={20} color={colors.primary} />
           <View style={styles.infoContent}>
@@ -133,6 +173,7 @@ const styles = StyleSheet.create({
   usageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   usageHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   usageMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  resourceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#80808055', paddingTop: 11, gap: 12 },
   appRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appCopy: { flex: 1, gap: 3 },
   appName: { fontSize: 14, fontWeight: '700' },
