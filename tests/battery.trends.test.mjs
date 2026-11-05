@@ -68,7 +68,7 @@ test('summarizes completed charging sessions without counting incomplete session
   assert.equal(report.chargingSessionCount, 2);
   assert.equal(report.completedSessionCount, 1);
   assert.equal(report.averageSessionGainPercent, 40);
-  assert.equal(report.totalCompletedChargingMinutes, 60);
+  assert.equal(report.totalCompletedObservedMinutes, 60);
 });
 
 test('ignores samples outside the requested 30-day window', () => {
@@ -93,4 +93,21 @@ test('coverage is based on distinct observed days, not just a long elapsed span'
 
   assert.equal(report.observedDays, 2);
   assert.equal(report.coverage, 'low');
+});
+
+
+test('excludes charging-session observation intervals longer than six hours from duration totals', () => {
+  const sessions = [
+    {
+      id: 10, startedAt: at(-2, 0), endedAt: at(-2, 2),
+      startLevel: 0.2, endLevel: 0.7, status: 'completed', source: 'native',
+    },
+    {
+      id: 11, startedAt: at(-1, 0), endedAt: at(-1, 8),
+      startLevel: 0.3, endLevel: 0.9, status: 'completed', source: 'native',
+    },
+  ];
+  const report = buildBatteryTrendReport([], sessions, 'week', now);
+  assert.equal(report.completedSessionCount, 2);
+  assert.equal(report.totalCompletedObservedMinutes, 120);
 });
