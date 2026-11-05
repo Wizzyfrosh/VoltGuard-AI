@@ -27,5 +27,9 @@ export function getInitialBatteryCapabilities(): BatteryCapabilities {
     batteryHealth: 'not-implemented',
     cycleCount: 'not-implemented',
     perAppPowerUsage: 'not-implemented',
+    batteryTechnology: 'not-implemented',
+    batteryCurrent: 'not-implemented',
+    remainingCharge: 'not-implemented',
+    energyCounter: 'not-implemented',
   };
 }
