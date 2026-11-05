@@ -48,3 +48,28 @@ test('returns null for missing native module data', () => {
   assert.equal(normalizeAndroidBatteryDiagnostics(null), null);
   assert.equal(normalizeAndroidBatteryDiagnostics(undefined), null);
 });
+
+
+test('normalizes native current and charge counters into display units', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    currentNowMicroAmps: -325500,
+    currentAverageMicroAmps: 1250000,
+    chargeCounterMicroAmpHours: 4567000,
+    energyCounterNanoWattHours: 1234000000,
+    technology: ' Li-ion ',
+  });
+  assert.equal(result.currentNowMilliAmps, -326);
+  assert.equal(result.currentAverageMilliAmps, 1250);
+  assert.equal(result.remainingChargeMilliAmpHours, 4567);
+  assert.equal(result.energyCounterMilliWattHours, 1234);
+  assert.equal(result.technology, 'Li-ion');
+});
+
+test('does not invent missing native diagnostics', () => {
+  const result = normalizeAndroidBatteryDiagnostics({});
+  assert.equal(result.technology, null);
+  assert.equal(result.currentNowMilliAmps, null);
+  assert.equal(result.currentAverageMilliAmps, null);
+  assert.equal(result.remainingChargeMilliAmpHours, null);
+  assert.equal(result.energyCounterMilliWattHours, null);
+});
