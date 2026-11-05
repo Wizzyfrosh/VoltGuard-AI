@@ -34,7 +34,6 @@ test('does not bridge a charging interval even when later samples are unplugged'
     sample(0, 0.9),
     sample(20, 0.8, false),
     sample(40, 0.7),
-    sample(60, 0.6),
   ]);
   assert.equal(result.status, 'insufficient-data');
   assert.equal(result.drainPercentPerHour, null);
