@@ -314,3 +314,27 @@ Run CI and fix all failures. Then continue with Charging Detect & Optimization H
 1. Run full CI and fix all compile/test issues.
 2. Verify optimization states on a physical Android phone.
 3. Continue with battery-care reminders and usage/deep-sleep feasibility only after checking Android public API access. Per-app mAh and deep-sleep counters remain unimplemented unless supported by a verifiable public API.
+
+
+## Battery-care reminder and stabilization fixes — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source
+- [x] Added a separate daily battery-care reminder in Settings; it is not a new navigation tab.
+- [x] Added local daily notification scheduling for Android/iOS with preset local times (07:00, 12:00, 20:00).
+- [x] Persisted enabled state, selected time and this reminder's own scheduled notification ID in the existing local preference store.
+- [x] Replaces only its own prior scheduled notification; it does not cancel unrelated user notifications.
+- [x] Schedules a replacement before cancelling the prior reminder, so a failed replacement does not silently remove an active schedule.
+- [x] Web explicitly reports that closed-tab scheduled reminders are unsupported; no fake background scheduler is claimed.
+- [x] Added a matching web implementation for Android-only battery module exports.
+- [x] Corrected symmetric rounding for signed battery current conversions and added regression coverage.
+- [x] Tightened drain analysis to require every sample in a candidate window, including endpoints, to be unplugged.
+
+### Validation and limitations
+- [ ] Latest Actions for commit `03363d79906715a6b282815bc71b435dbd473823` must pass all jobs before merge.
+- [ ] Verify the Expo Notifications daily trigger compiles under SDK 54 and schedules on Android and iOS.
+- [ ] Verify reminder delivery after app process termination and after device restart on physical devices; OEM battery policies may delay delivery.
+- [ ] Confirm permission denial and rescheduling errors are clearly visible in Settings.
+- [ ] Physical Android alarm audibility still requires user confirmation through the Settings test button.
+- [ ] Do not promise exact-to-the-minute delivery or guaranteed alarm-volume bypass; Do Not Disturb, channel settings, Focus modes and OS battery policies remain in control.
