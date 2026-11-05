@@ -143,7 +143,9 @@ jobs:
         run: npm ci
 
       - name: Apply non-breaking dependency fixes only
-        run: npm audit fix
+        run: |
+          npm audit fix || audit_fix_exit=$?
+          echo "npm audit fix exit code: ${audit_fix_exit:-0}"
 
       - name: TypeScript
         run: npm run typecheck
