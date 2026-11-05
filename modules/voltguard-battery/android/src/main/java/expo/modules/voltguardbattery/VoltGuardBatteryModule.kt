@@ -26,6 +26,22 @@ class VoltGuardBatteryModule : Module() {
       readOptimizationDiagnostics()
     }
 
+    Function("openOptimizationSetting") { setting: String ->
+      val context = appContext.reactContext ?: return@Function false
+      val action = when (setting) {
+        "brightness" -> Settings.ACTION_DISPLAY_SETTINGS
+        "location" -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
+        "bluetooth" -> Settings.ACTION_BLUETOOTH_SETTINGS
+        "nfc" -> "android.settings.NFC_SETTINGS"
+        "sync" -> Settings.ACTION_SYNC_SETTINGS
+        else -> null
+      } ?: return@Function false
+      try {
+        context.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+      } catch (_: Exception) { false }
+    }
+
     Function("getChargingAlarmStatus") {
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       VoltGuardBatteryNotifications.getChargingAlarmStatus(context)
