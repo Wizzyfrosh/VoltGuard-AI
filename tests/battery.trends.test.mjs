@@ -73,8 +73,8 @@ test('summarizes completed charging sessions without counting incomplete session
 test('ignores samples outside the requested 30-day window', () => {
   const report = buildBatteryTrendReport([
     sample(at(-31, 8), 0.9, 1),
-    sample(at(-30, 8), 0.8, 1),
-    sample(at(-30, 9), 0.7, 1),
+    sample(at(-29, 8), 0.8, 1),
+    sample(at(-29, 9), 0.7, 1),
   ], [], 'month', now);
 
   assert.equal(report.sampleCount, 2);
