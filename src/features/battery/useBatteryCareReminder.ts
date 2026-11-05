@@ -91,13 +91,24 @@ export function useBatteryCareReminder() {
     setError(null);
     try {
       const stored = parseSettings(await getBatteryPreference(PREFERENCE_KEY));
-      if (stored.notificationId) {
+      // Schedule the replacement before cancelling the existing reminder. If
+      // scheduling fails, the user's previous reminder remains active.
+      const notificationId = nextEnabled ? await scheduleReminder(nextTime) : null;
+      try {
+        await setBatteryPreference(PREFERENCE_KEY, JSON.stringify({
+          enabled: nextEnabled,
+          time: nextTime,
+          notificationId,
+        }));
+      } catch (persistError) {
+        if (notificationId) {
+          await Notifications.cancelScheduledNotificationAsync(notificationId).catch(() => undefined);
+        }
+        throw persistError;
+      }
+      if (stored.notificationId && stored.notificationId !== notificationId) {
         await Notifications.cancelScheduledNotificationAsync(stored.notificationId).catch(() => undefined);
       }
-      let notificationId: string | null = null;
-      if (nextEnabled) notificationId = await scheduleReminder(nextTime);
-      const next = { enabled: nextEnabled, time: nextTime, notificationId };
-      await setBatteryPreference(PREFERENCE_KEY, JSON.stringify(next));
       setEnabled(nextEnabled);
       setTime(nextTime);
       return true;
