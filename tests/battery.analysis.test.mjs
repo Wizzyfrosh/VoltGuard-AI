@@ -29,7 +29,7 @@ test('excludes intervals containing charging observations', () => {
   assert.equal(result.status, 'insufficient-data');
 });
 
-test('does not bridge a charging interval even when later samples are unplugged', () => {
+test('does not bridge a charging interval when only one later unplugged sample exists', () => {
   const result = analyzeBatteryDrain([
     sample(0, 0.9),
     sample(20, 0.8, false),
