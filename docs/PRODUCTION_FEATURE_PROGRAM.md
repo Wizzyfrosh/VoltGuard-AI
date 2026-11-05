@@ -131,7 +131,7 @@ Statuses reflect source inspection, not physical-device verification.
 - [ ] Validate sampling cadence and history consent/retention behaviour.
 - [ ] Add daily/weekly/monthly charged/discharged trends only when sample coverage supports them.
 - [ ] Track battery wear only when actual capacity measurements support a defensible trend.
-- [ ] Add export (CSV/JSON initially) for user-owned local history, with privacy warning and no cloud upload by default.
+- [x] Export is intentionally excluded by product decision: no CSV/JSON export controls, files or export dependencies.
 - [ ] Improve gaps/missing-data display; never interpolate as if observed.
 - Acceptance: aggregates state their date range and sample coverage; export matches stored data.
 
@@ -389,3 +389,38 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] These are system-wide snapshots and can change between reads; they are not app-specific memory use.
 - [ ] Available RAM is not a target to maximize. Android intentionally uses free memory for cache and background process management.
 - [ ] Storage values represent the app-visible data partition reported by StatFs, not necessarily every removable or adopted storage volume.
+
+
+## Phase 6 — Weekly and monthly battery trends — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Product decision
+- CSV and JSON export are explicitly out of scope. No export buttons, generated files, export dependencies or cloud export endpoints will be added.
+
+### Implemented in source — validation pending
+- [x] Added pure `buildBatteryTrendReport` aggregation for rolling 7-day and 30-day periods.
+- [x] Weekly view groups observations by local calendar day; monthly view groups the 30-day window into five weekly buckets.
+- [x] Calculates charging gains only between adjacent readings that both report charging/full state.
+- [x] Calculates discharge only between adjacent readings that both report unplugged state.
+- [x] Excludes invalid levels/timestamps, intervals shorter than five minutes, gaps longer than six hours and cross-state intervals.
+- [x] Exposes sample counts and per-bucket/overall coverage levels; missing periods remain null rather than zero or interpolated.
+- [x] Summarizes locally inferred charging sessions: total sessions, completed sessions, average recorded gain and completed charging duration.
+- [x] Added a local SQLite query for up to 5,000 recent samples in the 30-day window; no background task or upload was introduced.
+- [x] Added weekly/monthly trend controls, summary metrics, comparison bars and coverage explanation to the existing Analytics screen. No new tab.
+- [x] Added automated tests for charge/discharge aggregation, cross-state exclusion, long/small gaps, monthly buckets, session summaries and retention boundaries.
+
+### Known interpretation limits
+- Battery percentage is quantized and may fluctuate; reported totals are sums of observed adjacent changes, not laboratory energy measurements.
+- A transition that occurs between samples may not be observable; only adjacent endpoint states are available.
+- Incomplete charging sessions are counted as sessions but excluded from completed-duration and completed-session gain summaries.
+- Monthly display is a rolling 30-day window grouped into calendar-day-based seven-day buckets, not a calendar month.
+- History remains opt-in, foreground-only and retained for up to 30 days. Long gaps and time spent with VoltGuard closed are intentionally excluded.
+- Web battery history remains unsupported; web shows no saved trend data rather than fake values.
+
+### Validation gate
+- [ ] Latest TypeScript, lint, unit tests and web export pass.
+- [ ] Android Kotlin compile passes (native code is not modified in this phase, but remains a required branch gate).
+- [ ] Test weekly/monthly totals against a hand-calculated set of local observations on Android.
+- [ ] Confirm no UI labels imply per-app battery usage or exact energy in mAh.
+- [ ] Verify low-coverage and history-disabled empty states are understandable on a narrow phone screen.
