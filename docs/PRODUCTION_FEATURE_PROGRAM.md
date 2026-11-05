@@ -424,3 +424,36 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] Test weekly/monthly totals against a hand-calculated set of local observations on Android.
 - [ ] Confirm no UI labels imply per-app battery usage or exact energy in mAh.
 - [ ] Verify low-coverage and history-disabled empty states are understandable on a narrow phone screen.
+
+
+## Phase 7 — Battery history and charging-session intelligence — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source — validation pending
+- [x] Added a seven-day versus preceding-seven-day comparison of completed charging sessions.
+- [x] Added average observed level gain, observed interval and endpoint-derived level-change rate for eligible sessions.
+- [x] Excluded incomplete, invalid and longer-than-six-hour observation intervals from rate/duration comparison summaries.
+- [x] Clarified that an observed level-change rate is not charger input current, wattage or a laboratory charging-speed measurement.
+- [x] Added a session comparison card to the existing Battery History screen.
+- [x] Added a recent battery-level chart using up to 20 real saved foreground observations, oldest to newest.
+- [x] Missing battery levels remain gaps; no interpolation or demo values.
+- [x] Improved session copy to distinguish the last observed level and warn that an active session may be stale after the app is closed or background updates stop.
+- [x] Added a Settings action to clear locally saved battery samples and charging sessions while leaving history enabled.
+- [x] Added unit tests for period comparisons, incomplete/invalid sessions, long observation intervals and rate calculations.
+
+### Interpretation and retention
+- Session start/end times are observation times. They are not guaranteed to equal the exact physical charger plug/unplug times because collection is foreground-only.
+- Session interval duration is elapsed time between observations, not necessarily continuous charging time.
+- Endpoint-derived percentage-points/hour is only a coarse observed interval rate. It is not USB input current, adapter wattage, or a charger benchmark.
+- Long intervals over six hours are excluded from rate and average interval comparisons.
+- History is still opt-in, stored locally and retained for up to 30 days. Clearing history removes samples and sessions but does not turn off the preference.
+- No CSV/JSON export or cloud upload has been introduced.
+
+### Validation gate
+- [ ] Latest TypeScript, lint, unit tests and web export pass.
+- [ ] Android Kotlin compile passes on the latest branch head.
+- [ ] Confirm session comparison calculations against manually prepared local test data.
+- [ ] Test clearing history: cancel confirmation, confirm deletion, verify samples/sessions disappear, and verify history remains enabled.
+- [ ] Check chart labels and comparison card on a narrow Android display and with missing/low-coverage data.
+- [ ] Physical-device verification is still required for actual session transitions while screen-off and app backgrounded.
