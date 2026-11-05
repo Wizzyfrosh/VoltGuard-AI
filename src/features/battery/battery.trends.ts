@@ -79,15 +79,21 @@ export function buildBatteryTrendReport(
 ): BatteryTrendReport {
   const end = localDayStart(new Date(now));
   const dayCount = period === 'week' ? 7 : 30;
-  const start = new Date(end.getTime() - (dayCount - 1) * DAY_MS);
+  const start = new Date(end);
+  start.setDate(start.getDate() - (dayCount - 1));
+  const windowEndExclusive = new Date(end);
+  windowEndExclusive.setDate(windowEndExclusive.getDate() + 1);
   const bucketCount = period === 'week' ? 7 : 5;
   const bucketDays = period === 'week' ? 1 : 7;
 
   const buckets = Array.from({ length: bucketCount }, (_, index) => {
-    const bucketStart = new Date(start.getTime() + index * bucketDays * DAY_MS);
+    const bucketStart = new Date(start);
+    bucketStart.setDate(bucketStart.getDate() + index * bucketDays);
+    const bucketEndExclusive = new Date(bucketStart);
+    bucketEndExclusive.setDate(bucketEndExclusive.getDate() + bucketDays);
     const bucketEnd = new Date(Math.min(
-      end.getTime() + DAY_MS - 1,
-      bucketStart.getTime() + bucketDays * DAY_MS - 1,
+      windowEndExclusive.getTime() - 1,
+      bucketEndExclusive.getTime() - 1,
     ));
     return {
       key: `${period}-${index}-${bucketStart.toISOString().slice(0, 10)}`,
@@ -108,14 +114,18 @@ export function buildBatteryTrendReport(
     .map((sample) => ({ ...sample, timestamp: Date.parse(sample.observedAt) }))
     .filter((sample) => Number.isFinite(sample.timestamp) &&
       sample.timestamp >= start.getTime() &&
-      sample.timestamp < end.getTime() + DAY_MS &&
+      sample.timestamp < windowEndExclusive.getTime() &&
       sample.level !== null &&
       Number.isFinite(sample.level) &&
       sample.level >= 0 && sample.level <= 1)
     .sort((a, b) => a.timestamp - b.timestamp);
 
   const bucketFor = (timestamp: number) => {
-    const dayOffset = Math.floor((localDayStart(new Date(timestamp)).getTime() - start.getTime()) / DAY_MS);
+    const sampleDay = localDayStart(new Date(timestamp));
+    const dayOffset = Math.round((
+      Date.UTC(sampleDay.getFullYear(), sampleDay.getMonth(), sampleDay.getDate()) -
+      Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+    ) / DAY_MS);
     const index = period === 'week' ? dayOffset : Math.floor(dayOffset / 7);
     return buckets[Math.max(0, Math.min(bucketCount - 1, index))];
   };
@@ -185,7 +195,7 @@ export function buildBatteryTrendReport(
   return {
     period,
     startAt: start.toISOString(),
-    endAt: new Date(end.getTime() + DAY_MS - 1).toISOString(),
+    endAt: new Date(windowEndExclusive.getTime() - 1).toISOString(),
     buckets: buckets.map((bucket) => ({
       key: bucket.key,
       label: bucket.label,
