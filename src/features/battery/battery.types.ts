@@ -12,7 +12,11 @@ export type BatteryCapability =
   | 'voltage'
   | 'batteryHealth'
   | 'cycleCount'
-  | 'perAppPowerUsage';
+  | 'perAppPowerUsage'
+  | 'batteryTechnology'
+  | 'batteryCurrent'
+  | 'remainingCharge'
+  | 'energyCounter';
 
 export type CapabilityAvailability = 'available' | 'unavailable' | 'not-implemented';
 
@@ -25,6 +29,10 @@ export interface BatteryCapabilities {
   batteryHealth: CapabilityAvailability;
   cycleCount: CapabilityAvailability;
   perAppPowerUsage: CapabilityAvailability;
+  batteryTechnology: CapabilityAvailability;
+  batteryCurrent: CapabilityAvailability;
+  remainingCharge: CapabilityAvailability;
+  energyCounter: CapabilityAvailability;
 }
 
 export interface BatterySnapshot {

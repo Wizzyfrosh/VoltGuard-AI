@@ -82,6 +82,10 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       capabilities.cycleCount = androidDiagnostics.cycleCount !== null
         ? 'available'
         : (androidDiagnostics.apiLevel !== null && androidDiagnostics.apiLevel >= 34 ? 'unavailable' : 'not-implemented');
+      capabilities.batteryTechnology = androidDiagnostics.technology !== null ? 'available' : 'unavailable';
+      capabilities.batteryCurrent = androidDiagnostics.currentNowMicroAmps !== null || androidDiagnostics.currentAverageMicroAmps !== null ? 'available' : 'unavailable';
+      capabilities.remainingCharge = androidDiagnostics.chargeCounterMicroAmpHours !== null ? 'available' : 'unavailable';
+      capabilities.energyCounter = androidDiagnostics.energyCounterNanoWattHours !== null ? 'available' : 'unavailable';
     }
 
     return {

@@ -2,30 +2,33 @@
 
 ## Data flow
 
-`expo-battery.provider.ts` is the current cross-platform adapter. It normalizes OS readings into `BatterySnapshot`. Platform capability declarations live in `battery.capabilities.ts`. Screens should consume `useBatteryTelemetry` and must not call Expo Battery APIs directly.
+`expo-battery.provider.ts` is the cross-platform adapter. It normalizes OS readings into `BatterySnapshot`. Platform capability declarations live in `battery.capabilities.ts`. Screens should consume `useBatteryTelemetry` and must not call Expo Battery APIs directly.
 
 ## Capability policy
 
 - A capability is `available` only when this build successfully reads it.
 - A capability is `unavailable` when the platform/runtime does not expose a usable reading.
 - A capability is `not-implemented` when the product has not shipped an adapter for it.
-- Android-only metrics must not be advertised until a native adapter is implemented and verified on physical devices.
+- Android-only metrics must not be advertised until a native adapter is present; physical-device verification is still required before production claims.
 - iOS and web must not inherit Android capability claims.
+- Missing, sentinel, invalid or unsupported native values must remain null; do not replace them with estimates or sample values.
 
-## Local storage
+## Local storage and collection
 
-The SQLite database is local to the device on Android and iOS. Web is explicitly guarded until a browser-specific persistence adapter is added; Expo SQLite web support has additional browser-isolation requirements and must not silently fail at runtime. `battery.repository.ts` exposes parameterized operations for explicit sample writes, bounded reads and retention deletion.
-
-**Important:** creating the database does not start persistence. Battery diagnostics refresh while the app is foregrounded (on resume and every 60 seconds) for the live dashboard; samples are written to SQLite only after explicit history opt-in. No background task is registered and no telemetry is uploaded to a server.
+- Android and iOS battery history uses local SQLite (`voltguard.db`).
+- On web, user preferences use browser `localStorage`, but battery history/session persistence is explicitly unavailable: `getBatteryDatabase()` rejects on web. Preference persistence must not be confused with history support.
+- No telemetry is uploaded to a server.
+- Creating the database does not start persistence. History writes occur only after the user explicitly enables history.
+- Live diagnostics refresh while the app is foregrounded (on resume and every 60 seconds). This is foreground refresh, not a background sampling guarantee.
+- Charging sessions are inferred from observed charging-state transitions. Sessions can be incomplete when the app is not running or samples are missing.
+- Retention is bounded to 30 days by the history layer.
 
 ## Current limitations
 
-- Android native diagnostics are implemented but require a custom native build and physical-device verification.
-- No native iOS diagnostics adapter exists.
-- No background sampling or notification workflow exists.
-- Charging sessions are inferred from observed foreground charging-state changes and may be incomplete.
-- Cycle count and per-app power usage remain unimplemented.
-
-## Android native diagnostics
-
-The local Expo module at `modules/voltguard-battery` reads Android BatteryManager properties and the sticky battery-changed intent. It can expose temperature (tenths of °C converted to °C), voltage (mV), health/status/plugged state, capacity, instantaneous and average current, charge counter, and energy counter when the device reports them. Unsupported values remain null and capabilities are marked unavailable. Cycle count is intentionally null because it is not consistently exposed across Android versions/devices. These diagnostics require a native Android development/production build; they are not available in Expo Go or the web preview. Physical-device verification is required before production claims.
+- Android native diagnostics require a custom native build; they are not available in Expo Go or the web preview.
+- Native diagnostics are implemented but have not been verified across a physical-device matrix.
+- No native iOS adapter for Android-specific hardware diagnostics exists.
+- No general-purpose background telemetry sampling is registered.
+- Android charging-target monitoring uses a native foreground service, subject to Android/OEM restrictions documented in the repository root README.
+- Per-app energy consumption is not implemented. Ordinary third-party apps do not have unrestricted access to precise per-app BatteryStats/mAh.
+- Cycle count is conditionally read on Android 14+ (API 34+) from `BatteryManager.EXTRA_CYCLE_COUNT` when the sticky battery intent returns a valid non-negative value. This is device-dependent; unsupported values remain null. It is not estimated.
