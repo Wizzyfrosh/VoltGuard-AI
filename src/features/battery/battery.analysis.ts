@@ -37,11 +37,9 @@ export function analyzeBatteryDrain(samples: BatteryDrainSample[]): BatteryDrain
       const elapsed = valid[j].timestamp - valid[i].timestamp;
       if (elapsed > MAX_INTERVAL_MS) break;
       if (elapsed < MIN_INTERVAL_MS) continue;
-      // Do not bridge an unobserved plug/unplug transition. Each adjacent
-      // interval must be unplugged at both ends before it can enter the window.
-      const unplugged = valid.slice(i, j).every((s, offset) =>
-        s.isUnplugged && valid[i + offset + 1].isUnplugged,
-      );
+      // Include both endpoints and every observation between them. Filtering
+      // charging samples before this check would incorrectly bridge across them.
+      const unplugged = valid.slice(i, j + 1).every((sample) => sample.isUnplugged);
       if (!unplugged) continue;
       if (!best || elapsed > best.end.timestamp - best.start.timestamp) {
         best = { start: valid[i], end: valid[j] };
