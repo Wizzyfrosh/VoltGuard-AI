@@ -43,7 +43,7 @@ test('does not use incomplete, invalid or longer-than-six-hour sessions in rate 
 
 test('calculates an observed level-change rate for a bounded completed session', () => {
   const item = session(1, -3, -1, 0.2, 0.8);
-  assert.equal(getChargingSessionRate(item), 60);
+  assert.equal(getChargingSessionRate(item), 30);
 });
 
 test('returns no rate for incomplete, invalid or sparse sessions', () => {
