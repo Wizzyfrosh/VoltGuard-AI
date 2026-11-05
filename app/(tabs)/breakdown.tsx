@@ -127,7 +127,7 @@ export default function BreakdownScreen() {
               <View style={styles.usageMeta}>
                 <ShieldCheck size={15} color={colors.primary} />
                 <Text style={[styles.caption, { color: colors.textSecondary }]}>
-                  {trends.report.coverage.toUpperCase()} coverage · {trends.report.sampleCount} readings · Up to 30 days retained
+                  {trends.report.coverage.toUpperCase()} coverage · {trends.report.sampleCount} readings across {trends.report.observedDays} days · Up to 30 days retained
                 </Text>
               </View>
               <Text style={[styles.caption, { color: colors.textSecondary }]}>{trends.report.explanation}</Text>
