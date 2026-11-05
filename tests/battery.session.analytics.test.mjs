@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareChargingSessions, getChargingSessionRate } from '../src/features/battery/battery.session.analytics.ts';
+import { compareChargingSessions, getObservedLevelChangeRate } from '../src/features/battery/battery.session.analytics.ts';
 
 const now = Date.UTC(2026, 10, 5, 12);
 const date = (offsetHours) => new Date(now + offsetHours * 3600000).toISOString();
@@ -43,14 +43,14 @@ test('does not use incomplete, invalid or longer-than-six-hour sessions in rate 
 
 test('calculates an observed level-change rate for a bounded completed session', () => {
   const item = session(1, -3, -1, 0.2, 0.8);
-  assert.equal(getChargingSessionRate(item), 30);
+  assert.equal(getObservedLevelChangeRate(item), 30);
 });
 
 test('returns no rate for incomplete, invalid or sparse sessions', () => {
-  assert.equal(getChargingSessionRate(session(1, -2, null, 0.2, 0.8, 'charging')), null);
-  assert.equal(getChargingSessionRate(session(2, -8, 0, 0.2, 0.8)), null);
-  assert.equal(getChargingSessionRate(session(3, -2, -1, 0.9, 0.2)), null);
-  assert.equal(getChargingSessionRate(session(4, -2, -1, 1.2, 1.3)), null);
+  assert.equal(getObservedLevelChangeRate(session(1, -2, null, 0.2, 0.8, 'charging')), null);
+  assert.equal(getObservedLevelChangeRate(session(2, -8, 0, 0.2, 0.8)), null);
+  assert.equal(getObservedLevelChangeRate(session(3, -2, -1, 0.9, 0.2)), null);
+  assert.equal(getObservedLevelChangeRate(session(4, -2, -1, 1.2, 1.3)), null);
 });
 
 test('requires observations in both periods for a comparison delta', () => {
