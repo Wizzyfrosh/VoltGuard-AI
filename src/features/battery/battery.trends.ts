@@ -25,6 +25,7 @@ export interface BatteryTrendReport {
   endAt: string;
   buckets: BatteryTrendBucket[];
   sampleCount: number;
+  observedDays: number;
   coverage: TrendCoverage;
   chargedPercent: number | null;
   dischargedPercent: number | null;
