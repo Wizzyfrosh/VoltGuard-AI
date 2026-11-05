@@ -261,3 +261,32 @@ Inspect native foreground service and notification channel creation end-to-end. 
 
 ### Next Phase 1 work
 Improve battery health presentation: distinguish Android OS-reported health state from estimated battery capacity/condition. Do not manufacture a health percentage when the OS does not expose one. Then add battery drain trend analysis based only on timestamped local samples, with confidence/coverage indicators and no fabricated per-app attribution.
+
+
+## Battery health and drain analysis checkpoint — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source
+- [x] Added a pure battery health interpreter that preserves the Android OS health status and explicitly does not turn it into a battery-wear percentage.
+- [x] Added a pure device-level discharge-rate analyzer using timestamped battery percentage observations.
+- [x] Analyzer excludes charging/full observations, invalid percentages/timestamps and windows with gaps greater than six hours; minimum observation window is five minutes.
+- [x] Analysis reports percent/hour, observation duration, sample count, coverage tier and cautious possible causes; it does not attribute drain to an app.
+- [x] Added a local query for the latest 24 hours of opted-in SQLite samples (maximum 500 rows); web and history-disabled states return insufficient data.
+- [x] Added dashboard cards for OS-reported health interpretation and device-level drain analysis.
+- [x] Added tests for rate calculation, charging exclusion, sparse gaps, OS health and unknown states.
+- [ ] CI validation for TypeScript, lint, tests, web export and Android compilation.
+- [ ] Validate drain-rate thresholds against real devices and longer observation sessions; current 8%/hour and 15%/hour labels are initial review heuristics, not medical/manufacturer standards.
+- [ ] Add explicit UI guidance that history must be enabled and samples collected before analysis is available.
+- [ ] Verify that current history recording cadence is adequate and does not duplicate observations excessively.
+- [ ] Physical-device validation on Android; no production claims until data collection is tested on the target device.
+
+### Interpretation constraints
+- A percentage-per-hour estimate is coarse because battery percentage is quantized and fuel-gauge reporting varies.
+- The current analyzer is device-level only. It cannot identify which app caused discharge.
+- No actual capacity/wear percentage is calculated because the adapter does not have verified design capacity and full-charge capacity.
+- OS-reported GOOD/OVERHEAT/DEAD/etc. is displayed as an OS state, not converted into a percentage.
+- The analyzer uses only local, user-opted-in history. It does not upload battery samples.
+
+### Next
+Run CI and fix all failures. Then continue with Charging Detect & Optimization Hub using real current/voltage/source and safe system-setting deep links. Per-app energy, deep sleep and protected-app management remain blocked pending public API feasibility work; do not implement fake versions.
