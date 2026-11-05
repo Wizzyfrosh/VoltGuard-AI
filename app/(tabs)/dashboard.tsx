@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Battery from 'expo-battery';
@@ -7,6 +7,8 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { BatteryGauge } from '../../src/components/dashboard/BatteryGauge';
 import { DashboardAction } from '../../src/components/dashboard/DashboardAction';
 import { useBatteryTelemetry } from '../../src/features/battery/useBatteryTelemetry';
+import { getBatteryDrainAnalysis } from '../../src/features/battery/battery.history';
+import { explainBatteryHealth, type BatteryDrainAnalysis } from '../../src/features/battery/battery.analysis';
 import { Bot, Activity, Thermometer, Zap, PlugZap, ShieldCheck, Smartphone } from 'lucide-react-native';
 
 function getChargingLabel(state: Battery.BatteryState): string {
@@ -26,6 +28,15 @@ export default function DashboardScreen() {
   const reading = useBatteryTelemetry();
   const isCharging = reading.state === Battery.BatteryState.CHARGING;
   const diagnostics = reading.androidDiagnostics;
+  const [drainAnalysis, setDrainAnalysis] = useState<BatteryDrainAnalysis | null>(null);
+  useEffect(() => {
+    let active = true;
+    void getBatteryDrainAnalysis().then((result) => { if (active) setDrainAnalysis(result); }).catch(() => {
+      if (active) setDrainAnalysis(null);
+    });
+    return () => { active = false; };
+  }, [reading.observedAt]);
+  const healthExplanation = explainBatteryHealth(diagnostics?.health ?? null);
   const gaugeSize = Math.max(176, Math.min(width - 112, 250));
   const chargingLabel = getChargingLabel(reading.state);
   const cardBackground = colors.card;
@@ -60,6 +71,35 @@ export default function DashboardScreen() {
           <MetricCard icon={<Thermometer size={25} color="#F5A623" />} label="Temperature" value={diagnostics?.temperatureCelsius != null ? `${diagnostics.temperatureCelsius.toFixed(1)} °C` : 'Unavailable'} hint="Battery sensor" colors={colors} />
           <MetricCard icon={<Activity size={25} color="#10D69A" />} label="Battery health" value={diagnostics?.health ? diagnostics.health.replace('-', ' ') : 'Unavailable'} hint="System report" colors={colors} />
           <MetricCard icon={<Zap size={25} color="#3487FF" />} label="Voltage" value={diagnostics?.voltageMilliVolts != null ? `${(diagnostics.voltageMilliVolts / 1000).toFixed(2)} V` : 'Unavailable'} hint="Battery voltage" colors={colors} />
+        </View>
+
+        <View style={[styles.insightCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
+          <View style={styles.hardwareHeader}>
+            <ShieldCheck size={20} color={colors.primary} />
+            <Text style={[styles.capabilityTitle, { color: colors.text }]}>Battery health assessment</Text>
+          </View>
+          <Text style={[styles.insightValue, { color: colors.text }]}>{healthExplanation.condition.replace('reported-', '').replace('-', ' ')}</Text>
+          <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>{healthExplanation.message}</Text>
+          <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>Estimated battery wear: unavailable. A reliable estimate requires verified design capacity and full-charge capacity; this device API has not supplied both.</Text>
+        </View>
+
+        <View style={[styles.insightCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
+          <View style={styles.hardwareHeader}>
+            <Activity size={20} color={colors.primary} />
+            <Text style={[styles.capabilityTitle, { color: colors.text }]}>Battery drain analysis</Text>
+          </View>
+          {drainAnalysis ? (
+            <>
+              <Text style={[styles.insightValue, { color: colors.text }]}>
+                {drainAnalysis.drainPercentPerHour === null ? 'Collecting history' : `${drainAnalysis.drainPercentPerHour.toFixed(1)}% per hour`}
+              </Text>
+              <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>{drainAnalysis.explanation}</Text>
+              <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>
+                Coverage: {drainAnalysis.coverage} · {drainAnalysis.sampleCount} samples · {drainAnalysis.elapsedMinutes !== null ? `${Math.round(drainAnalysis.elapsedMinutes)} min window` : 'No valid window'}
+              </Text>
+              {drainAnalysis.status !== 'insufficient-data' && <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>This is a device-level estimate, not per-app energy attribution. Keep Battery history enabled and collect more unplugged samples for stronger coverage.</Text>}
+            </>
+          ) : <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>Drain analysis is temporarily unavailable. Existing live battery readings are unaffected.</Text>}
         </View>
 
         <View style={[styles.hardwareCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
@@ -179,6 +219,8 @@ const styles = StyleSheet.create({
   statusBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'capitalize' },
   capabilityCard: { borderWidth: 1, borderRadius: 22, padding: 17, gap: 15 },
   hardwareCard: { borderWidth: 1, borderRadius: 22, padding: 17, gap: 14 },
+  insightCard: { borderWidth: 1, borderRadius: 22, padding: 17, gap: 10 },
+  insightValue: { fontSize: 21, fontWeight: '900', textTransform: 'capitalize' },
   hardwareHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   hardwareGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
   hardwareValue: { width: '50%', gap: 4, paddingRight: 8 },
