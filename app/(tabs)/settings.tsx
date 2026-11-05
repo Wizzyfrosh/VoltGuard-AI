@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform, ScrollView } from 'react-native';
+import { Alert, Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings2, Info, Database, BellRing } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBatteryHistory } from '../../src/features/battery/useBatteryHistory';
+import { clearBatteryHistory } from '../../src/features/battery/battery.history';
 import { useBatteryAlerts } from '../../src/features/battery/useBatteryAlerts';
 import { useBatteryCareReminder } from '../../src/features/battery/useBatteryCareReminder';
 import { getChargingAlarmReadiness, sendChargingAlarmTest } from '../../src/features/battery/battery.alerts';
@@ -78,6 +79,26 @@ export default function SettingsScreen() {
             <Text style={[styles.error, { color: colors.warning }]}>
               Local history storage is unavailable here. Browser-based history storage will be added separately; no readings are being saved.
             </Text>
+          )}
+          {history.enabled && history.isAvailable && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => Alert.alert(
+                'Clear battery history?',
+                'This permanently deletes saved battery readings and charging sessions from this device. Battery history will remain enabled.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Clear history', style: 'destructive', onPress: () => {
+                    void clearBatteryHistory().then(() => history.refresh()).catch(() => {
+                      Alert.alert('Could not clear history', 'VoltGuard could not delete the local history. Please try again.');
+                    });
+                  } },
+                ],
+              )}
+              style={[styles.clearHistoryButton, { borderColor: colors.warning }]}
+            >
+              <Text style={[styles.clearHistoryText, { color: colors.warning }]}>Clear saved history</Text>
+            </Pressable>
           )}
         </View>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -231,6 +252,8 @@ const styles = StyleSheet.create({
   testButton: { minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
   testButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },
+  clearHistoryButton: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 9 },
+  clearHistoryText: { fontSize: 12, fontWeight: '700' },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   noteText: { flex: 1, fontSize: 12, lineHeight: 18 },
 });
