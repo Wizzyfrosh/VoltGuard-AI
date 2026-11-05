@@ -21,7 +21,7 @@ function summarize(sessions: ChargingSession[], start: number, end: number): Cha
     const startedAt = Date.parse(session.startedAt);
     const endedAt = Date.parse(session.endedAt);
     return Number.isFinite(startedAt) && Number.isFinite(endedAt) &&
-      startedAt >= start && startedAt < end && endedAt > startedAt &&
+      startedAt >= start && startedAt < end && endedAt > startedAt && endedAt - startedAt <= 6 * 60 * 60 * 1000 &&
       session.startLevel !== null && session.endLevel !== null &&
       Number.isFinite(session.startLevel) && Number.isFinite(session.endLevel) &&
       session.startLevel >= 0 && session.startLevel <= 1 &&
@@ -60,7 +60,7 @@ export function compareChargingSessions(sessions: ChargingSession[], now = Date.
     durationChangeMinutes: hasComparison && current.averageDurationMinutes !== null && previous.averageDurationMinutes !== null
       ? current.averageDurationMinutes - previous.averageDurationMinutes : null,
     explanation: hasComparison
-      ? 'Compares completed sessions observed in the latest seven days with the preceding seven days. It is descriptive, not a charger-performance test.'
+      ? 'Compares completed sessions observed in the latest seven days with the preceding seven days. Duration and rate summaries exclude observation intervals longer than six hours; this is not a charger-performance test.'
       : 'A comparison needs at least one completed session with valid start/end levels in each seven-day period. Incomplete sessions are excluded.',
   };
 }
@@ -70,9 +70,9 @@ export function getChargingSessionRate(session: ChargingSession): number | null 
   if (session.status !== 'completed' || !session.endedAt ||
       session.startLevel === null || session.endLevel === null ||
       !Number.isFinite(session.startLevel) || !Number.isFinite(session.endLevel) ||
-      session.startLevel < 0 || session.endLevel > 1 || session.endLevel < session.startLevel) return null;
+      session.startLevel < 0 || session.startLevel > 1 || session.endLevel < 0 || session.endLevel > 1 || session.endLevel < session.startLevel) return null;
   const duration = Date.parse(session.endedAt) - Date.parse(session.startedAt);
-  if (!Number.isFinite(duration) || duration <= 0) return null;
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 6 * 60 * 60 * 1000) return null;
   const rate = ((session.endLevel - session.startLevel) * 100) / (duration / 3600000);
   return Number.isFinite(rate) ? Math.round(rate * 10) / 10 : null;
 }
