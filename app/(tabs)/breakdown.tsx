@@ -98,7 +98,7 @@ export default function BreakdownScreen() {
               </View>
               <View style={styles.trendChart}>
                 {trends.report.buckets.map((bucket) => {
-                  const maxValue = Math.max(bucket.chargedPercent ?? 0, bucket.dischargedPercent ?? 0, 1);
+                  const maxValue = Math.max(...trends.report!.buckets.flatMap((item) => [item.chargedPercent ?? 0, item.dischargedPercent ?? 0]), 1);
                   const chargeHeight = bucket.chargedPercent === null ? '3%' : Math.max(3, (bucket.chargedPercent / maxValue) * 100) + '%';
                   const dischargeHeight = bucket.dischargedPercent === null ? '3%' : Math.max(3, (bucket.dischargedPercent / maxValue) * 100) + '%';
                   return (
@@ -117,6 +117,12 @@ export default function BreakdownScreen() {
                 <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Charging sessions</Text><Text style={[styles.appDuration, { color: colors.text }]}>{trends.report.chargingSessionCount}</Text></View>
                 <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Completed</Text><Text style={[styles.appDuration, { color: colors.text }]}>{trends.report.completedSessionCount}</Text></View>
                 <View style={styles.sessionStat}><Text style={[styles.caption, { color: colors.textSecondary }]}>Avg. session gain</Text><Text style={[styles.appDuration, { color: colors.text }]}>{formatPercent(trends.report.averageSessionGainPercent)}</Text></View>
+              </View>
+              <View style={styles.sessionDuration}>
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>Completed charging time</Text>
+                <Text style={[styles.appDuration, { color: colors.text }]}>
+                  {trends.report.totalCompletedChargingMinutes === null ? '—' : formatDuration(trends.report.totalCompletedChargingMinutes * 60000)}
+                </Text>
               </View>
               <View style={styles.usageMeta}>
                 <ShieldCheck size={15} color={colors.primary} />
@@ -267,6 +273,7 @@ const styles = StyleSheet.create({
   chartCount: { fontSize: 9, opacity: 0.75 },
   sessionStats: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#80808055', paddingTop: 11 },
   sessionStat: { flex: 1, gap: 4 },
+  sessionDuration: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#80808055', paddingTop: 9 },
   resourceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appCopy: { flex: 1, gap: 3 },
