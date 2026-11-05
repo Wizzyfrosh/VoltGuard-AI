@@ -48,6 +48,13 @@ function nonNegativeOrNull(value: unknown): number | null {
   return number !== null && number >= 0 ? number : null;
 }
 
+// Round magnitudes symmetrically so -325.5 mA becomes -326 mA, not -325 mA.
+function microAmpsToRoundedMilliAmps(value: unknown): number | null {
+  const microAmps = finiteOrNull(value);
+  if (microAmps === null) return null;
+  return Math.sign(microAmps) * Math.round(Math.abs(microAmps) / 1000);
+}
+
 export function normalizeAndroidBatteryDiagnostics(
   raw: AndroidBatteryDiagnosticsRaw | null | undefined,
 ): AndroidBatteryDiagnostics | null {
@@ -72,8 +79,8 @@ export function normalizeAndroidBatteryDiagnostics(
     energyCounterNanoWattHours: nonNegativeOrNull(raw.energyCounterNanoWattHours),
     cycleCount: nonNegativeOrNull(raw.cycleCount),
     technology: typeof raw.technology === 'string' && raw.technology.trim().length > 0 ? raw.technology.trim() : null,
-    currentNowMilliAmps: finiteOrNull(raw.currentNowMicroAmps) === null ? null : Math.round((raw.currentNowMicroAmps as number) / 1000),
-    currentAverageMilliAmps: finiteOrNull(raw.currentAverageMicroAmps) === null ? null : Math.round((raw.currentAverageMicroAmps as number) / 1000),
+    currentNowMilliAmps: microAmpsToRoundedMilliAmps(raw.currentNowMicroAmps),
+    currentAverageMilliAmps: microAmpsToRoundedMilliAmps(raw.currentAverageMicroAmps),
     remainingChargeMilliAmpHours: nonNegativeOrNull(raw.chargeCounterMicroAmpHours) === null ? null : Math.round((raw.chargeCounterMicroAmpHours as number) / 1000),
     energyCounterMilliWattHours: nonNegativeOrNull(raw.energyCounterNanoWattHours) === null ? null : Math.round((raw.energyCounterNanoWattHours as number) / 1000000),
   };
