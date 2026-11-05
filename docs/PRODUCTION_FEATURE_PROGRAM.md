@@ -457,3 +457,29 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] Test clearing history: cancel confirmation, confirm deletion, verify samples/sessions disappear, and verify history remains enabled.
 - [ ] Check chart labels and comparison card on a narrow Android display and with missing/low-coverage data.
 - [ ] Physical-device verification is still required for actual session transitions while screen-off and app backgrounded.
+
+
+## Phase 8 — Production hardening: analytics and async lifecycle — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Changes made
+- [x] Corrected trend-report field mismatches discovered by TypeScript CI (observed duration and observed-day fields).
+- [x] Added per-bucket distinct observed-day counts required by the report type.
+- [x] Corrected charging-session comparison duration formatting to use a duration-in-minutes formatter rather than a timestamp-range formatter.
+- [x] Replaced an undefined text style reference on the History screen.
+- [x] Clarified rate labels as percentage points per hour, not adapter charging speed.
+- [x] Added request sequencing to weekly/monthly trend refreshes so an older asynchronous result cannot overwrite a newer selected period.
+- [x] Added request sequencing to session analytics refreshes and invalidated in-flight requests on unmount.
+- [x] Added request sequencing to history refresh and preference updates to prevent stale reads overwriting the latest enable/disable action.
+- [x] Rechecked source after each patch and committed changes to the active branch.
+
+### Validation / release gates
+- [ ] Latest TypeScript, lint, tests and web export complete successfully on the latest branch SHA.
+- [ ] Latest Android native module compile completes successfully.
+- [ ] Review npm audit findings (CI dependency installation reported 43 vulnerabilities, including 2 critical); identify direct/transitive paths and apply safe targeted upgrades. Do not use `npm audit fix --force` without reviewing breaking changes.
+- [ ] Test repeated fast switching between 7-day and 30-day trends.
+- [ ] Test navigating away during history/session refresh and verify no stale UI update or unhandled rejection.
+- [ ] Test toggling history off while a refresh is in progress; verify deletion remains effective and history stays disabled.
+- [ ] Verify clear-history confirmation and subsequent refresh on a physical Android device.
+- [ ] Verify background session transition accuracy on physical hardware; foreground observation limits remain.
