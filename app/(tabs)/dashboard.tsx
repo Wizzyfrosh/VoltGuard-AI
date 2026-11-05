@@ -62,6 +62,24 @@ export default function DashboardScreen() {
           <MetricCard icon={<Zap size={25} color="#3487FF" />} label="Voltage" value={diagnostics?.voltageMilliVolts != null ? `${(diagnostics.voltageMilliVolts / 1000).toFixed(2)} V` : 'Unavailable'} hint="Battery voltage" colors={colors} />
         </View>
 
+        <View style={[styles.hardwareCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
+          <View style={styles.hardwareHeader}>
+            <Smartphone size={20} color={colors.primary} />
+            <Text style={[styles.capabilityTitle, { color: colors.text }]}>Battery hardware details</Text>
+          </View>
+          <View style={styles.hardwareGrid}>
+            <HardwareValue label="Technology" value={diagnostics?.technology ?? 'Unavailable'} colors={colors} />
+            <HardwareValue label="Available charge" value={diagnostics?.remainingChargeMilliAmpHours != null ? `${diagnostics.remainingChargeMilliAmpHours.toLocaleString()} mAh` : 'Unavailable'} colors={colors} />
+            <HardwareValue label="Instant current" value={diagnostics?.currentNowMilliAmps != null ? `${Math.abs(diagnostics.currentNowMilliAmps).toLocaleString()} mA ${diagnostics.currentNowMilliAmps > 0 ? 'charging' : diagnostics.currentNowMilliAmps < 0 ? 'discharging' : 'idle'}` : 'Unavailable'} colors={colors} />
+            <HardwareValue label="Average current" value={diagnostics?.currentAverageMilliAmps != null ? `${Math.abs(diagnostics.currentAverageMilliAmps).toLocaleString()} mA ${diagnostics.currentAverageMilliAmps > 0 ? 'charging' : diagnostics.currentAverageMilliAmps < 0 ? 'discharging' : 'idle'}` : 'Unavailable'} colors={colors} />
+            <HardwareValue label="Energy counter" value={diagnostics?.energyCounterMilliWattHours != null ? `${diagnostics.energyCounterMilliWattHours.toLocaleString()} mWh` : 'Unavailable'} colors={colors} />
+            <HardwareValue label="Charge cycles" value={diagnostics?.cycleCount != null ? diagnostics.cycleCount.toLocaleString() : 'Unavailable'} colors={colors} />
+          </View>
+          <Text style={[styles.capabilityFootnote, { color: colors.textSecondary }]}>
+            Readings come from Android BatteryManager. Current is battery-side current, not a measurement of USB adapter input. Hardware and firmware may omit individual values.
+          </Text>
+        </View>
+
         <View style={[styles.chargingCard, { backgroundColor: cardBackground, borderColor: colors.border }]}>
           <View style={styles.plugIcon}><PlugZap size={34} color="#3487FF" /></View>
           <View style={styles.chargingCopy}>
@@ -112,6 +130,15 @@ function MetricCard({ icon, label, value, hint, colors }: { icon: React.ReactNod
   );
 }
 
+function HardwareValue({ label, value, colors }: { label: string; value: string; colors: any }) {
+  return (
+    <View style={styles.hardwareValue}>
+      <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.hardwareMetric, { color: colors.text }]} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
+
 function Capability({ label, value, colors }: { label: string; value: string; colors: any }) {
   const available = value === 'available' || value === 'ANDROID' || value === 'IOS' || value === 'WEB';
   return (
@@ -151,6 +178,12 @@ const styles = StyleSheet.create({
   statusBadge: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
   statusBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'capitalize' },
   capabilityCard: { borderWidth: 1, borderRadius: 22, padding: 17, gap: 15 },
+  hardwareCard: { borderWidth: 1, borderRadius: 22, padding: 17, gap: 14 },
+  hardwareHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  hardwareGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
+  hardwareValue: { width: '50%', gap: 4, paddingRight: 8 },
+  hardwareLabel: { fontSize: 11, fontWeight: '600' },
+  hardwareMetric: { fontSize: 14, fontWeight: '800' },
   capabilityHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   capabilityTitle: { fontSize: 16, fontWeight: '900' },
   capabilityGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
