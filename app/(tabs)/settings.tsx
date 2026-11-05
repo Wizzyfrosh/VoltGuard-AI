@@ -5,6 +5,7 @@ import { Settings2, Info, Database, BellRing } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBatteryHistory } from '../../src/features/battery/useBatteryHistory';
 import { useBatteryAlerts } from '../../src/features/battery/useBatteryAlerts';
+import { useBatteryCareReminder } from '../../src/features/battery/useBatteryCareReminder';
 import { getChargingAlarmReadiness, sendChargingAlarmTest } from '../../src/features/battery/battery.alerts';
 
 export default function SettingsScreen() {
@@ -12,6 +13,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const history = useBatteryHistory();
   const alerts = useBatteryAlerts(false);
+  const careReminder = useBatteryCareReminder();
   const [alarmTestMessage, setAlarmTestMessage] = useState<string | null>(null);
   const [alarmTestBusy, setAlarmTestBusy] = useState(false);
 
@@ -140,6 +142,59 @@ export default function SettingsScreen() {
           )}
           {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
           
+        </View>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.row}>
+            <BellRing size={22} color={colors.primary} />
+            <View style={styles.copy}>
+              <Text style={[styles.heading, { color: colors.text }]}>Daily battery-care reminder</Text>
+              <Text style={[styles.body, { color: colors.textSecondary }]}>
+                A gentle daily notification to review battery temperature, charging habits and battery activity.
+              </Text>
+            </View>
+            {careReminder.isLoading ? <ActivityIndicator color={colors.primary} /> : (
+              <Switch
+                value={careReminder.enabled}
+                onValueChange={(value) => { void careReminder.updateEnabled(value); }}
+                disabled={Platform.OS === 'web'}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#FFFFFF"
+                accessibilityLabel="Enable daily battery-care reminder"
+              />
+            )}
+          </View>
+          <Text style={[styles.body, { color: colors.textSecondary }]}>Reminder time</Text>
+          <View style={styles.thresholds}>
+            {(['07:00', '12:00', '20:00'] as const).map((value) => (
+              <Pressable
+                key={value}
+                disabled={Platform.OS === 'web' || careReminder.isLoading}
+                onPress={() => { void careReminder.updateTime(value); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: careReminder.time === value }}
+                style={[styles.thresholdButton, {
+                  borderColor: careReminder.time === value ? colors.primary : colors.border,
+                  backgroundColor: careReminder.time === value ? colors.primary : 'transparent',
+                  opacity: Platform.OS === 'web' ? 0.5 : 1,
+                }]}
+              >
+                <Text style={{ color: careReminder.time === value ? '#FFFFFF' : colors.text, fontWeight: '700' }}>
+                  {value}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>
+            Uses your device's local notification scheduler. It does not require an account or send battery data to a server. Android and iOS may delay notifications because of battery-saving or Focus settings.
+          </Text>
+          {Platform.OS === 'web' && (
+            <Text style={[styles.error, { color: colors.warning }]}>
+              Scheduled reminders while the browser is closed are not supported in this web build. Configure this on your phone in the installed app.
+            </Text>
+          )}
+          {careReminder.error && (
+            <Text style={[styles.error, { color: colors.warning }]}>{careReminder.error}</Text>
+          )}
         </View>
         <View style={styles.note}>
           <Info size={17} color={colors.textSecondary} />
