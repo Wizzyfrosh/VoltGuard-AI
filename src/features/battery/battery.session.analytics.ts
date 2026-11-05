@@ -4,7 +4,7 @@ export interface ChargingSessionPeriodSummary {
   sessionCount: number;
   averageGainPercent: number | null;
   averageDurationMinutes: number | null;
-  averageChargeRatePercentPerHour: number | null;
+  averageLevelChangeRatePercentPerHour: number | null;
 }
 
 export interface ChargingSessionComparison {
@@ -33,13 +33,13 @@ function summarize(sessions: ChargingSession[], start: number, end: number): Cha
   });
 
   if (!completed.length) {
-    return { sessionCount: 0, averageGainPercent: null, averageDurationMinutes: null, averageChargeRatePercentPerHour: null };
+    return { sessionCount: 0, averageGainPercent: null, averageDurationMinutes: null, averageLevelChangeRatePercentPerHour: null };
   }
   return {
     sessionCount: completed.length,
     averageGainPercent: Math.round(completed.reduce((sum, item) => sum + item.gain, 0) / completed.length * 10) / 10,
     averageDurationMinutes: Math.round(completed.reduce((sum, item) => sum + item.minutes, 0) / completed.length),
-    averageChargeRatePercentPerHour: Math.round(completed.reduce((sum, item) => sum + (item.rate ?? 0), 0) / completed.length * 10) / 10,
+    averageLevelChangeRatePercentPerHour: Math.round(completed.reduce((sum, item) => sum + (item.rate ?? 0), 0) / completed.length * 10) / 10,
   };
 }
 
@@ -65,8 +65,8 @@ export function compareChargingSessions(sessions: ChargingSession[], now = Date.
   };
 }
 
-/** Charge rate for one completed session; null means it cannot be calculated reliably. */
-export function getChargingSessionRate(session: ChargingSession): number | null {
+/** Observed battery-level change per elapsed hour for one completed session; null means the interval is too sparse or invalid. */
+export function getObservedLevelChangeRate(session: ChargingSession): number | null {
   if (session.status !== 'completed' || !session.endedAt ||
       session.startLevel === null || session.endLevel === null ||
       !Number.isFinite(session.startLevel) || !Number.isFinite(session.endLevel) ||
