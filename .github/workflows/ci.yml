@@ -125,3 +125,49 @@ jobs:
           path: npm-audit.json
           if-no-files-found: error
           retention-days: 14
+
+  safe-dependency-remediation-preview:
+    name: Safe dependency remediation preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Apply non-breaking dependency fixes only
+        run: npm audit fix
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Export web app
+        run: npx expo export --platform web
+
+      - name: Generate post-remediation audit report
+        run: |
+          npm audit --json > npm-audit-after.json || true
+          node -e "const r=require('./npm-audit-after.json'); console.log('Post-remediation vulnerability summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {}));"
+
+      - name: Upload safe remediation preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltguard-safe-remediation-preview
+          path: |
+            package-lock.json
+            npm-audit-after.json
+          if-no-files-found: error
+          retention-days: 7
