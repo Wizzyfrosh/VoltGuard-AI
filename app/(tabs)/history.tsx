@@ -162,6 +162,34 @@ export default function HistoryScreen() {
             ))}
           </View>
         )}
+        {history.enabled && history.samples.some((sample) => sample.level !== null) && (
+          <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent battery level</Text>
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>Latest saved foreground observations, oldest to newest. Gaps are not filled.</Text>
+            <View style={styles.levelChart}>
+              {history.samples.slice(0, 20).reverse().map((sample) => {
+                const level = sample.level === null ? null : Math.max(0, Math.min(1, sample.level));
+                const height = level === null ? 3 : Math.max(3, level * 88);
+                const timeLabel = new Date(sample.observedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return (
+                  <View key={sample.id} style={styles.levelColumn} accessibilityLabel={level === null ? 'Battery level unavailable at ' + timeLabel : Math.round(level * 100) + ' percent at ' + timeLabel}>
+                    <View style={styles.levelBarTrack}>
+                      <View style={[styles.levelBar, { height, backgroundColor: level === null ? colors.border : colors.primary, opacity: level === null ? 0.4 : 1 }]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.chartAxis}>
+              <Text style={[styles.date, { color: colors.textSecondary }]}>
+                {history.samples.length ? formatDate(history.samples[Math.min(19, history.samples.length - 1)].observedAt) : ''}
+              </Text>
+              <Text style={[styles.date, { color: colors.textSecondary }]}>
+                {history.samples.length ? formatDate(history.samples[0].observedAt) : ''}
+              </Text>
+            </View>
+          </View>
+        )}
         {history.enabled && history.samples.length > 0 && (
           <View style={styles.sampleSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent battery readings</Text>
@@ -201,6 +229,12 @@ const styles = StyleSheet.create({
   comparisonColumns: { flexDirection: 'row', gap: 10 },
   comparisonColumn: { flex: 1, gap: 7, backgroundColor: 'rgba(128,128,128,0.07)', borderRadius: 12, padding: 11 },
   sampleSection: { gap: 10 },
+  chartCard: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
+  levelChart: { height: 100, flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
+  levelColumn: { flex: 1, height: 92, justifyContent: 'flex-end' },
+  levelBarTrack: { height: 92, justifyContent: 'flex-end', alignItems: 'center' },
+  levelBar: { width: '70%', minHeight: 3, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  chartAxis: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginTop: 8 },
   sampleRow: { borderWidth: 1, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   sampleCopy: { flex: 1, gap: 3 },
