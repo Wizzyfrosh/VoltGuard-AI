@@ -27,3 +27,22 @@ export function openOptimizationSetting(_setting: 'brightness' | 'location' | 'b
 
 export function getChargingAlarmStatus(): ChargingAlarmStatus | null { return null; }
 export async function sendTestChargingAlarm(): Promise<boolean> { return false; }
+
+export type AppUsageEntry = {
+  packageName: string;
+  appLabel: string;
+  foregroundTimeMs: number;
+  lastTimeUsed: number;
+};
+
+export type AppUsageSnapshot = {
+  permissionGranted: boolean;
+  windowStart: number;
+  windowEnd: number;
+  apps: AppUsageEntry[];
+};
+
+// Android Usage Access is not available to web builds.
+export function hasUsageAccess(): boolean { return false; }
+export function openUsageAccessSettings(): boolean { return false; }
+export function getAppUsageStats(): AppUsageSnapshot | null { return null; }
