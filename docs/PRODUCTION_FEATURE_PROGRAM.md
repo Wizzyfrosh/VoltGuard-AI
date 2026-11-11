@@ -48,22 +48,22 @@ Statuses reflect source inspection, not physical-device verification.
 - [x] Charging threshold preferences/alerts and Android foreground monitoring service exist in code.
 - [x] Local opt-in history and charging-session inference exist in code (30-day retention).
 - [x] Browser testing path exists on phase-6 branch; browser Battery Status API is optional and limited.
-- [x] Analytics breakdown explicitly removed prototype/sample app-consumption values; current UI correctly explains that per-app power data is not accessible.
+- [x] Analytics breakdown displays real Android app foreground activity (opt-in Usage Access) with app labels, launcher icons and observed foreground duration; this is not per-app energy attribution.
 - [ ] Physical Android verification of native diagnostics, threshold alert sound, screen-off operation, reboot recovery, and OEM behaviour.
 - [ ] Web history persistence: verify current browser database adapter end-to-end; feature README still describes web history as unsupported, so documentation and implementation must be reconciled.
 - [ ] Production Vercel preview verification for the current web branch.
 - [ ] Resolve/verify prior native splash/startup issue on physical device.
 - [ ] Update stale `src/features/battery/README.md`: it says cycle count is intentionally null, while native code now attempts Android 14+ `EXTRA_CYCLE_COUNT`; it also describes the old web storage limitation.
 - [ ] Dependency/security audit and remediation with current lockfile and CI evidence.
-- [ ] No dedicated daily battery-care reminder exists.
-- [ ] No evidence-backed battery drain analysis engine exists.
-- [ ] No robust battery health explanation separating OS health from capacity/wear estimates exists.
+- [x] Daily battery-care reminder scheduling is implemented; physical delivery and OEM reliability verification remain open.
+- [x] Sample-based battery drain analysis exists with interval validation and coverage indicators; physical-device calibration remains open.
+- [x] Battery health presentation separates OS-reported status from capacity/wear estimates; actual wear remains unavailable without valid capacity inputs.
 - [ ] Per-app energy consumption is not implemented; current capability is not-implemented.
 - [ ] No verified screen-off/deep-sleep breakdown exists.
-- [ ] No full charging detection/optimization hub exists.
+- [ ] Charging Detect & Optimization Hub is partially implemented; complete live-state, diagnostics and physical-device acceptance checks remain open.
 - [ ] No real app candidate/protected-app sleep management exists.
 - [ ] No defensible boost score or cleaner exists; do not invent one.
-- [ ] No complete device information page covering only supported fields exists.
+- [ ] Device information coverage remains incomplete; continue adding only verified platform-supported fields and provenance.
 - [ ] No report export workflow exists.
 - [ ] No weekly/monthly battery wear/efficiency reporting is established from validated samples.
 
@@ -174,7 +174,7 @@ For every workstream:
 
 **Audit findings from source inspection:**
 - Native Kotlin currently attempts to read Android 14+ `BatteryManager.EXTRA_CYCLE_COUNT`; README and feature README disagree, and the feature README is stale.
-- The Analytics breakdown explicitly removed prototype/sample app-consumption values. Per-app energy is not available; this is correct and must not be regressed with fabricated values.
+- The Analytics breakdown shows Android UsageStats foreground activity (with app logos) when permission is granted. It must never be presented as per-app energy; per-app mAh remains unavailable to ordinary apps.
 - The telemetry capability model includes per-app power usage as `not-implemented`.
 - Charging threshold monitoring and foreground service exist in code, but audible behaviour, screen-off operation, reboot recovery and OEM behaviour still require physical-device testing.
 - Local SQLite history and inferred charging sessions exist; the browser adapter/docs need an end-to-end reconciliation and test.
@@ -508,3 +508,21 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - Web cannot reliably deliver a scheduled reminder while the browser is closed.
 - The threshold alert is a notification with alarm-style sound/vibration, not a guaranteed continuous/full-screen alarm and cannot stop charging.
 - No CSV/JSON export or cloud battery-history upload is in scope.
+
+
+## Phase D — Device insights responsiveness and app identity — 2026-11-11
+
+- [x] Convert Usage Access checks, app foreground-usage queries and system RAM/storage diagnostics to Expo asynchronous native module functions.
+- [x] Update TypeScript and web fallback interfaces to return Promise-based results.
+- [x] Await native results in the Power Usage screen, avoid duplicate refreshes, and prevent state updates after unmount.
+- [x] Display Android launcher icons beside app names in foreground-activity rows, with a fallback icon when package metadata is unavailable.
+- [x] Rank/limit foreground usage to the top 20 packages before resolving package labels and rendering icons.
+- [ ] Validate TypeScript, unit tests, lint, web export and Android Kotlin compilation on the latest Phase D commit.
+- [ ] Verify native execution queue behaviour and UI responsiveness with Android profiling; an AsyncFunction declaration alone is not proof of background-thread execution.
+- [ ] Validate Usage Access permission grant/revoke, empty history, package icon fallbacks and reported durations on physical Android devices.
+- [ ] Add prominent, accurate Usage Access disclosure and verify Play distribution policy compliance before public release.
+
+**Latest implementation commit:** `fc9a36829cd41a61180ae27d11be32842f549b76`  
+**Pull request:** #14, draft, based on `phase-c/battery-analytics-hardening`.  
+**Validation:** CI is running; an earlier run caught missing style declarations, which were added in the latest commit. Do not mark this phase complete until latest-commit checks and physical-device acceptance tests pass.
+
