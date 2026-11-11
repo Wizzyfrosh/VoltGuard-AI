@@ -101,6 +101,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Enforce production dependency security threshold
+        run: npm audit --omit=dev --audit-level=high
+
   safe-dependency-remediation-preview:
     name: Safe dependency remediation preview
     runs-on: ubuntu-latest
