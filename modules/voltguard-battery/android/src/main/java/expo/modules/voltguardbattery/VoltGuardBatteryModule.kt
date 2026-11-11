@@ -17,6 +17,10 @@ import android.app.usage.UsageStatsManager
 import android.os.Process
 import android.os.BatteryManager
 import android.os.Build
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -153,14 +157,28 @@ class VoltGuardBatteryModule : Module() {
       .map { (packageName, rows) ->
         val foregroundMs = rows.sumOf { it.totalTimeInForeground }
         val lastUsed = rows.maxOfOrNull { it.lastTimeUsed } ?: 0L
-        val label = try {
+        val appDetails = try {
           @Suppress("DEPRECATION")
           val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
-          context.packageManager.getApplicationLabel(appInfo).toString()
-        } catch (_: Exception) { packageName }
+          val label = context.packageManager.getApplicationLabel(appInfo).toString()
+          val iconDataUri = try {
+            val drawable = context.packageManager.getApplicationIcon(appInfo)
+            val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            ByteArrayOutputStream().use { output ->
+              bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+              bitmap.recycle()
+              "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+            }
+          } catch (_: Exception) { null }
+          label to iconDataUri
+        } catch (_: Exception) { packageName to null }
         mapOf(
           "packageName" to packageName,
-          "appLabel" to label,
+          "appLabel" to appDetails.first,
+          "iconDataUri" to appDetails.second,
           "foregroundTimeMs" to foregroundMs,
           "lastTimeUsed" to lastUsed
         )
