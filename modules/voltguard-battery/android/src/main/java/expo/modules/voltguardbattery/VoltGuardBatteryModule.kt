@@ -149,7 +149,13 @@ class VoltGuardBatteryModule : Module() {
     val end = System.currentTimeMillis()
     val start = end - 24L * 60L * 60L * 1000L
     val manager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
-      ?: return mapOf("permissionGranted" to true, "windowStart" to start, "windowEnd" to end, "apps" to emptyList<Map<String, Any?>>())
+      ?: return mapOf(
+        "permissionGranted" to true,
+        "queryAvailable" to false,
+        "windowStart" to start,
+        "windowEnd" to end,
+        "apps" to emptyList<Map<String, Any?>>()
+      )
     val stats = try {
       manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
     } catch (_: Exception) { null }
