@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator, Image } from 'react-native';
+import { AppState, View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { Info, Battery, Smartphone, Clock3, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react-native';
@@ -61,7 +61,16 @@ export default function BreakdownScreen() {
   useEffect(() => {
     mountedRef.current = true;
     void refreshUsage();
-    return () => { mountedRef.current = false; };
+    const subscription = AppState.addEventListener('change', (state) => {
+      // Android returns here after the user grants or revokes Usage Access.
+      // Re-check permission and refresh the snapshot instead of requiring a
+      // manual app restart. The in-flight guard prevents overlapping queries.
+      if (state === 'active') void refreshUsage();
+    });
+    return () => {
+      mountedRef.current = false;
+      subscription.remove();
+    };
   }, [refreshUsage]);
 
   return (
