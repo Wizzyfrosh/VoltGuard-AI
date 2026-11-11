@@ -31,6 +31,7 @@ export async function sendTestChargingAlarm(): Promise<boolean> { return false; 
 export type AppUsageEntry = {
   packageName: string;
   appLabel: string;
+  iconDataUri: string | null;
   foregroundTimeMs: number;
   lastTimeUsed: number;
 };
