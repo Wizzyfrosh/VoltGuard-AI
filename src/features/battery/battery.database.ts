@@ -4,6 +4,19 @@ import { Platform } from 'react-native';
 const DATABASE_NAME = 'voltguard.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
+function getWebPreference(key: string): string | null {
+  try { return globalThis.localStorage?.getItem('voltguard:' + key) ?? null; } catch { return null; }
+}
+
+function setWebPreference(key: string, value: string): void {
+  try {
+    if (!globalThis.localStorage) throw new Error('Browser storage is unavailable.');
+    globalThis.localStorage.setItem('voltguard:' + key, value);
+  } catch {
+    throw new Error('VoltGuard could not save this setting in browser storage. Check private browsing or storage permissions.');
+  }
+}
+
 async function openBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (Platform.OS === 'web') {
     throw new Error('Local battery history is not enabled on web yet. A browser-specific persistence adapter is required.');
@@ -56,6 +69,7 @@ export async function getBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
 }
 
 export async function getBatteryPreference(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') return getWebPreference(key);
   const database = await openBatteryDatabase();
   const row = await database.getFirstAsync<{ preference_value: string }>(
     'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
@@ -65,6 +79,7 @@ export async function getBatteryPreference(key: string): Promise<string | null> 
 }
 
 export async function setBatteryPreference(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') { setWebPreference(key, value); return; }
   const database = await openBatteryDatabase();
   await database.runAsync(
     'INSERT INTO user_preferences (preference_key, preference_value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(preference_key) DO UPDATE SET preference_value = excluded.preference_value, updated_at = CURRENT_TIMESTAMP',
