@@ -37,6 +37,7 @@ export function useBatteryTelemetry() {
   const [hasError, setHasError] = useState(false);
   const snapshotRef = useRef<BatterySnapshot>(emptySnapshot);
   const lastPersistedRef = useRef<BatterySnapshot | null>(null);
+  const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
   const inFlightRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(false);
   const eventRevisionRef = useRef(0);
@@ -50,11 +51,13 @@ export function useBatteryTelemetry() {
       const previous = lastPersistedRef.current;
       // Reserve this sample while its write is pending to avoid queuing duplicates.
       lastPersistedRef.current = next;
-      void recordBatterySnapshot(next).catch(() => {
-        // History is optional. Restore the previous checkpoint so a later
-        // telemetry update can retry instead of permanently skipping this sample.
-        if (lastPersistedRef.current === next) lastPersistedRef.current = previous;
-      });
+      persistenceQueueRef.current = persistenceQueueRef.current
+        .then(() => recordBatterySnapshot(next))
+        .catch(() => {
+          // History is optional. Restore the previous checkpoint so a later
+          // telemetry update can retry instead of permanently skipping this sample.
+          if (lastPersistedRef.current === next) lastPersistedRef.current = previous;
+        });
     }
   }, []);
 
