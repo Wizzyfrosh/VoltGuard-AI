@@ -122,7 +122,7 @@ jobs:
 
       - name: Update only audited high and critical transitive packages
         run: |
-          npm update --no-save \
+          npm update \
             @isaacs/brace-expansion \
             @react-navigation/core \
             @xmldom/xmldom \
