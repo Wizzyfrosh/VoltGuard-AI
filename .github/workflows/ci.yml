@@ -155,15 +155,10 @@ jobs:
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           pkg.overrides = {
             ...(pkg.overrides ?? {}),
-            'brace-expansion': '^1.1.21',
-            postcss: '^8.5.32',
-            'expo-router': {
-              ...(pkg.overrides?.['expo-router'] ?? {}),
-              'query-string': {
-                ...(pkg.overrides?.['expo-router']?.['query-string'] ?? {}),
-                'decode-uri-component': '0.5.1'
-              }
-            }
+            'minimatch@3.1.5': {
+              'brace-expansion': '^1.1.21'
+            },
+            postcss: '^8.5.32'
           };
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
           NODE
