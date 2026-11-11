@@ -42,6 +42,7 @@ function mapSession(row: ChargingSessionRow): ChargingSession {
 }
 
 export async function isBatteryHistoryEnabled(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
   const db = await getBatteryDatabase();
   const row = await db.getFirstAsync<{ preference_value: string }>(
     'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
@@ -51,6 +52,7 @@ export async function isBatteryHistoryEnabled(): Promise<boolean> {
 }
 
 export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> {
+  if (Platform.OS === 'web') throw new Error('Battery history is not available in the web build.');
   const db = await getBatteryDatabase();
   await db.withTransactionAsync(async () => {
     await db.runAsync(
@@ -137,6 +139,7 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
 }
 
 export async function getChargingSessions(limit = 50): Promise<ChargingSession[]> {
+  if (Platform.OS === 'web') return [];
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
   const db = await getBatteryDatabase();
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
@@ -154,6 +157,7 @@ export async function getChargingSessions(limit = 50): Promise<ChargingSession[]
 }
 
 export async function clearBatteryHistory(): Promise<void> {
+  if (Platform.OS === 'web') return;
   const db = await getBatteryDatabase();
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM battery_samples');
