@@ -56,6 +56,7 @@ export type AppUsageEntry = {
 
 export type AppUsageSnapshot = {
   permissionGranted: boolean;
+  queryAvailable?: boolean;
   windowStart: number;
   windowEnd: number;
   apps: AppUsageEntry[];
