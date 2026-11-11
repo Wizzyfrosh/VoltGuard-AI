@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -31,23 +31,35 @@ export default function BreakdownScreen() {
   const [loadingUsage, setLoadingUsage] = useState(false);
   const [resources, setResources] = useState<SystemResourceDiagnostics | null>(null);
   const trends = useBatteryTrends();
+  const mountedRef = useRef(true);
 
-  const refreshUsage = useCallback(() => {
-    if (Platform.OS !== 'android') return;
+  const refreshUsage = useCallback(async () => {
+    if (Platform.OS !== 'android' || loadingUsage) return;
     setLoadingUsage(true);
     try {
-      setResources(getSystemResourceDiagnostics());
-      const granted = hasUsageAccess();
+      const [resourceSnapshot, granted] = await Promise.all([
+        getSystemResourceDiagnostics(),
+        hasUsageAccess(),
+      ]);
+      const usageSnapshot = granted ? await getAppUsageStats() : null;
+      if (!mountedRef.current) return;
+      setResources(resourceSnapshot);
       setUsageGranted(granted);
-      setUsage(granted ? getAppUsageStats() : null);
+      setUsage(usageSnapshot);
     } catch {
+      if (!mountedRef.current) return;
       setUsage(null);
+      setResources(null);
     } finally {
-      setLoadingUsage(false);
+      if (mountedRef.current) setLoadingUsage(false);
     }
-  }, []);
+  }, [loadingUsage]);
 
-  useEffect(() => { refreshUsage(); }, [refreshUsage]);
+  useEffect(() => {
+    mountedRef.current = true;
+    void refreshUsage();
+    return () => { mountedRef.current = false; };
+  }, [refreshUsage]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
