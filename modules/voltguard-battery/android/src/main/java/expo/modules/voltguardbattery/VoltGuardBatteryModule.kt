@@ -150,41 +150,50 @@ class VoltGuardBatteryModule : Module() {
       manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
     } catch (_: Exception) { emptyList() }
     val ownPackage = context.packageName
-    val apps = stats
+    // Aggregate and rank usage before resolving package metadata or rendering icons.
+    // Icon rendering is comparatively expensive; doing it for every package returned
+    // by UsageStatsManager creates unnecessary work on every refresh.
+    val topUsage = stats
       .asSequence()
       .filter { it.packageName != ownPackage && it.totalTimeInForeground > 0L }
       .groupBy { it.packageName }
       .map { (packageName, rows) ->
-        val foregroundMs = rows.sumOf { it.totalTimeInForeground }
-        val lastUsed = rows.maxOfOrNull { it.lastTimeUsed } ?: 0L
-        val appDetails = try {
-          @Suppress("DEPRECATION")
-          val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
-          val label = context.packageManager.getApplicationLabel(appInfo).toString()
-          val iconDataUri = try {
-            val drawable = context.packageManager.getApplicationIcon(appInfo)
-            val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            ByteArrayOutputStream().use { output ->
-              bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-              bitmap.recycle()
-              "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
-            }
-          } catch (_: Exception) { null }
-          label to iconDataUri
-        } catch (_: Exception) { packageName to null }
-        mapOf(
-          "packageName" to packageName,
-          "appLabel" to appDetails.first,
-          "iconDataUri" to appDetails.second,
-          "foregroundTimeMs" to foregroundMs,
-          "lastTimeUsed" to lastUsed
+        Triple(
+          packageName,
+          rows.sumOf { it.totalTimeInForeground },
+          rows.maxOfOrNull { it.lastTimeUsed } ?: 0L
         )
       }
-      .sortedByDescending { it["foregroundTimeMs"] as Long }
+      .sortedByDescending { it.second }
       .take(20)
+
+    val apps = topUsage.map { (packageName, foregroundMs, lastUsed) ->
+      val appDetails = try {
+        @Suppress("DEPRECATION")
+        val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
+        val label = context.packageManager.getApplicationLabel(appInfo).toString()
+        val iconDataUri = try {
+          val drawable = context.packageManager.getApplicationIcon(appInfo)
+          val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
+          val canvas = Canvas(bitmap)
+          drawable.setBounds(0, 0, canvas.width, canvas.height)
+          drawable.draw(canvas)
+          ByteArrayOutputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+            bitmap.recycle()
+            "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+          }
+        } catch (_: Exception) { null }
+        label to iconDataUri
+      } catch (_: Exception) { packageName to null }
+      mapOf(
+        "packageName" to packageName,
+        "appLabel" to appDetails.first,
+        "iconDataUri" to appDetails.second,
+        "foregroundTimeMs" to foregroundMs,
+        "lastTimeUsed" to lastUsed
+      )
+    }
     return mapOf(
       "permissionGranted" to true,
       "windowStart" to start,
