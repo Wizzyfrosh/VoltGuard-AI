@@ -31,10 +31,12 @@ export default function BreakdownScreen() {
   const [loadingUsage, setLoadingUsage] = useState(false);
   const [resources, setResources] = useState<SystemResourceDiagnostics | null>(null);
   const trends = useBatteryTrends();
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(false);
+  const refreshInFlightRef = useRef(false);
 
   const refreshUsage = useCallback(async () => {
-    if (Platform.OS !== 'android' || loadingUsage) return;
+    if (Platform.OS !== 'android' || refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
     setLoadingUsage(true);
     try {
       const [resourceSnapshot, granted] = await Promise.all([
@@ -51,9 +53,10 @@ export default function BreakdownScreen() {
       setUsage(null);
       setResources(null);
     } finally {
+      refreshInFlightRef.current = false;
       if (mountedRef.current) setLoadingUsage(false);
     }
-  }, [loadingUsage]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
