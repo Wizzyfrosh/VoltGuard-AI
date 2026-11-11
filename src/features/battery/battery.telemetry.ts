@@ -21,7 +21,7 @@ export function mergeBatterySnapshots(
   const capabilities = {
     ...incoming.capabilities,
     batteryLevel: level !== null ? 'available' as const : incoming.capabilities.batteryLevel,
-    chargingState: state !== ExpoBattery.BatteryState.UNKNOWN ? 'available' as const : incoming.capabilities.chargingState,
+    chargingState: state !== 0 /* BatteryState.UNKNOWN */ ? 'available' as const : incoming.capabilities.chargingState,
     lowPowerMode: lowPowerMode !== null ? 'available' as const : incoming.capabilities.lowPowerMode,
     temperature: diagnostics?.temperatureCelsius != null ? 'available' as const : incoming.capabilities.temperature,
     voltage: diagnostics?.voltageMilliVolts != null ? 'available' as const : incoming.capabilities.voltage,
