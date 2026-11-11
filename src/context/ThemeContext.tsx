@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { theme } from '../theme/colors';
 import { getBatteryPreference, setBatteryPreference } from '../features/battery/battery.database';
@@ -20,11 +20,12 @@ const ThemeContext = createContext<ThemeContextInterface | undefined>(undefined)
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const systemScheme = useColorScheme();
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
+  const userChangedPreference = useRef(false);
 
   useEffect(() => {
     let active = true;
     void getBatteryPreference(PREFERENCE_KEY).then(value => {
-      if (active && (value === 'system' || value === 'light' || value === 'dark')) {
+      if (active && !userChangedPreference.current && (value === 'system' || value === 'light' || value === 'dark')) {
         setThemePreferenceState(value);
       }
     }).catch(() => undefined);
@@ -32,6 +33,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const setThemePreference = useCallback((preference: ThemePreference) => {
+    userChangedPreference.current = true;
     setThemePreferenceState(preference);
     void setBatteryPreference(PREFERENCE_KEY, preference).catch(() => undefined);
   }, []);
