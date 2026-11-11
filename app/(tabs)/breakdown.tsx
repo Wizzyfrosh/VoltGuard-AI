@@ -181,7 +181,9 @@ export default function BreakdownScreen() {
                 <ShieldCheck size={15} color={colors.primary} />
                 <Text style={[styles.caption, { color: colors.textSecondary }]}>Permission granted · Local device data · Last 24 hours</Text>
               </View>
-              {usage?.apps?.length ? usage.apps.map((app) => (
+              {usage?.queryAvailable === false ? (
+                <Text style={[styles.body, { color: colors.warning }]}>App activity is temporarily unavailable. Try refreshing in a moment.</Text>
+              ) : usage?.apps?.length ? usage.apps.map((app) => (
                 <View key={app.packageName} style={[styles.appRow, { borderTopColor: colors.border }]}>
                   <View style={styles.appIdentity}>
                     {app.iconDataUri ? (
