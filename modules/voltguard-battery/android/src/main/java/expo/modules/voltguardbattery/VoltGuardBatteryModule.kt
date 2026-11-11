@@ -32,7 +32,7 @@ class VoltGuardBatteryModule : Module() {
       readOptimizationDiagnostics()
     }
 
-    Function("hasUsageAccess") {
+    AsyncFunction("hasUsageAccess") {
       hasUsageAccess()
     }
 
@@ -44,11 +44,11 @@ class VoltGuardBatteryModule : Module() {
       } catch (_: Exception) { false }
     }
 
-    Function("getAppUsageStats") {
+    AsyncFunction("getAppUsageStats") {
       readAppUsageStats()
     }
 
-    Function("getSystemResourceDiagnostics") {
+    AsyncFunction("getSystemResourceDiagnostics") {
       readSystemResourceDiagnostics()
     }
 
