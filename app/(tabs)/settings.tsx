@@ -65,7 +65,7 @@ export default function SettingsScreen() {
               <Text style={[styles.body, { color: colors.textSecondary }]}>Save readings on this device</Text>
             </View>
             {history.isLoading ? <ActivityIndicator color={colors.primary} /> : (
-              <Switch value={history.enabled} onValueChange={history.updateEnabled} disabled={!history.isAvailable}
+              <Switch value={history.enabled} onValueChange={value => { void history.updateEnabled(value); }} disabled={!history.isAvailable}
                 trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF"
                 accessibilityLabel="Enable battery history" />
             )}
@@ -97,7 +97,7 @@ export default function SettingsScreen() {
               <Text style={[styles.body, { color: colors.textSecondary }]}>Notify when your selected level is reached</Text>
             </View>
             {alerts.isLoading ? <ActivityIndicator color={colors.primary} /> : (
-              <Switch value={alerts.enabled} onValueChange={alerts.updateEnabled} disabled={!alerts.isAvailable}
+              <Switch value={alerts.enabled} onValueChange={value => { void alerts.updateEnabled(value); }} disabled={!alerts.isAvailable}
                 trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF"
                 accessibilityLabel="Enable charging target alert" />
             )}
