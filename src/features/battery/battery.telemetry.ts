@@ -5,12 +5,15 @@ export function mergeBatterySnapshots(
   current: BatterySnapshot,
   incoming: BatterySnapshot,
   preserveCurrentTelemetry = false,
+  preserveDiagnostics = true,
 ): BatterySnapshot {
   const useCurrent = (preserveCurrentTelemetry ? current : incoming);
-  const diagnostics = incoming.androidDiagnostics ?? current.androidDiagnostics;
+  const diagnostics = preserveDiagnostics
+    ? incoming.androidDiagnostics ?? current.androidDiagnostics
+    : incoming.androidDiagnostics;
   const diagnosticsObservedAt = incoming.androidDiagnostics
     ? incoming.diagnosticsObservedAt ?? incoming.observedAt
-    : current.diagnosticsObservedAt ?? null;
+    : preserveDiagnostics ? current.diagnosticsObservedAt ?? null : null;
   const level = useCurrent.level ?? (preserveCurrentTelemetry ? incoming.level : current.level);
   const state = useCurrent.state !== ExpoBattery.BatteryState.UNKNOWN
     ? useCurrent.state
