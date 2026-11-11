@@ -84,6 +84,15 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
     );
     if (preference?.preference_value !== 'true') return;
 
+    // Enabling history can race the telemetry hook's first publish. Treat an
+    // identical source/timestamp as one observation rather than two samples.
+    const existing = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM battery_samples WHERE observed_at = ? AND source = ? LIMIT 1',
+      snapshot.observedAt,
+      snapshot.source,
+    );
+    if (existing) return;
+
     await db.runAsync(
       `INSERT INTO battery_samples
        (observed_at, platform, level, battery_state, low_power_mode, source)
