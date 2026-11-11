@@ -94,6 +94,7 @@ export class ExpoBatteryTelemetryProvider implements BatteryTelemetryProvider {
       state,
       lowPowerMode,
       observedAt: new Date().toISOString(),
+      diagnosticsObservedAt: androidDiagnostics !== null ? new Date().toISOString() : null,
       source: androidDiagnostics !== null
         ? 'native'
         : level !== null || isKnownBatteryState(state, ExpoBattery.BatteryState.UNKNOWN) || lowPowerMode !== null
