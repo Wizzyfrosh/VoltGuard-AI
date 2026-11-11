@@ -178,10 +178,11 @@ jobs:
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin
 
-      - name: Generate post-remediation audit report
+      - name: Generate post-remediation audit reports
         run: |
           npm audit --json > npm-audit-after.json || true
-          node -e "const r=require('./npm-audit-after.json'); const v=r.metadata?.vulnerabilities ?? {}; console.log('Selective remediation vulnerability summary:', JSON.stringify(v)); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name + ': ' + item.severity + ' | fixAvailable=' + JSON.stringify(item.fixAvailable));"
+          npm audit --omit=dev --json > npm-audit-production-after.json || true
+          node -e "for (const file of ['npm-audit-after.json','npm-audit-production-after.json']) { const r=require('./'+file); const v=r.metadata?.vulnerabilities ?? {}; console.log(file + ': ' + JSON.stringify(v)); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) if (item.severity === 'high' || item.severity === 'critical') console.log('  ' + name + ': ' + item.severity + ' | direct=' + item.isDirect + ' | fixAvailable=' + JSON.stringify(item.fixAvailable)); }"
 
       - name: Upload selective remediation preview
         uses: actions/upload-artifact@v4
@@ -191,5 +192,6 @@ jobs:
             package.json
             package-lock.json
             npm-audit-after.json
+            npm-audit-production-after.json
           if-no-files-found: error
           retention-days: 7
