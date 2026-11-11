@@ -2,9 +2,9 @@ name: VoltGuard validation
 
 on:
   push:
-    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability]
+    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening]
   pull_request:
-    branches: [main, phase-0/stabilization-audit, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing, phase-a/product-polish-settings-legal]
+    branches: [main, phase-0/stabilization-audit, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing, phase-a/product-polish-settings-legal, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening]
 
 permissions:
   contents: read
@@ -71,31 +71,6 @@ jobs:
       - name: Compile Android Kotlin
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin
-
-      - name: Configure release APK for device testing
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('android/app/build.gradle')
-          source = path.read_text()
-          marker = '    release {\n'
-          if marker not in source:
-              raise SystemExit('Could not find Android release build type in generated Gradle file')
-          source = source.replace(marker, marker + '      signingConfig signingConfigs.debug\n', 1)
-          path.write_text(source)
-          PY
-
-      - name: Assemble standalone release APK
-        working-directory: android
-        run: ./gradlew :app:assembleRelease
-
-      - name: Upload standalone Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: voltguard-android-standalone-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
-          retention-days: 7
 
   dependency-audit:
     name: npm dependency security audit
