@@ -20,11 +20,15 @@ import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.util.Base64
+import android.util.LruCache
 import java.io.ByteArrayOutputStream
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class VoltGuardBatteryModule : Module() {
+  // Keep rendered launcher icons in memory so a manual refresh does not repeatedly
+  // decode Drawables, allocate Bitmaps and Base64-encode the same package icons.
+  private val appDetailsCache = LruCache<String, Pair<String, String?>>(40)
   override fun definition() = ModuleDefinition {
     Name("VoltGuardBattery")
 
@@ -168,24 +172,29 @@ class VoltGuardBatteryModule : Module() {
       .take(20)
 
     val apps = topUsage.map { (packageName, foregroundMs, lastUsed) ->
-      val appDetails = try {
+      val appDetails = appDetailsCache.get(packageName) ?: try {
         @Suppress("DEPRECATION")
         val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
         val label = context.packageManager.getApplicationLabel(appInfo).toString()
         val iconDataUri = try {
           val drawable = context.packageManager.getApplicationIcon(appInfo)
           val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
-          val canvas = Canvas(bitmap)
-          drawable.setBounds(0, 0, canvas.width, canvas.height)
-          drawable.draw(canvas)
-          ByteArrayOutputStream().use { output ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+          try {
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            ByteArrayOutputStream().use { output ->
+              bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+              "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+            }
+          } finally {
             bitmap.recycle()
-            "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
           }
         } catch (_: Exception) { null }
-        label to iconDataUri
-      } catch (_: Exception) { packageName to null }
+        (label to iconDataUri).also { appDetailsCache.put(packageName, it) }
+      } catch (_: Exception) {
+        (packageName to null).also { appDetailsCache.put(packageName, it) }
+      }
       mapOf(
         "packageName" to packageName,
         "appLabel" to appDetails.first,
