@@ -97,12 +97,11 @@ export function useBatteryCareReminder() {
       return false;
     }
     if (mountedRef.current) setError(null);
-    let scheduledId: string | null = null;
     try {
       const stored = parseSettings(await getBatteryPreference(PREFERENCE_KEY));
+      const scheduledId = nextEnabled ? await scheduleReminder(stored.time) : null;
       // Create the replacement first. If scheduling or persistence fails, the
       // currently active reminder remains intact.
-      scheduledId = nextEnabled ? await scheduleReminder(stored.time) : null;
       try {
         await setBatteryPreference(PREFERENCE_KEY, JSON.stringify({
           enabled: nextEnabled,
