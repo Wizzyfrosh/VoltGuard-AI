@@ -192,10 +192,12 @@ class VoltGuardBatteryModule : Module() {
     val apps = topUsage.map { (packageName, foregroundMs, lastUsed) ->
       val appDetails = try {
         @Suppress("DEPRECATION")
-        val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
+        val packageInfo = context.packageManager.getPackageInfo(packageName, 0)
+        val appInfo = packageInfo.applicationInfo
+          ?: throw IllegalStateException("Application metadata is unavailable")
         // Package update time changes when an app is upgraded, so a cached
         // launcher icon/label cannot outlive the installed app version.
-        val cacheKey = "$packageName:${appInfo.lastUpdateTime}"
+        val cacheKey = "$packageName:${packageInfo.lastUpdateTime}"
         synchronized(appDetailsCache) { appDetailsCache.get(cacheKey) } ?: run {
           val label = context.packageManager.getApplicationLabel(appInfo).toString()
           val iconDataUri = try {
