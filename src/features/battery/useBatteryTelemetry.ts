@@ -37,6 +37,7 @@ export function useBatteryTelemetry() {
   const [hasError, setHasError] = useState(false);
   const snapshotRef = useRef<BatterySnapshot>(emptySnapshot);
   const lastPersistedRef = useRef<BatterySnapshot | null>(null);
+  const lastScheduledRef = useRef<BatterySnapshot | null>(null);
   const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
   const inFlightRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(false);
@@ -47,16 +48,20 @@ export function useBatteryTelemetry() {
     setSnapshot(next);
     setHasError(next.source === 'unavailable');
 
-    if (shouldPersistBatterySnapshot(lastPersistedRef.current, next)) {
-      const previous = lastPersistedRef.current;
-      // Reserve this sample while its write is pending to avoid queuing duplicates.
-      lastPersistedRef.current = next;
+    if (shouldPersistBatterySnapshot(lastScheduledRef.current ?? lastPersistedRef.current, next)) {
+      // Serialize writes and distinguish queued samples from successfully persisted ones.
+      lastScheduledRef.current = next;
       persistenceQueueRef.current = persistenceQueueRef.current
-        .then(() => recordBatterySnapshot(next))
+        .then(async () => {
+          await recordBatterySnapshot(next);
+          lastPersistedRef.current = next;
+        })
         .catch(() => {
-          // History is optional. Restore the previous checkpoint so a later
-          // telemetry update can retry instead of permanently skipping this sample.
-          if (lastPersistedRef.current === next) lastPersistedRef.current = previous;
+          // History is optional. A failed write must not block live telemetry or
+          // prevent a later sample from being persisted.
+          if (lastScheduledRef.current === next) {
+            lastScheduledRef.current = lastPersistedRef.current;
+          }
         });
     }
   }, []);
