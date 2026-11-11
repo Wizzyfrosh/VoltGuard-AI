@@ -1,4 +1,3 @@
-import * as ExpoBattery from 'expo-battery';
 import type { BatterySnapshot } from './battery.types';
 
 export function mergeBatterySnapshots(
@@ -15,7 +14,7 @@ export function mergeBatterySnapshots(
     ? incoming.diagnosticsObservedAt ?? incoming.observedAt
     : preserveDiagnostics ? current.diagnosticsObservedAt ?? null : null;
   const level = useCurrent.level ?? (preserveCurrentTelemetry ? incoming.level : current.level);
-  const state = useCurrent.state !== ExpoBattery.BatteryState.UNKNOWN
+  const state = useCurrent.state !== 0 /* BatteryState.UNKNOWN */
     ? useCurrent.state
     : (preserveCurrentTelemetry ? incoming.state : current.state);
   const lowPowerMode = useCurrent.lowPowerMode ?? (preserveCurrentTelemetry ? incoming.lowPowerMode : current.lowPowerMode);
