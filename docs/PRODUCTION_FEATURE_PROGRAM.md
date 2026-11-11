@@ -53,7 +53,7 @@ Statuses reflect source inspection, not physical-device verification.
 - [ ] Web history persistence: verify current browser database adapter end-to-end; feature README still describes web history as unsupported, so documentation and implementation must be reconciled.
 - [ ] Production Vercel preview verification for the current web branch.
 - [ ] Resolve/verify prior native splash/startup issue on physical device.
-- [ ] Update stale `src/features/battery/README.md`: it says cycle count is intentionally null, while native code now attempts Android 14+ `EXTRA_CYCLE_COUNT`; it also describes the old web storage limitation.
+- [x] Update `src/features/battery/README.md` to document the conditional Android 14+ `EXTRA_CYCLE_COUNT` read. Web history persistence remains a separate end-to-end verification item.
 - [ ] Dependency/security audit and remediation with current lockfile and CI evidence.
 - [x] Daily battery-care reminder scheduling is implemented; physical delivery and OEM reliability verification remain open.
 - [x] Sample-based battery drain analysis exists with interval validation and coverage indicators; physical-device calibration remains open.
@@ -518,12 +518,36 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [x] Display Android launcher icons beside app names in foreground-activity rows, with a fallback icon when package metadata is unavailable.
 - [x] Move Usage Access checks, UsageStats queries, RAM/storage reads and package icon/label resolution onto `Dispatchers.IO`; synchronize shared icon-cache access.
 - [x] Rank/limit foreground usage to the top 20 packages before resolving package labels and rendering icons.
-- [ ] Validate TypeScript, unit tests, lint, web export and Android Kotlin compilation on the latest Phase D commit.
+- [x] Validate TypeScript, unit tests, lint and web export on commit `4df9a3ad6de36703b3869cd4d06b7aa4ea2c01e0`.
+- [x] Validate Android Kotlin compilation on the same commit after correcting the package-version cache lookup.
 - [ ] Verify native execution queue behaviour and UI responsiveness with Android profiling; an AsyncFunction declaration alone is not proof of background-thread execution.
 - [ ] Validate Usage Access permission grant/revoke, empty history, package icon fallbacks and reported durations on physical Android devices.
-- [ ] Add prominent, accurate Usage Access disclosure and verify Play distribution policy compliance before public release.
+- [x] Add a concise Usage Access disclosure covering the permission purpose, local processing and revocation path. Public distribution policy review remains open.
 
-**Latest implementation commit:** `71a691e03e018a5d91ad83f6037ff7ab7b947c75`  
-**Pull request:** #14, draft, based on `phase-c/battery-analytics-hardening`.  
-**Validation:** CI is running; an earlier run caught missing style declarations, which were added in the latest commit. Do not mark this phase complete until latest-commit checks and physical-device acceptance tests pass.
+**Latest implementation commit:** `4df9a3ad6de36703b3869cd4d06b7aa4ea2c01e0`  
+**Pull request:** [#14](https://github.com/Wizzyfrosh/VoltGuard-AI/pull/14), draft, based on `phase-c/battery-analytics-hardening`.  
+**Validation:** [CI run 43055890186](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43055890186) passed TypeScript, unit tests, lint, web export, dependency audit, remediation preview and Android Kotlin compilation. Physical-device acceptance and Android profiling remain outstanding. Keep the PR draft and unmerged until those gates are completed.
+
+## Phase E — Security, privacy and release hardening — 2026-11-11
+
+### Dependency security
+- [ ] Resolve the 43 reported npm audit findings through reviewed, compatible dependency updates; do not use `npm audit fix --force` blindly.
+- [ ] Safe remediation preview reduced the audit to 28 findings (1 low, 21 moderate, 6 high, 0 critical); the preview did not modify the repository lockfile. Commit only reviewed dependency and lockfile changes.
+- [ ] Verify production dependency exposure separately from development/build-tool findings; document any accepted residual risk with package path, advisory, exploitability and upgrade blocker.
+- [ ] Re-run typecheck, unit tests, lint, web export, Android compile and audit after every dependency update.
+
+### Privacy and platform compliance
+- [ ] Verify Privacy Policy, Terms and Permissions & Data Use screens against actual collection, retention, local storage, notification and Usage Access behaviour.
+- [ ] Verify Android manifest permissions are minimal and each sensitive permission has an in-app purpose and revocation route.
+- [ ] Review Usage Access and package metadata handling against Google Play policy before distribution; do not add `QUERY_ALL_PACKAGES` as a shortcut.
+- [ ] Confirm no telemetry, usage summaries, app labels/icons or battery history are uploaded; inspect network requests and build configuration.
+- [ ] Reconcile web history documentation with the actual browser database adapter and end-to-end persistence tests.
+
+### Release integrity
+- [ ] Audit deep links, external intents, notification receivers/services, exported components and PendingIntent mutability/immutability.
+- [ ] Confirm no secrets or signing credentials are committed; use CI secrets and a documented release-signing process.
+- [ ] Verify production build configuration, permissions, notification channel behaviour, crash handling and privacy disclosures.
+- [ ] Produce a release checklist and device test matrix; no public release until physical Android checks pass.
+
+**Scope exclusions:** no CSV/JSON export, no fabricated telemetry, no cloud battery-history upload, and no automatic charging stop.
 
