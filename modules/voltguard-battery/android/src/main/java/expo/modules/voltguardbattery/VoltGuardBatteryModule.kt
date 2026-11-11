@@ -152,7 +152,16 @@ class VoltGuardBatteryModule : Module() {
       ?: return mapOf("permissionGranted" to true, "windowStart" to start, "windowEnd" to end, "apps" to emptyList<Map<String, Any?>>())
     val stats = try {
       manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-    } catch (_: Exception) { emptyList() }
+    } catch (_: Exception) { null }
+    if (stats == null) {
+      return mapOf(
+        "permissionGranted" to true,
+        "queryAvailable" to false,
+        "windowStart" to start,
+        "windowEnd" to end,
+        "apps" to emptyList<Map<String, Any?>>()
+      )
+    }
     val ownPackage = context.packageName
     // Aggregate and rank usage before resolving package metadata or rendering icons.
     // Icon rendering is comparatively expensive; doing it for every package returned
@@ -205,6 +214,7 @@ class VoltGuardBatteryModule : Module() {
     }
     return mapOf(
       "permissionGranted" to true,
+      "queryAvailable" to true,
       "windowStart" to start,
       "windowEnd" to end,
       "apps" to apps
