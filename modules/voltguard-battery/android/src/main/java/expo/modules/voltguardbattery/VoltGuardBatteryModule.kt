@@ -166,17 +166,17 @@ class VoltGuardBatteryModule : Module() {
     // Aggregate and rank usage before resolving package metadata or rendering icons.
     // Icon rendering is comparatively expensive; doing it for every package returned
     // by UsageStatsManager creates unnecessary work on every refresh.
-    val topUsage = stats
-      .asSequence()
-      .filter { it.packageName != ownPackage && it.totalTimeInForeground > 0L }
-      .groupBy { it.packageName }
-      .map { (packageName, rows) ->
-        Triple(
-          packageName,
-          rows.sumOf { it.totalTimeInForeground },
-          rows.maxOfOrNull { it.lastTimeUsed } ?: 0L
-        )
-      }
+    // Fold daily UsageStats rows directly into primitive accumulators.
+    // groupBy() would allocate a List for every package on each refresh.
+    val usageByPackage = HashMap<String, LongArray>()
+    for (row in stats) {
+      if (row.packageName == ownPackage || row.totalTimeInForeground <= 0L) continue
+      val totals = usageByPackage.getOrPut(row.packageName) { longArrayOf(0L, 0L) }
+      totals[0] += row.totalTimeInForeground
+      if (row.lastTimeUsed > totals[1]) totals[1] = row.lastTimeUsed
+    }
+    val topUsage = usageByPackage
+      .map { (packageName, totals) -> Triple(packageName, totals[0], totals[1]) }
       .sortedByDescending { it.second }
       .take(20)
 
