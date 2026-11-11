@@ -142,8 +142,8 @@ jobs:
             undici \
             ws
 
-      - name: Re-align Expo packages to the installed SDK
-        run: npx expo install --fix
+      - name: Install the selectively updated lockfile
+        run: npm ci
 
       - name: TypeScript
         run: npm run typecheck
