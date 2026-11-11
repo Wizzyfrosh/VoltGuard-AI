@@ -2,7 +2,7 @@ name: VoltGuard validation
 
 on:
   push:
-    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native]
+    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native, security/selective-transitive-patches]
   pull_request:
     branches: [main, phase-0/stabilization-audit, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing, phase-a/product-polish-settings-legal, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native]
 
@@ -104,8 +104,8 @@ jobs:
       - name: Enforce production dependency security threshold
         run: npm audit --omit=dev --audit-level=high
 
-  safe-dependency-remediation-preview:
-    name: Safe dependency remediation preview
+  selective-dependency-remediation-preview:
+    name: Selective dependency remediation preview
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -120,10 +120,27 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Apply non-breaking dependency fixes only
+      - name: Update only audited high and critical transitive packages
         run: |
-          npm audit fix || audit_fix_exit=$?
-          echo "npm audit fix exit code: ${audit_fix_exit:-0}"
+          npm update --no-save \
+            @isaacs/brace-expansion \
+            @react-navigation/core \
+            @xmldom/xmldom \
+            brace-expansion \
+            browserslist \
+            compression \
+            flatted \
+            image-size \
+            js-yaml \
+            minimatch \
+            nanoid \
+            node-forge \
+            picomatch \
+            shell-quote \
+            source-map-js \
+            tar \
+            undici \
+            ws
 
       - name: Re-align Expo packages to the installed SDK
         run: npx expo install --fix
@@ -156,12 +173,12 @@ jobs:
       - name: Generate post-remediation audit report
         run: |
           npm audit --json > npm-audit-after.json || true
-          node -e "const r=require('./npm-audit-after.json'); console.log('Post-remediation vulnerability summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {}));"
+          node -e "const r=require('./npm-audit-after.json'); const v=r.metadata?.vulnerabilities ?? {}; console.log('Selective remediation vulnerability summary:', JSON.stringify(v)); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name + ': ' + item.severity + ' | fixAvailable=' + JSON.stringify(item.fixAvailable));"
 
-      - name: Upload safe remediation preview
+      - name: Upload selective remediation preview
         uses: actions/upload-artifact@v4
         with:
-          name: voltguard-safe-remediation-preview
+          name: voltguard-selective-remediation-preview
           path: |
             package.json
             package-lock.json
