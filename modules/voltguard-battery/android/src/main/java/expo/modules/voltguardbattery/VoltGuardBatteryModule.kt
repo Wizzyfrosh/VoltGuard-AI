@@ -181,28 +181,33 @@ class VoltGuardBatteryModule : Module() {
       .take(20)
 
     val apps = topUsage.map { (packageName, foregroundMs, lastUsed) ->
-      val appDetails = appDetailsCache.get(packageName) ?: try {
+      val appDetails = try {
         @Suppress("DEPRECATION")
         val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
-        val label = context.packageManager.getApplicationLabel(appInfo).toString()
-        val iconDataUri = try {
-          val drawable = context.packageManager.getApplicationIcon(appInfo)
-          val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
-          try {
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            ByteArrayOutputStream().use { output ->
-              bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-              "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+        // Package update time changes when an app is upgraded, so a cached
+        // launcher icon/label cannot outlive the installed app version.
+        val cacheKey = "$packageName:${appInfo.lastUpdateTime}"
+        appDetailsCache.get(cacheKey) ?: run {
+          val label = context.packageManager.getApplicationLabel(appInfo).toString()
+          val iconDataUri = try {
+            val drawable = context.packageManager.getApplicationIcon(appInfo)
+            val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
+            try {
+              val canvas = Canvas(bitmap)
+              drawable.setBounds(0, 0, canvas.width, canvas.height)
+              drawable.draw(canvas)
+              ByteArrayOutputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+              }
+            } finally {
+              bitmap.recycle()
             }
-          } finally {
-            bitmap.recycle()
-          }
-        } catch (_: Exception) { null }
-        (label to iconDataUri).also { appDetailsCache.put(packageName, it) }
+          } catch (_: Exception) { null }
+          (label to iconDataUri).also { appDetailsCache.put(cacheKey, it) }
+        }
       } catch (_: Exception) {
-        (packageName to null).also { appDetailsCache.put(packageName, it) }
+        (packageName to null)
       }
       mapOf(
         "packageName" to packageName,
