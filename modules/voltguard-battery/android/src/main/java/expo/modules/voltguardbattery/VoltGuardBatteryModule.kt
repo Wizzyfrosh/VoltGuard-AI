@@ -24,6 +24,9 @@ import android.util.LruCache
 import java.io.ByteArrayOutputStream
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.functions.Coroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class VoltGuardBatteryModule : Module() {
   // Keep rendered launcher icons in memory so a manual refresh does not repeatedly
@@ -40,8 +43,8 @@ class VoltGuardBatteryModule : Module() {
       readOptimizationDiagnostics()
     }
 
-    AsyncFunction("hasUsageAccess") {
-      hasUsageAccess()
+    AsyncFunction("hasUsageAccess") Coroutine { ->
+      withContext(Dispatchers.IO) { hasUsageAccess() }
     }
 
     Function("openUsageAccessSettings") {
@@ -52,12 +55,12 @@ class VoltGuardBatteryModule : Module() {
       } catch (_: Exception) { false }
     }
 
-    AsyncFunction("getAppUsageStats") {
-      readAppUsageStats()
+    AsyncFunction("getAppUsageStats") Coroutine { ->
+      withContext(Dispatchers.IO) { readAppUsageStats() }
     }
 
-    AsyncFunction("getSystemResourceDiagnostics") {
-      readSystemResourceDiagnostics()
+    AsyncFunction("getSystemResourceDiagnostics") Coroutine { ->
+      withContext(Dispatchers.IO) { readSystemResourceDiagnostics() }
     }
 
     Function("openOptimizationSetting") { setting: String ->
@@ -193,7 +196,7 @@ class VoltGuardBatteryModule : Module() {
         // Package update time changes when an app is upgraded, so a cached
         // launcher icon/label cannot outlive the installed app version.
         val cacheKey = "$packageName:${appInfo.lastUpdateTime}"
-        appDetailsCache.get(cacheKey) ?: run {
+        synchronized(appDetailsCache) { appDetailsCache.get(cacheKey) } ?: run {
           val label = context.packageManager.getApplicationLabel(appInfo).toString()
           val iconDataUri = try {
             val drawable = context.packageManager.getApplicationIcon(appInfo)
@@ -210,7 +213,9 @@ class VoltGuardBatteryModule : Module() {
               bitmap.recycle()
             }
           } catch (_: Exception) { null }
-          (label to iconDataUri).also { appDetailsCache.put(cacheKey, it) }
+          (label to iconDataUri).also { details ->
+            synchronized(appDetailsCache) { appDetailsCache.put(cacheKey, details) }
+          }
         }
       } catch (_: Exception) {
         (packageName to null)
