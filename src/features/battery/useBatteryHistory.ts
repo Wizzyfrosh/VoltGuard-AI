@@ -86,7 +86,7 @@ export function useBatteryHistory() {
       if (currentRequest === requestId.current) setIsAvailable(false);
       return false;
     }
-  }, []););
+  }, []);
 
   useEffect(() => {
     void refresh();
