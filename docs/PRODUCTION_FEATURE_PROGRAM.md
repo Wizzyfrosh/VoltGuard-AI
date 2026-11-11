@@ -516,13 +516,14 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [x] Update TypeScript and web fallback interfaces to return Promise-based results.
 - [x] Await native results in the Power Usage screen, avoid duplicate refreshes, and prevent state updates after unmount.
 - [x] Display Android launcher icons beside app names in foreground-activity rows, with a fallback icon when package metadata is unavailable.
+- [x] Move Usage Access checks, UsageStats queries, RAM/storage reads and package icon/label resolution onto `Dispatchers.IO`; synchronize shared icon-cache access.
 - [x] Rank/limit foreground usage to the top 20 packages before resolving package labels and rendering icons.
 - [ ] Validate TypeScript, unit tests, lint, web export and Android Kotlin compilation on the latest Phase D commit.
 - [ ] Verify native execution queue behaviour and UI responsiveness with Android profiling; an AsyncFunction declaration alone is not proof of background-thread execution.
 - [ ] Validate Usage Access permission grant/revoke, empty history, package icon fallbacks and reported durations on physical Android devices.
 - [ ] Add prominent, accurate Usage Access disclosure and verify Play distribution policy compliance before public release.
 
-**Latest implementation commit:** `fc9a36829cd41a61180ae27d11be32842f549b76`  
+**Latest implementation commit:** `71a691e03e018a5d91ad83f6037ff7ab7b947c75`  
 **Pull request:** #14, draft, based on `phase-c/battery-analytics-hardening`.  
 **Validation:** CI is running; an earlier run caught missing style declarations, which were added in the latest commit. Do not mark this phase complete until latest-commit checks and physical-device acceptance tests pass.
 
