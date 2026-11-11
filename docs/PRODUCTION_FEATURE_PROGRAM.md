@@ -524,15 +524,17 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] Validate Usage Access permission grant/revoke, empty history, package icon fallbacks and reported durations on physical Android devices.
 - [x] Add a concise Usage Access disclosure covering the permission purpose, local processing and revocation path. Public distribution policy review remains open.
 
-**Latest implementation commit:** `4df9a3ad6de36703b3869cd4d06b7aa4ea2c01e0`  
+**Latest Phase D implementation commit:** `99b2d12636db52eb2cf1b03d2995526d347d8e5c`  
 **Pull request:** [#14](https://github.com/Wizzyfrosh/VoltGuard-AI/pull/14), draft, based on `phase-c/battery-analytics-hardening`.  
-**Validation:** [CI run 43055890186](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43055890186) passed TypeScript, unit tests, lint, web export, dependency audit, remediation preview and Android Kotlin compilation. Physical-device acceptance and Android profiling remain outstanding. Keep the PR draft and unmerged until those gates are completed.
+**Validation:** [CI runs 43058485436](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43058485436) and [43058474956](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43058474956) passed TypeScript, unit tests, lint, web export and Android Kotlin compilation. Physical-device acceptance and Android profiling remain outstanding. Keep the PR draft and unmerged until those gates are completed.
 
 ## Phase E — Security, privacy and release hardening — 2026-11-11
 
 ### Dependency security
-- [ ] Resolve the 43 reported npm audit findings through reviewed, compatible dependency updates; do not use `npm audit fix --force` blindly.
-- [ ] Safe remediation preview reduced the audit to 28 findings (1 low, 21 moderate, 6 high, 0 critical); the preview did not modify the repository lockfile. Commit only reviewed dependency and lockfile changes.
+- [x] Add Android native compilation to the safe dependency-remediation preview so a candidate lockfile cannot be accepted on web checks alone.
+- [x] Add a high-severity threshold gate for the npm install graph after omitting declared devDependencies.
+- [ ] Resolve the production-install audit gate: commit `62d8d5bb5a967b481b0f24d52837700a34fbab39` correctly fails this gate; the report shows 40 findings (2 low, 17 moderate, 19 high, 2 critical). This graph includes Expo tooling reachable through the `expo` package and is not identical to the final JavaScript shipped bundle; classify runtime reachability before accepting residual findings.
+- [ ] Safe remediation preview remains uncommitted: it reduced the full audit from 43 findings (2 low, 19 moderate, 20 high, 2 critical) to 28 (1 low, 21 moderate, 6 high, 0 critical), but Android compilation for that preview has not yet passed.
 - [ ] Verify production dependency exposure separately from development/build-tool findings; document any accepted residual risk with package path, advisory, exploitability and upgrade blocker.
 - [ ] Re-run typecheck, unit tests, lint, web export, Android compile and audit after every dependency update.
 
