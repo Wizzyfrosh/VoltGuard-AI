@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { Info, Battery, Smartphone, Clock3, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react-native';
@@ -68,10 +68,6 @@ export default function BreakdownScreen() {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: colors.text }]}>Power Usage</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Reliable power attribution is not available through the current cross-platform APIs.
-        </Text>
-
         <View style={[styles.usageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.usageHeader}>
             <View style={styles.appCopy}>
@@ -149,13 +145,6 @@ export default function BreakdownScreen() {
             </>
           ) : null}
         </View>
-        <View style={[styles.noticeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Battery size={28} color={colors.primary} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Battery energy attribution</Text>
-          <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Android does not expose reliable per-app battery energy (mAh) to ordinary apps. VoltGuard will not label foreground time as battery drain or invent per-app percentages.
-          </Text>
-        </View>
         <View style={[styles.usageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.usageHeader}>
             <View style={styles.usageHeading}>
@@ -194,9 +183,18 @@ export default function BreakdownScreen() {
               </View>
               {usage?.apps?.length ? usage.apps.map((app) => (
                 <View key={app.packageName} style={[styles.appRow, { borderTopColor: colors.border }]}>
-                  <View style={styles.appCopy}>
-                    <Text numberOfLines={1} style={[styles.appName, { color: colors.text }]}>{app.appLabel}</Text>
-                    <Text numberOfLines={1} style={[styles.caption, { color: colors.textSecondary }]}>{app.packageName}</Text>
+                  <View style={styles.appIdentity}>
+                    {app.iconDataUri ? (
+                      <Image source={{ uri: app.iconDataUri }} style={styles.appIcon} resizeMode="contain" />
+                    ) : (
+                      <View style={[styles.appIconFallback, { backgroundColor: colors.background }]}>
+                        <Smartphone size={19} color={colors.textSecondary} />
+                      </View>
+                    )}
+                    <View style={styles.appCopy}>
+                      <Text numberOfLines={1} style={[styles.appName, { color: colors.text }]}>{app.appLabel}</Text>
+                      <Text numberOfLines={1} style={[styles.caption, { color: colors.textSecondary }]}>{app.packageName}</Text>
+                    </View>
                   </View>
                   <Text style={[styles.appDuration, { color: colors.text }]}>{formatDuration(app.foregroundTimeMs)}</Text>
                 </View>
