@@ -2,9 +2,9 @@ name: VoltGuard validation
 
 on:
   push:
-    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit]
+    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-10-alert-reliability]
   pull_request:
-    branches: [main, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing]
+    branches: [main, phase-0/stabilization-audit, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing]
 
 permissions:
   contents: read
