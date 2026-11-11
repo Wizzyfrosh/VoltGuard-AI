@@ -47,9 +47,13 @@ export function useBatteryTelemetry() {
     setHasError(next.source === 'unavailable');
 
     if (shouldPersistBatterySnapshot(lastPersistedRef.current, next)) {
+      const previous = lastPersistedRef.current;
+      // Reserve this sample while its write is pending to avoid queuing duplicates.
       lastPersistedRef.current = next;
       void recordBatterySnapshot(next).catch(() => {
-        // Local history is optional and must never block live telemetry.
+        // History is optional. Restore the previous checkpoint so a later
+        // telemetry update can retry instead of permanently skipping this sample.
+        if (lastPersistedRef.current === next) lastPersistedRef.current = previous;
       });
     }
   }, []);
