@@ -166,7 +166,7 @@ object VoltGuardBatteryNotifications {
       }
     }
     return builder
-      .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
+      .setSmallIcon(R.drawable.ic_voltguard_notification)
       .setContentTitle(title)
       .setContentText(body)
       .setContentIntent(pendingIntent)
