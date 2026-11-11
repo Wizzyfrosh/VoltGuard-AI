@@ -59,3 +59,30 @@ test('unknown OS health remains unknown rather than being guessed', () => {
   assert.equal(result.condition, 'unknown');
   assert.equal(result.estimatedWearPercent, null);
 });
+
+test('drain coverage reflects the selected window rather than unrelated history', () => {
+  const result = analyzeBatteryDrain([
+    ...Array.from({ length: 20 }, (_, index) => ({
+      observedAt: new Date(Date.UTC(2026, 10, 4, 0, index * 5)).toISOString(),
+      level: 0.9 - index * 0.001,
+      isUnplugged: false,
+    })),
+    { observedAt: '2026-11-05T08:00:00.000Z', level: 0.9, isUnplugged: true },
+    { observedAt: '2026-11-05T08:30:00.000Z', level: 0.85, isUnplugged: true },
+  ]);
+  assert.equal(result.coverage, 'low');
+  assert.equal(result.drainPercentPerHour, 10);
+});
+
+test('linear unplugged window scan stops at charging boundaries', () => {
+  const result = analyzeBatteryDrain([
+    sample(0, 0.9),
+    sample(20, 0.8),
+    sample(30, 0.85, false),
+    sample(40, 0.7),
+  ]);
+  // The valid 20-minute unplugged segment is retained; the later single
+  // sample is not joined to it across the charging observation.
+  assert.equal(result.status, 'rapid');
+  assert.equal(result.drainPercentPerHour, 30);
+});

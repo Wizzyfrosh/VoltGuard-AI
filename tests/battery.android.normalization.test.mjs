@@ -83,3 +83,18 @@ test('does not invent missing native diagnostics', () => {
   assert.equal(result.remainingChargeMilliAmpHours, null);
   assert.equal(result.energyCounterMilliWattHours, null);
 });
+
+test('rejects fractional API levels and battery cycle counts', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    apiLevel: 34.5,
+    cycleCount: 412.7,
+  });
+  assert.equal(result.apiLevel, null);
+  assert.equal(result.cycleCount, null);
+});
+
+test('accepts integer zero cycle count when explicitly reported', () => {
+  const result = normalizeAndroidBatteryDiagnostics({ apiLevel: 34, cycleCount: 0 });
+  assert.equal(result.apiLevel, 34);
+  assert.equal(result.cycleCount, 0);
+});

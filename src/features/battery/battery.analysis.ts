@@ -30,20 +30,30 @@ export function analyzeBatteryDrain(samples: BatteryDrainSample[]): BatteryDrain
       explanation: 'Collect more battery history while unplugged to estimate discharge rate.' };
   }
 
-  // Use the longest valid unplugged window, excluding charging/full samples and gaps.
+  // Sliding window over contiguous unplugged samples. This is O(n), even
+  // when history contains dense readings, and never bridges a charging sample.
   let best: { start: typeof valid[number]; end: typeof valid[number] } | null = null;
-  for (let i = 0; i < valid.length - 1; i++) {
-    for (let j = i + 1; j < valid.length; j++) {
-      const elapsed = valid[j].timestamp - valid[i].timestamp;
-      if (elapsed > MAX_INTERVAL_MS) break;
-      if (elapsed < MIN_INTERVAL_MS) continue;
-      // Include both endpoints and every observation between them. Filtering
-      // charging samples before this check would incorrectly bridge across them.
-      const unplugged = valid.slice(i, j + 1).every((sample) => sample.isUnplugged);
-      if (!unplugged) continue;
-      if (!best || elapsed > best.end.timestamp - best.start.timestamp) {
-        best = { start: valid[i], end: valid[j] };
-      }
+  let segmentStart = 0;
+  let windowStart = 0;
+  for (let endIndex = 0; endIndex < valid.length; endIndex += 1) {
+    if (!valid[endIndex].isUnplugged) {
+      segmentStart = endIndex + 1;
+      windowStart = endIndex + 1;
+      continue;
+    }
+
+    windowStart = Math.max(windowStart, segmentStart);
+    while (
+      windowStart < endIndex &&
+      valid[endIndex].timestamp - valid[windowStart].timestamp > MAX_INTERVAL_MS
+    ) {
+      windowStart += 1;
+    }
+
+    const elapsed = valid[endIndex].timestamp - valid[windowStart].timestamp;
+    if (elapsed >= MIN_INTERVAL_MS &&
+        (!best || elapsed > best.end.timestamp - best.start.timestamp)) {
+      best = { start: valid[windowStart], end: valid[endIndex] };
     }
   }
 
@@ -63,7 +73,10 @@ export function analyzeBatteryDrain(samples: BatteryDrainSample[]): BatteryDrain
   }
 
   const rate = (drop * 100) / (elapsedMs / 3_600_000);
-  const coverage = valid.length >= 12 ? 'good' : valid.length >= 5 ? 'moderate' : 'low';
+  const windowSampleCount = valid.filter((sample) =>
+    sample.timestamp >= best!.start.timestamp && sample.timestamp <= best!.end.timestamp,
+  ).length;
+  const coverage = windowSampleCount >= 12 ? 'good' : windowSampleCount >= 5 ? 'moderate' : 'low';
   const status = rate >= 15 ? 'rapid' : rate >= 8 ? 'elevated' : 'stable';
   const explanation = status === 'rapid'
     ? 'Discharge is unusually fast in this sample window. Screen use, weak signal, high temperature or background activity may contribute; this data cannot identify a specific app.'

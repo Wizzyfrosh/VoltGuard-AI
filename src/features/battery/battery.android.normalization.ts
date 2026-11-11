@@ -48,6 +48,11 @@ function nonNegativeOrNull(value: unknown): number | null {
   return number !== null && number >= 0 ? number : null;
 }
 
+function nonNegativeIntegerOrNull(value: unknown): number | null {
+  const number = finiteOrNull(value);
+  return number !== null && Number.isInteger(number) && number >= 0 ? number : null;
+}
+
 // Round magnitudes symmetrically so -325.5 mA becomes -326 mA, not -325 mA.
 function microAmpsToRoundedMilliAmps(value: unknown): number | null {
   const microAmps = finiteOrNull(value);
@@ -64,7 +69,7 @@ export function normalizeAndroidBatteryDiagnostics(
   const capacity = finiteOrNull(raw.capacityPercent);
 
   return {
-    apiLevel: nonNegativeOrNull(raw.apiLevel),
+    apiLevel: nonNegativeIntegerOrNull(raw.apiLevel),
     voltageMilliVolts: positiveOrNull(raw.voltageMilliVolts),
     temperatureCelsius: temperatureTenths !== null && temperatureTenths >= -500 && temperatureTenths <= 1500
       ? temperatureTenths / 10
@@ -77,7 +82,7 @@ export function normalizeAndroidBatteryDiagnostics(
     currentAverageMicroAmps: finiteOrNull(raw.currentAverageMicroAmps),
     chargeCounterMicroAmpHours: nonNegativeOrNull(raw.chargeCounterMicroAmpHours),
     energyCounterNanoWattHours: nonNegativeOrNull(raw.energyCounterNanoWattHours),
-    cycleCount: nonNegativeOrNull(raw.cycleCount),
+    cycleCount: nonNegativeIntegerOrNull(raw.cycleCount),
     technology: typeof raw.technology === 'string' && raw.technology.trim().length > 0 ? raw.technology.trim() : null,
     currentNowMilliAmps: microAmpsToRoundedMilliAmps(raw.currentNowMicroAmps),
     currentAverageMilliAmps: microAmpsToRoundedMilliAmps(raw.currentAverageMicroAmps),

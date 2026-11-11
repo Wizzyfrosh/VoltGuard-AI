@@ -107,6 +107,7 @@ export function buildBatteryTrendReport(
       hasCharge: false,
       hasDischarge: false,
       sampleCount: 0,
+      observedDayKeys: new Set<string>(),
       firstSampleAt: null as number | null,
       lastSampleAt: null as number | null,
     };
@@ -135,6 +136,10 @@ export function buildBatteryTrendReport(
   for (const sample of valid) {
     const bucket = bucketFor(sample.timestamp);
     bucket.sampleCount += 1;
+    const observedDate = new Date(sample.timestamp);
+    bucket.observedDayKeys.add(
+      observedDate.getFullYear() + '-' + observedDate.getMonth() + '-' + observedDate.getDate(),
+    );
     bucket.firstSampleAt = bucket.firstSampleAt === null ? sample.timestamp : Math.min(bucket.firstSampleAt, sample.timestamp);
     bucket.lastSampleAt = bucket.lastSampleAt === null ? sample.timestamp : Math.max(bucket.lastSampleAt, sample.timestamp);
   }
@@ -190,8 +195,6 @@ export function buildBatteryTrendReport(
   const completedObservedMinutes = observedSessionDurations.reduce((sum, duration) => sum + duration / 60000, 0);
 
   const totalSampleCount = valid.length;
-  const firstSample = valid[0]?.timestamp ?? null;
-  const lastSample = valid[valid.length - 1]?.timestamp ?? null;
   const observedDays = new Set(valid.map((sample) => {
     const date = new Date(sample.timestamp);
     return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
@@ -212,15 +215,7 @@ export function buildBatteryTrendReport(
       chargedPercent: bucket.hasCharge ? round(bucket.charged) : null,
       dischargedPercent: bucket.hasDischarge ? round(bucket.discharged) : null,
       sampleCount: bucket.sampleCount,
-      observedDays: bucket.sampleCount > 0
-        ? new Set(valid.filter((sample) => {
-            const target = bucketFor(sample.timestamp);
-            return target.key === bucket.key;
-          }).map((sample) => {
-            const date = new Date(sample.timestamp);
-            return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
-          })).size
-        : 0,
+      observedDays: bucket.observedDayKeys.size,
       coverage: coverageFor(bucket.sampleCount, bucket.firstSampleAt, bucket.lastSampleAt),
     })),
     sampleCount: totalSampleCount,
