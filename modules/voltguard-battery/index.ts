@@ -11,8 +11,8 @@ type VoltGuardBatteryNativeModule = {
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
   openUsageAccessSettings: () => boolean;
-  getAppUsageStats: () => Promise<AppUsageSnapshot>;
-  getSystemResourceDiagnostics: () => Promise<SystemResourceDiagnostics>;
+  getAppUsageStats: () => Promise<AppUsageSnapshot | null>;
+  getSystemResourceDiagnostics: () => Promise<SystemResourceDiagnostics | null>;
 };
 
 export type ChargingAlarmStatus = {
