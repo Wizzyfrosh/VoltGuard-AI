@@ -145,8 +145,13 @@ jobs:
       - name: Install the selectively updated lockfile
         run: npm ci
 
+      - name: Align only Expo SDK 54 patch-level packages
+        run: npx expo install --fix
+
       - name: Verify Expo SDK package compatibility
-        run: npx expo install --check
+        run: |
+          npm ci
+          npx expo install --check
 
       - name: TypeScript
         run: npm run typecheck
