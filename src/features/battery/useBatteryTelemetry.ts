@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import * as ExpoBattery from 'expo-battery';
 import { batteryTelemetryProvider } from './expo-battery.provider';
 import type { BatterySnapshot } from './battery.types';
 import { recordBatterySnapshot } from './battery.history';
+import { mergeBatterySnapshots, shouldPersistBatterySnapshot } from './battery.telemetry';
 
 const emptySnapshot: BatterySnapshot = {
   platform: 'unknown',
@@ -11,6 +12,7 @@ const emptySnapshot: BatterySnapshot = {
   state: ExpoBattery.BatteryState.UNKNOWN,
   lowPowerMode: null,
   observedAt: '',
+  diagnosticsObservedAt: null,
   source: 'unavailable',
   capabilities: {
     batteryLevel: 'unavailable',
@@ -33,152 +35,96 @@ export function useBatteryTelemetry() {
   const [snapshot, setSnapshot] = useState<BatterySnapshot>(emptySnapshot);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const snapshotRef = useRef<BatterySnapshot>(emptySnapshot);
+  const lastPersistedRef = useRef<BatterySnapshot | null>(null);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const mountedRef = useRef(false);
+  const eventRevisionRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const nextSnapshot = await batteryTelemetryProvider.getSnapshot();
-      setSnapshot(nextSnapshot);
-      setHasError(nextSnapshot.source === 'unavailable');
-      void recordBatterySnapshot(nextSnapshot).catch(() => {
-        // Local history storage must not block live diagnostics.
+  const publish = useCallback((next: BatterySnapshot) => {
+    snapshotRef.current = next;
+    setSnapshot(next);
+    setHasError(next.source === 'unavailable');
+
+    if (shouldPersistBatterySnapshot(lastPersistedRef.current, next)) {
+      lastPersistedRef.current = next;
+      void recordBatterySnapshot(next).catch(() => {
+        // Local history is optional and must never block live telemetry.
       });
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    let receivedLiveUpdate = false;
-    const unsubscribe = batteryTelemetryProvider.subscribe((nextSnapshot) => {
-      if (mounted) {
-        receivedLiveUpdate = true;
-        setSnapshot((current) => {
-          // A partial Expo event must not erase a valid native BatteryManager reading.
-          const level = nextSnapshot.level ?? current.level;
-          const state = nextSnapshot.state !== ExpoBattery.BatteryState.UNKNOWN
-            ? nextSnapshot.state
-            : current.state;
-          const androidDiagnostics = nextSnapshot.androidDiagnostics ?? current.androidDiagnostics;
-          return {
-            ...nextSnapshot,
-            level,
-            state,
-            lowPowerMode: nextSnapshot.lowPowerMode ?? current.lowPowerMode,
-            androidDiagnostics,
-            capabilities: {
-              ...nextSnapshot.capabilities,
-              batteryLevel: level !== null ? 'available' : nextSnapshot.capabilities.batteryLevel,
-              chargingState: state !== ExpoBattery.BatteryState.UNKNOWN ? 'available' : nextSnapshot.capabilities.chargingState,
-              lowPowerMode: nextSnapshot.lowPowerMode !== null || current.lowPowerMode !== null
-                ? 'available'
-                : nextSnapshot.capabilities.lowPowerMode,
-              temperature: androidDiagnostics?.temperatureCelsius !== null && androidDiagnostics?.temperatureCelsius !== undefined
-                ? 'available'
-                : nextSnapshot.capabilities.temperature,
-              voltage: androidDiagnostics?.voltageMilliVolts !== null && androidDiagnostics?.voltageMilliVolts !== undefined
-                ? 'available'
-                : nextSnapshot.capabilities.voltage,
-              batteryHealth: androidDiagnostics?.health
-                ? 'available'
-                : nextSnapshot.capabilities.batteryHealth,
-              batteryTechnology: androidDiagnostics?.technology ? 'available' : nextSnapshot.capabilities.batteryTechnology,
-              batteryCurrent: androidDiagnostics?.currentNowMicroAmps !== null && androidDiagnostics?.currentNowMicroAmps !== undefined || androidDiagnostics?.currentAverageMicroAmps !== null && androidDiagnostics?.currentAverageMicroAmps !== undefined ? 'available' : nextSnapshot.capabilities.batteryCurrent,
-              remainingCharge: androidDiagnostics?.chargeCounterMicroAmpHours !== null && androidDiagnostics?.chargeCounterMicroAmpHours !== undefined ? 'available' : nextSnapshot.capabilities.remainingCharge,
-              energyCounter: androidDiagnostics?.energyCounterNanoWattHours !== null && androidDiagnostics?.energyCounterNanoWattHours !== undefined ? 'available' : nextSnapshot.capabilities.energyCounter,
-            },
-            source: androidDiagnostics !== null ? 'native' : nextSnapshot.source,
-          };
-        });
-        setHasError(nextSnapshot.source === 'unavailable');
-        void recordBatterySnapshot(nextSnapshot).catch(() => {
-          // Telemetry remains available even if local history storage fails.
-        });
-        setIsLoading(false);
-      }
-    });
+  const refresh = useCallback((): Promise<void> => {
+    if (inFlightRef.current) return inFlightRef.current;
 
-    void batteryTelemetryProvider.getSnapshot()
-      .then((nextSnapshot) => {
-        if (mounted) {
-          setSnapshot((current) => ({
-            ...nextSnapshot,
-            level: current.level ?? nextSnapshot.level,
-            state: current.state !== ExpoBattery.BatteryState.UNKNOWN ? current.state : nextSnapshot.state,
-            lowPowerMode: current.lowPowerMode ?? nextSnapshot.lowPowerMode,
-            androidDiagnostics: nextSnapshot.androidDiagnostics ?? current.androidDiagnostics,
-            capabilities: {
-              ...nextSnapshot.capabilities,
-              batteryLevel: current.level !== null ? 'available' : nextSnapshot.capabilities.batteryLevel,
-              chargingState: current.state !== ExpoBattery.BatteryState.UNKNOWN ? 'available' : nextSnapshot.capabilities.chargingState,
-              lowPowerMode: current.lowPowerMode !== null ? 'available' : nextSnapshot.capabilities.lowPowerMode,
-              temperature: current.androidDiagnostics?.temperatureCelsius !== null && current.androidDiagnostics?.temperatureCelsius !== undefined
-                ? 'available'
-                : nextSnapshot.capabilities.temperature,
-              voltage: current.androidDiagnostics?.voltageMilliVolts !== null && current.androidDiagnostics?.voltageMilliVolts !== undefined
-                ? 'available'
-                : nextSnapshot.capabilities.voltage,
-              batteryHealth: current.androidDiagnostics?.health
-                ? 'available'
-                : nextSnapshot.capabilities.batteryHealth,
-              batteryTechnology: current.androidDiagnostics?.technology ? 'available' : nextSnapshot.capabilities.batteryTechnology,
-              batteryCurrent: current.androidDiagnostics?.currentNowMicroAmps !== null && current.androidDiagnostics?.currentNowMicroAmps !== undefined || current.androidDiagnostics?.currentAverageMicroAmps !== null && current.androidDiagnostics?.currentAverageMicroAmps !== undefined ? 'available' : nextSnapshot.capabilities.batteryCurrent,
-              remainingCharge: current.androidDiagnostics?.chargeCounterMicroAmpHours !== null && current.androidDiagnostics?.chargeCounterMicroAmpHours !== undefined ? 'available' : nextSnapshot.capabilities.remainingCharge,
-              energyCounter: current.androidDiagnostics?.energyCounterNanoWattHours !== null && current.androidDiagnostics?.energyCounterNanoWattHours !== undefined ? 'available' : nextSnapshot.capabilities.energyCounter,
-            },
-            source: current.androidDiagnostics !== null ? 'native' : nextSnapshot.source,
-          }));
-          setHasError(nextSnapshot.source === 'unavailable');
-          if (!receivedLiveUpdate) {
-            void recordBatterySnapshot(nextSnapshot).catch(() => {
-              // Storage failures must not break live battery monitoring.
-            });
-          }
-        }
+    const revisionAtStart = eventRevisionRef.current;
+    if (mountedRef.current) setIsLoading(true);
+
+    const request = batteryTelemetryProvider.getSnapshot()
+      .then((incoming) => {
+        if (!mountedRef.current) return;
+        const eventArrivedDuringRequest = eventRevisionRef.current !== revisionAtStart;
+        const merged = mergeBatterySnapshots(
+          snapshotRef.current,
+          incoming,
+          eventArrivedDuringRequest,
+        );
+        publish(merged);
       })
       .catch(() => {
-        if (mounted) setHasError(true);
+        if (mountedRef.current) setHasError(true);
       })
       .finally(() => {
-        if (mounted) setIsLoading(false);
+        if (inFlightRef.current === request) inFlightRef.current = null;
+        if (mountedRef.current) setIsLoading(false);
       });
 
+    inFlightRef.current = request;
+    return request;
+  }, [publish]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    const unsubscribe = batteryTelemetryProvider.subscribe((incoming) => {
+      if (!mountedRef.current) return;
+      eventRevisionRef.current += 1;
+      const merged = mergeBatterySnapshots(snapshotRef.current, incoming);
+      publish(merged);
+    });
+
+    void refresh();
+
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       unsubscribe();
     };
-  }, []);
+  }, [publish, refresh]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
 
-    const startForegroundRefresh = (refreshImmediately: boolean) => {
+    const stop = () => {
       if (interval) clearInterval(interval);
+      interval = null;
+    };
+
+    const start = (refreshImmediately: boolean) => {
+      stop();
       if (refreshImmediately) void refresh();
       interval = setInterval(() => {
         if (AppState.currentState === 'active') void refresh();
       }, 60_000);
     };
 
-    const stopForegroundRefresh = () => {
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
-    };
-
-    if (AppState.currentState === 'active') startForegroundRefresh(false);
-
+    if (AppState.currentState === 'active') start(false);
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') startForegroundRefresh(true);
-      else stopForegroundRefresh();
+      if (state === 'active') start(true);
+      else stop();
     });
 
     return () => {
-      stopForegroundRefresh();
+      stop();
       subscription.remove();
     };
   }, [refresh]);
