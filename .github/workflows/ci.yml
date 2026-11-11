@@ -134,6 +134,19 @@ jobs:
       - name: Export web app
         run: npx expo export --platform web
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Compile Android Kotlin
+        working-directory: android
+        run: ./gradlew :app:compileDebugKotlin
+
       - name: Generate post-remediation audit report
         run: |
           npm audit --json > npm-audit-after.json || true
