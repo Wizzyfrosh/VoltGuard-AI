@@ -165,7 +165,7 @@ export default function BreakdownScreen() {
             </Pressable>
           </View>
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Approximate time apps were in the foreground over the last 24 hours. This is usage activity, not measured battery consumption.
+            Android-reported app foreground activity from recent usage summaries. Results may be delayed or grouped into system reporting intervals; this is not measured battery consumption.
           </Text>
           {Platform.OS !== 'android' ? (
             <Text style={[styles.body, { color: colors.textSecondary }]}>App usage access is available only in the Android app.</Text>
@@ -188,7 +188,7 @@ export default function BreakdownScreen() {
             <>
               <View style={styles.usageMeta}>
                 <ShieldCheck size={15} color={colors.primary} />
-                <Text style={[styles.caption, { color: colors.textSecondary }]}>Permission granted · Local device data · Last 24 hours</Text>
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>Permission granted · Local device data · Android usage summaries</Text>
               </View>
               {usage?.queryAvailable === false ? (
                 <Text style={[styles.body, { color: colors.warning }]}>App activity is temporarily unavailable. Try refreshing in a moment.</Text>
