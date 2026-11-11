@@ -68,6 +68,7 @@ export function useBatteryTelemetry() {
           snapshotRef.current,
           incoming,
           eventArrivedDuringRequest,
+          false,
         );
         publish(merged);
       })
