@@ -63,7 +63,10 @@ export function analyzeBatteryDrain(samples: BatteryDrainSample[]): BatteryDrain
   }
 
   const rate = (drop * 100) / (elapsedMs / 3_600_000);
-  const coverage = valid.length >= 12 ? 'good' : valid.length >= 5 ? 'moderate' : 'low';
+  const windowSampleCount = valid.filter((sample) =>
+    sample.timestamp >= best!.start.timestamp && sample.timestamp <= best!.end.timestamp,
+  ).length;
+  const coverage = windowSampleCount >= 12 ? 'good' : windowSampleCount >= 5 ? 'moderate' : 'low';
   const status = rate >= 15 ? 'rapid' : rate >= 8 ? 'elevated' : 'stable';
   const explanation = status === 'rapid'
     ? 'Discharge is unusually fast in this sample window. Screen use, weak signal, high temperature or background activity may contribute; this data cannot identify a specific app.'
