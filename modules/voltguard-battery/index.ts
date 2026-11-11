@@ -49,6 +49,7 @@ export async function getSystemResourceDiagnostics(): Promise<SystemResourceDiag
 export type AppUsageEntry = {
   packageName: string;
   appLabel: string;
+  iconDataUri: string | null;
   foregroundTimeMs: number;
   lastTimeUsed: number;
 };
