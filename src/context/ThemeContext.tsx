@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { theme } from '../theme/colors';
+import { getBatteryPreference, setBatteryPreference } from '../features/battery/battery.database';
 
 type ThemeType = typeof theme.light;
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -13,25 +14,39 @@ interface ThemeContextInterface {
   setThemePreference: (preference: ThemePreference) => void;
 }
 
+const PREFERENCE_KEY = 'appearance_preference_v1';
 const ThemeContext = createContext<ThemeContextInterface | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const systemScheme = useColorScheme();
-  const [themePreference, setThemePreference] = useState<ThemePreference>('system');
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
+
+  useEffect(() => {
+    let active = true;
+    void getBatteryPreference(PREFERENCE_KEY).then(value => {
+      if (active && (value === 'system' || value === 'light' || value === 'dark')) {
+        setThemePreferenceState(value);
+      }
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  const setThemePreference = useCallback((preference: ThemePreference) => {
+    setThemePreferenceState(preference);
+    void setBatteryPreference(PREFERENCE_KEY, preference).catch(() => undefined);
+  }, []);
 
   const isDark = themePreference === 'system'
     ? systemScheme === 'dark'
     : themePreference === 'dark';
-
   const colors = useMemo(() => (isDark ? theme.dark : theme.light), [isDark]);
-
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setThemePreference(isDark ? 'light' : 'dark');
-  };
+  }, [isDark, setThemePreference]);
 
   const value = useMemo(
     () => ({ isDark, colors, toggleTheme, themePreference, setThemePreference }),
-    [isDark, colors, themePreference],
+    [isDark, colors, toggleTheme, themePreference, setThemePreference],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -39,8 +54,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
 };
