@@ -41,23 +41,32 @@ function mapRow(row: BatterySampleRow): StoredBatterySample {
 export async function saveBatterySample(snapshot: BatterySnapshot): Promise<number> {
   if (Platform.OS === 'web') throw new Error('Battery history is not available in the web build.');
   if (snapshot.source === 'unavailable') throw new Error('Unavailable battery readings cannot be saved.');
-  if (await getBatteryPreference('battery_history_enabled') !== 'true') {
-    throw new Error('Enable battery history before saving samples.');
-  }
   const database = await getBatteryDatabase();
-  const result = await database.runAsync(
-    `INSERT INTO battery_samples
-      (observed_at, platform, level, battery_state, low_power_mode, source)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    snapshot.observedAt,
-    snapshot.platform,
-    snapshot.level,
-    snapshot.state,
-    snapshot.lowPowerMode === null ? null : snapshot.lowPowerMode ? 1 : 0,
-    snapshot.source,
-  );
+  let insertedId = 0;
 
-  return result.lastInsertRowId;
+  await database.withTransactionAsync(async () => {
+    const preference = await database.getFirstAsync<{ preference_value: string }>(
+      'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
+      'battery_history_enabled',
+    );
+    if (preference?.preference_value !== 'true') {
+      throw new Error('Enable battery history before saving samples.');
+    }
+    const result = await database.runAsync(
+      `INSERT INTO battery_samples
+        (observed_at, platform, level, battery_state, low_power_mode, source)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      snapshot.observedAt,
+      snapshot.platform,
+      snapshot.level,
+      snapshot.state,
+      snapshot.lowPowerMode === null ? null : snapshot.lowPowerMode ? 1 : 0,
+      snapshot.source,
+    );
+    insertedId = result.lastInsertRowId;
+  });
+
+  return insertedId;
 }
 
 export async function getRecentBatterySamples(limit = 100): Promise<StoredBatterySample[]> {
