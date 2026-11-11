@@ -74,13 +74,15 @@ test('drain coverage reflects the selected window rather than unrelated history'
   assert.equal(result.drainPercentPerHour, 10);
 });
 
-test('linear unplugged window scan does not bridge charging segments', () => {
+test('linear unplugged window scan stops at charging boundaries', () => {
   const result = analyzeBatteryDrain([
     sample(0, 0.9),
     sample(20, 0.8),
     sample(30, 0.85, false),
     sample(40, 0.7),
   ]);
-  assert.equal(result.status, 'insufficient-data');
-  assert.equal(result.drainPercentPerHour, null);
+  // The valid 20-minute unplugged segment is retained; the later single
+  // sample is not joined to it across the charging observation.
+  assert.equal(result.status, 'rapid');
+  assert.equal(result.drainPercentPerHour, 30);
 });
