@@ -1,0 +1,131 @@
+name: VoltGuard Expo SDK migration candidate
+
+on:
+  push:
+    branches:
+      - maintenance/expo-sdk58-migration
+    paths:
+      - ".github/workflows/expo-sdk-migration.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "app.json"
+      - "babel.config.js"
+      - "modules/voltguard-battery/**"
+      - "src/**"
+      - "app/**"
+      - "tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voltguard-expo-sdk-migration
+  cancel-in-progress: false
+
+jobs:
+  staged-migration:
+    name: Baseline and staged SDK migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install locked baseline
+        run: npm ci
+
+      - name: Record baseline versions
+        run: |
+          mkdir -p migration-artifacts
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/baseline-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/baseline-audit.json || true
+
+      - name: Baseline application checks
+        run: |
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+
+      - name: Baseline Android native compile
+        run: |
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+
+      - name: Upgrade to SDK 55 and validate
+        run: |
+          npx expo install expo@^55.0.0 --fix
+          npm install
+          npx expo-doctor
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk55-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk55-audit.json || true
+          cp package.json migration-artifacts/package-sdk55.json
+          cp package-lock.json migration-artifacts/package-lock-sdk55.json
+
+      - name: Upgrade to SDK 57 and validate
+        run: |
+          npx expo install expo@^57.0.0 --fix
+          npm install
+          npx expo-doctor
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk57-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk57-audit.json || true
+          cp package.json migration-artifacts/package-sdk57.json
+          cp package-lock.json migration-artifacts/package-lock-sdk57.json
+
+      - name: Upgrade to SDK 58 and validate
+        run: |
+          npx expo install expo@^58.0.0 --fix
+          npm install
+          npx expo-doctor
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          ./gradlew :app:assembleDebug
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk58-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk58-audit.json || true
+          cp package.json migration-artifacts/package-sdk58.json
+          cp package-lock.json migration-artifacts/package-lock-sdk58.json
+
+      - name: Upload migration evidence and candidate manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltguard-expo-sdk58-migration-candidate
+          path: migration-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
