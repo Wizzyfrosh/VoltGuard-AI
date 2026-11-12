@@ -126,7 +126,18 @@ jobs:
         run: |
           npx expo install expo@^57.0.17 --fix
           npm install
-          npx expo-doctor
+          echo '--- SDK 57 Git ignore diagnostics for custom native module ---'
+          git check-ignore -v modules/voltguard-battery/android || true
+          git check-ignore -v modules/voltguard-battery/android/src || true
+          git check-ignore -v modules/voltguard-battery/android/src/main || true
+          echo '--- SDK 57 tracked native module files ---'
+          git ls-files modules/voltguard-battery/android
+          echo '--- SDK 57 nested ignore files ---'
+          find modules -name .gitignore -print -exec cat {} ;
+          echo '--- SDK 57 Git status ---'
+          git status --short --ignored modules/voltguard-battery/android
+          echo '--- SDK 57 Expo Doctor verbose output ---'
+          npx expo-doctor --verbose
           npm run typecheck
           npm test
           npm run lint
