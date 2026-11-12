@@ -1,4 +1,4 @@
-import { requireNativeModule } from 'expo';
+import { requireNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
 type VoltGuardBatteryNativeModule = {

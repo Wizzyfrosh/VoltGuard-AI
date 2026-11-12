@@ -79,8 +79,8 @@ jobs:
 
           const localModulePath = 'modules/voltguard-battery/package.json';
           const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
-          localModule.peerDependencies = { expo: '*' };
-          localModule.devDependencies = { ...(localModule.devDependencies || {}), 'expo-modules-core': '*' };
+          localModule.peerDependencies = { expo: '*', 'expo-modules-core': '*', 'react-native': '*' };
+          delete localModule.devDependencies;
           fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
           NODE
           npm install
