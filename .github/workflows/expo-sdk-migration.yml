@@ -94,12 +94,10 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          root.devDependencies = root.devDependencies || {};
-          root.devDependencies['expo-modules-core'] = '~55.0.27';
-          root.expo = root.expo || {};
-          root.expo.install = root.expo.install || {};
-          root.expo.install.exclude = [...new Set([...(root.expo.install.exclude || []), 'expo-modules-core'])];
-          fs.writeFileSync('package.json', JSON.stringify(root, null, 2) + '\n');
+          const localModulePath = 'modules/voltguard-battery/package.json';
+          const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
+          localModule.devDependencies = { ...(localModule.devDependencies || {}), 'expo-modules-core': '~55.0.27' };
+          fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
           NODE
           npm install
           npx expo-doctor
