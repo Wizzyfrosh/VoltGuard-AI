@@ -145,8 +145,10 @@ jobs:
           find . -name .gitignore -print
           echo '--- Git ignore exit codes ---'
           for f in modules/voltguard-battery/android modules/voltguard-battery/android/build.gradle modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt; do
-            git check-ignore -q "$f"; echo "tracked-check $f exit=$?"
-            git check-ignore --no-index -q "$f"; echo "no-index-check $f exit=$?"
+            if git check-ignore -q "$f"; then tracked_rc=0; else tracked_rc=$?; fi
+            echo "tracked-check $f exit=$tracked_rc"
+            if git check-ignore --no-index -q "$f"; then no_index_rc=0; else no_index_rc=$?; fi
+            echo "no-index-check $f exit=$no_index_rc"
           done
           echo '--- Expo Doctor ignore parser trace ---'
           DEBUG=expo:doctor:ignore npx expo-doctor --verbose || true
