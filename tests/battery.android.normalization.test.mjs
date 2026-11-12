@@ -1,0 +1,100 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { normalizeAndroidBatteryDiagnostics } from '../src/features/battery/battery.android.normalization.ts';
+
+test('normalizes Android temperature tenths of a degree to Celsius', () => {
+  const result = normalizeAndroidBatteryDiagnostics({ temperatureTenthsCelsius: 347 });
+  assert.equal(result.temperatureCelsius, 34.7);
+});
+
+test('preserves valid voltage, signed current and capacity', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    voltageMilliVolts: 4180,
+    currentNowMicroAmps: -325000,
+    currentAverageMicroAmps: -290000,
+    capacityPercent: 72,
+  });
+  assert.equal(result.voltageMilliVolts, 4180);
+  assert.equal(result.currentNowMicroAmps, -325000);
+  assert.equal(result.currentAverageMicroAmps, -290000);
+  assert.equal(result.capacityPercent, 72);
+});
+
+test('rejects unsupported and out-of-range hardware values', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    voltageMilliVolts: -1,
+    temperatureTenthsCelsius: 99999,
+    capacityPercent: 140,
+    currentNowMicroAmps: Number.NaN,
+    chargeCounterMicroAmpHours: -1,
+    energyCounterNanoWattHours: -1,
+    cycleCount: -1,
+  });
+  assert.equal(result.voltageMilliVolts, null);
+  assert.equal(result.temperatureCelsius, null);
+  assert.equal(result.capacityPercent, null);
+  assert.equal(result.currentNowMicroAmps, null);
+  assert.equal(result.chargeCounterMicroAmpHours, null);
+  assert.equal(result.energyCounterNanoWattHours, null);
+  assert.equal(result.cycleCount, null);
+});
+
+test('preserves a valid Android-reported battery cycle count', () => {
+  const result = normalizeAndroidBatteryDiagnostics({ apiLevel: 34, cycleCount: 412 });
+  assert.equal(result.cycleCount, 412);
+});
+
+test('returns null for missing native module data', () => {
+  assert.equal(normalizeAndroidBatteryDiagnostics(null), null);
+  assert.equal(normalizeAndroidBatteryDiagnostics(undefined), null);
+});
+
+
+test('normalizes native current and charge counters into display units', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    currentNowMicroAmps: -325500,
+    currentAverageMicroAmps: 1250000,
+    chargeCounterMicroAmpHours: 4567000,
+    energyCounterNanoWattHours: 1234000000,
+    technology: ' Li-ion ',
+  });
+  assert.equal(result.currentNowMilliAmps, -326);
+  assert.equal(result.currentAverageMilliAmps, 1250);
+  assert.equal(result.currentAverageMilliAmps, 1250);
+  assert.equal(result.remainingChargeMilliAmpHours, 4567);
+  assert.equal(result.energyCounterMilliWattHours, 1234);
+  assert.equal(result.technology, 'Li-ion');
+});
+
+test('rounds negative and positive current magnitudes symmetrically', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    currentNowMicroAmps: -325500,
+    currentAverageMicroAmps: 325500,
+  });
+  assert.equal(result.currentNowMilliAmps, -326);
+  assert.equal(result.currentAverageMilliAmps, 326);
+});
+
+test('does not invent missing native diagnostics', () => {
+  const result = normalizeAndroidBatteryDiagnostics({});
+  assert.equal(result.technology, null);
+  assert.equal(result.currentNowMilliAmps, null);
+  assert.equal(result.currentAverageMilliAmps, null);
+  assert.equal(result.remainingChargeMilliAmpHours, null);
+  assert.equal(result.energyCounterMilliWattHours, null);
+});
+
+test('rejects fractional API levels and battery cycle counts', () => {
+  const result = normalizeAndroidBatteryDiagnostics({
+    apiLevel: 34.5,
+    cycleCount: 412.7,
+  });
+  assert.equal(result.apiLevel, null);
+  assert.equal(result.cycleCount, null);
+});
+
+test('accepts integer zero cycle count when explicitly reported', () => {
+  const result = normalizeAndroidBatteryDiagnostics({ apiLevel: 34, cycleCount: 0 });
+  assert.equal(result.apiLevel, 34);
+  assert.equal(result.cycleCount, 0);
+});

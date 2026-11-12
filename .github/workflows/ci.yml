@@ -1,0 +1,105 @@
+name: VoltGuard validation
+
+on:
+  push:
+    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native, phase-e/production-hardening]
+  pull_request:
+    branches: [main, phase-0/stabilization-audit, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing, phase-a/product-polish-settings-legal, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native, phase-e/production-hardening]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voltguard-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: TypeScript, lint and web export
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Export web app
+        run: npx expo export --platform web
+
+  android-native-build:
+    if: github.ref != 'refs/heads/phase-6/web-testing' && github.event.pull_request.head.ref != 'phase-6/web-testing'
+    name: Android native module compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Compile Android Kotlin
+        working-directory: android
+        run: ./gradlew :app:compileDebugKotlin
+
+  dependency-audit:
+    name: npm dependency security audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate npm audit report
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e "const r=require('./npm-audit.json'); const v=r.metadata?.vulnerabilities ?? {}; console.log('Vulnerability summary:', JSON.stringify(v)); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name + ': ' + item.severity + ' | direct=' + item.isDirect + ' | fixAvailable=' + JSON.stringify(item.fixAvailable));"
+
+      - name: Upload dependency audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltguard-npm-audit-report
+          path: npm-audit.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce production dependency security threshold
+        run: npm audit --omit=dev --audit-level=high
