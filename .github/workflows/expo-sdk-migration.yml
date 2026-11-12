@@ -141,7 +141,8 @@ jobs:
             fi
           done
           echo '--- All ignore files discovered ---'
-          find . \\( -name .easignore -o -name .gitignore \\) -print
+          find . -name .easignore -print
+          find . -name .gitignore -print
           echo '--- Git ignore exit codes ---'
           for f in modules/voltguard-battery/android modules/voltguard-battery/android/build.gradle modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt; do
             git check-ignore -q "$f"; echo "tracked-check $f exit=$?"
