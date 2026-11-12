@@ -105,7 +105,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   dependency-remediation-preview:
-    name: Non-mutating dependency remediation preview
+    name: SDK-compatible dependency remediation candidate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -120,29 +120,43 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Preview npm's compatible fixes without changing the lockfile
+      - name: Apply npm fixes within existing semver ranges only
+        run: npm audit fix || true
+
+      - name: Verify generated lockfile is reproducible
+        run: npm ci
+
+      - name: Capture production and full audit results
         run: |
-          npm audit fix --dry-run --json > npm-audit-fix-preview.json || true
+          npm audit --omit=dev --json > npm-audit-production.json || true
+          npm audit --json > npm-audit-full.json || true
           node <<'NODE'
           const fs = require('node:fs');
-          const raw = fs.readFileSync('npm-audit-fix-preview.json', 'utf8');
-          try {
-            const report = JSON.parse(raw);
-            console.log('Dry-run preview summary:', JSON.stringify({
-              added: report.added,
-              removed: report.removed,
-              changed: report.changed,
-              audit: report.audit?.metadata?.vulnerabilities ?? report.metadata?.vulnerabilities ?? null
-            }, null, 2));
-          } catch {
-            console.log(raw.slice(-12000));
+          for (const file of ['npm-audit-production.json', 'npm-audit-full.json']) {
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log(file, JSON.stringify(report.metadata?.vulnerabilities ?? {}));
           }
           NODE
 
-      - name: Upload non-mutating remediation preview
+      - name: Validate Expo SDK compatibility
+        run: npx expo install --check
+
+      - name: Validate application after candidate updates
+        run: |
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+
+      - name: Upload candidate manifest, lockfile and audit reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: voltguard-non-mutating-remediation-preview
-          path: npm-audit-fix-preview.json
+          name: voltguard-sdk54-remediation-candidate
+          path: |
+            package.json
+            package-lock.json
+            npm-audit-production.json
+            npm-audit-full.json
           if-no-files-found: error
           retention-days: 7
