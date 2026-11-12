@@ -27,7 +27,7 @@ jobs:
   staged-migration:
     name: Baseline and staged SDK migration
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Checkout migration branch
         uses: actions/checkout@v4
@@ -83,6 +83,24 @@ jobs:
           npm audit --omit=dev --json > migration-artifacts/sdk55-audit.json || true
           cp package.json migration-artifacts/package-sdk55.json
           cp package-lock.json migration-artifacts/package-lock-sdk55.json
+
+      - name: Upgrade to SDK 56 and validate
+        run: |
+          npx expo install expo@^56.0.0 --fix
+          npm install
+          npx expo-doctor
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk56-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk56-audit.json || true
+          cp package.json migration-artifacts/package-sdk56.json
+          cp package-lock.json migration-artifacts/package-lock-sdk56.json
 
       - name: Upgrade to SDK 57 and validate
         run: |
