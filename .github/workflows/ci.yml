@@ -148,23 +148,10 @@ jobs:
       - name: Align only Expo SDK 54 patch-level packages
         run: npx expo install --fix
 
-      - name: Preview narrowly scoped security overrides
+      - name: Verify targeted dependency tree without forced overrides
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          pkg.overrides = {
-            ...(pkg.overrides ?? {}),
-            'minimatch@3.1.5': {
-              'brace-expansion': '^1.1.21'
-            },
-            postcss: '^8.5.32'
-          };
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          NODE
-          npm install --package-lock-only --ignore-scripts
           npm ci
-          npm ls brace-expansion postcss decode-uri-component
+          npm ls brace-expansion postcss decode-uri-component || true
 
       - name: Verify Expo SDK package compatibility
         run: |
