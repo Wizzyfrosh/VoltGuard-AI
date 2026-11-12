@@ -94,10 +94,18 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          // Keep expo-modules-core at the app root. Putting it in the local
+          // file dependency's devDependencies makes npm create
+          // modules/voltguard-battery/node_modules; Expo Doctor's
+          // modules/**/android/build.gradle glob then scans dependency modules
+          // under that directory and falsely reports them as gitignored.
           const localModulePath = 'modules/voltguard-battery/package.json';
           const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
-          localModule.devDependencies = { ...(localModule.devDependencies || {}), 'expo-modules-core': '~55.0.27' };
+          delete localModule.devDependencies;
           fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
+          root.devDependencies = root.devDependencies || {};
+          root.devDependencies['expo-modules-core'] = '~55.0.27';
+          fs.writeFileSync('package.json', JSON.stringify(root, null, 2) + '\n');
           NODE
           npm install
           echo '--- Git ignore diagnostics for custom native module ---'
