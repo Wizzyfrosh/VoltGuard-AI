@@ -104,8 +104,8 @@ jobs:
       - name: Enforce production dependency security threshold
         run: npm audit --omit=dev --audit-level=high
 
-  selective-dependency-remediation-preview:
-    name: Selective dependency remediation preview
+  dependency-remediation-preview:
+    name: Non-mutating dependency remediation preview
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -120,83 +120,29 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Update only audited high and critical transitive packages
+      - name: Preview npm's compatible fixes without changing the lockfile
         run: |
-          npm update \
-            @isaacs/brace-expansion \
-            @react-navigation/core \
-            @xmldom/xmldom \
-            brace-expansion \
-            browserslist \
-            compression \
-            flatted \
-            image-size \
-            js-yaml \
-            minimatch \
-            nanoid \
-            node-forge \
-            picomatch \
-            shell-quote \
-            source-map-js \
-            tar \
-            undici \
-            ws
+          npm audit fix --dry-run --json > npm-audit-fix-preview.json || true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync('npm-audit-fix-preview.json', 'utf8');
+          try {
+            const report = JSON.parse(raw);
+            console.log('Dry-run preview summary:', JSON.stringify({
+              added: report.added,
+              removed: report.removed,
+              changed: report.changed,
+              audit: report.audit?.metadata?.vulnerabilities ?? report.metadata?.vulnerabilities ?? null
+            }, null, 2));
+          } catch {
+            console.log(raw.slice(-12000));
+          }
+          NODE
 
-      - name: Install the selectively updated lockfile
-        run: npm ci
-
-      - name: Align only Expo SDK 54 patch-level packages
-        run: npx expo install --fix
-
-      - name: Verify targeted dependency tree without forced overrides
-        run: |
-          npm ci
-          npm ls brace-expansion postcss decode-uri-component || true
-
-      - name: Verify Expo SDK package compatibility
-        run: |
-          npm ci
-          npx expo install --check
-
-      - name: TypeScript
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Export web app
-        run: npx expo export --platform web
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Generate Android native project
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Compile Android Kotlin
-        working-directory: android
-        run: ./gradlew :app:compileDebugKotlin
-
-      - name: Generate post-remediation audit reports
-        run: |
-          npm audit --json > npm-audit-after.json || true
-          npm audit --omit=dev --json > npm-audit-production-after.json || true
-          node -e "for (const file of ['npm-audit-after.json','npm-audit-production-after.json']) { const r=require('./'+file); const v=r.metadata?.vulnerabilities ?? {}; console.log(file + ': ' + JSON.stringify(v)); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) if (item.severity === 'high' || item.severity === 'critical') console.log('  ' + name + ': ' + item.severity + ' | direct=' + item.isDirect + ' | fixAvailable=' + JSON.stringify(item.fixAvailable)); }"
-
-      - name: Upload selective remediation preview
+      - name: Upload non-mutating remediation preview
         uses: actions/upload-artifact@v4
         with:
-          name: voltguard-selective-remediation-preview
-          path: |
-            package.json
-            package-lock.json
-            npm-audit-after.json
-            npm-audit-production-after.json
+          name: voltguard-non-mutating-remediation-preview
+          path: npm-audit-fix-preview.json
           if-no-files-found: error
           retention-days: 7
