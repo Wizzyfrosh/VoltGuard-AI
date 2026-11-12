@@ -41,9 +41,3 @@ app-example
 # Generated native project folders at the repository root only.
 /ios/
 /android/
-
-# Keep local Expo module native source directories visible to Git.
-!/modules/
-!/modules/voltguard-battery/
-!/modules/voltguard-battery/android/
-!/modules/voltguard-battery/android/**
