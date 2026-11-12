@@ -4,7 +4,7 @@
 
 This migration is isolated to `maintenance/expo-sdk58-migration`, based on the Phase E production-hardening branch. It must not modify `main`, merge existing feature PRs, or overwrite their branches.
 
-The workflow is a **candidate-generation and validation exercise**. It installs the existing lockfile, records a baseline, then upgrades one SDK at a time through SDK 55, 56, 57, and 58. Each stage must pass the same app, web, and Android native-module checks before the next SDK is attempted.
+The workflow is a **candidate-generation and validation exercise**. It installs the existing lockfile, records a baseline, then upgrades one SDK at a time (SDK 56 is intentionally skipped because Expo documents a Hermes V1 memory regression affecting Reanimated and Worklets users) through SDK 55, directly to SDK 57.0.17 or later, and then SDK 58. Each stage must pass the same app, web, and Android native-module checks before the next SDK is attempted.
 
 Official guidance:
 - Upgrade SDKs incrementally and run `npx expo install --fix` and `npx expo-doctor`: https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/
@@ -20,6 +20,13 @@ Official guidance:
 6. Run Expo Doctor, TypeScript, unit tests, lint, web export, and Android native compilation.
 7. Capture package versions, audit report, package.json, and package-lock.json as stage artifacts.
 8. Stop immediately at the first failing stage. Diagnose it before continuing; later SDK upgrades must not hide earlier regressions.
+
+## SDK 55 compatibility adjustments
+
+- Remove the deprecated, unused `expo-av` dependency; no source imports were found in the repository search.
+- Remove the direct `expo-modules-core` dependency. Expo supplies its compatible version; the local native module is linked through Expo autolinking.
+- Remove the obsolete `android.edgeToEdgeEnabled` config field rejected by the SDK 55 schema.
+- Exclude the private local `voltguard-battery` package from React Native Directory metadata checks; this is a local module, not an unknown third-party dependency.
 
 ## VoltGuard-specific regression focus
 
@@ -44,8 +51,7 @@ The dependency audit is captured as evidence, not made a hard gate during candid
 - [x] Baseline CI state inspected.
 - [x] Staged migration workflow committed.
 - [ ] Baseline and SDK 55 candidate validated.
-- [ ] SDK 56 candidate validated.
-- [ ] SDK 57 candidate validated.
+- [ ] SDK 57.0.17+ candidate validated.
 - [ ] SDK 58 candidate validated.
 - [ ] Physical-device regression testing completed.
 - [ ] Final manifests and lockfile reviewed.
