@@ -71,12 +71,16 @@ export async function saveBatterySample(snapshot: BatterySnapshot): Promise<numb
 
 export async function getRecentBatterySamples(limit = 100): Promise<StoredBatterySample[]> {
   if (Platform.OS === 'web') return [];
-  if (await getBatteryPreference('battery_history_enabled') !== 'true') return [];
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 1000));
   const database = await getBatteryDatabase();
   const rows = await database.getAllAsync<BatterySampleRow>(
     `SELECT id, observed_at, platform, level, battery_state, low_power_mode, source
      FROM battery_samples
+     WHERE EXISTS (
+       SELECT 1 FROM user_preferences
+       WHERE preference_key = 'battery_history_enabled'
+         AND preference_value = 'true'
+     )
      ORDER BY observed_at DESC, id DESC
      LIMIT ?`,
     safeLimit,
