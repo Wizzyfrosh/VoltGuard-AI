@@ -64,11 +64,11 @@ class VoltGuardBatteryMonitorService : Service() {
       return START_NOT_STICKY
     }
 
-    startAsForegroundService()
+    if (!startAsForegroundService()) return START_NOT_STICKY
     return START_STICKY
   }
 
-  private fun startAsForegroundService() {
+  private fun startAsForegroundService(): Boolean {
     val notification = buildServiceNotification()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       startForeground(
@@ -79,7 +79,12 @@ class VoltGuardBatteryMonitorService : Service() {
     } else {
       startForeground(SERVICE_NOTIFICATION_ID, notification)
     }
-    registerBatteryReceiver()
+    if (!registerBatteryReceiver()) {
+      // Never leave an apparently active foreground monitor running without
+      // the battery-change receiver required to evaluate the selected target.
+      stopMonitoring()
+      return false
+    }
     val stickyIntent = try {
       @Suppress("DEPRECATION")
       registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -87,11 +92,12 @@ class VoltGuardBatteryMonitorService : Service() {
       null
     }
     if (stickyIntent != null) evaluateBattery(stickyIntent)
+    return true
   }
 
-  private fun registerBatteryReceiver() {
-    if (receiverRegistered) return
-    try {
+  private fun registerBatteryReceiver(): Boolean {
+    if (receiverRegistered) return true
+    return try {
       val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
       if (Build.VERSION.SDK_INT >= 33) {
         registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -100,8 +106,10 @@ class VoltGuardBatteryMonitorService : Service() {
         registerReceiver(batteryReceiver, filter)
       }
       receiverRegistered = true
+      true
     } catch (_: Exception) {
       receiverRegistered = false
+      false
     }
   }
 
