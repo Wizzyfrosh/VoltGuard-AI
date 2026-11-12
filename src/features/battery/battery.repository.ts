@@ -90,6 +90,10 @@ export async function getRecentBatterySamples(limit = 100): Promise<StoredBatter
 }
 
 export async function deleteBatterySamplesBefore(isoTimestamp: string): Promise<number> {
+  if (Platform.OS === 'web') return 0;
+  if (!Number.isFinite(Date.parse(isoTimestamp))) {
+    throw new Error('A valid ISO timestamp is required.');
+  }
   const database = await getBatteryDatabase();
   const result = await database.runAsync(
     'DELETE FROM battery_samples WHERE observed_at < ?',
