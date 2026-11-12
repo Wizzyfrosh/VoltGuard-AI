@@ -130,9 +130,15 @@ jobs:
           git check-ignore --no-index -v modules/voltguard-battery/android || true
           git check-ignore --no-index -v modules/voltguard-battery/android/src || true
           git check-ignore --no-index -v modules/voltguard-battery/android/src/main || true
+          git check-ignore --no-index -v modules/voltguard-battery/android/build.gradle || true
+          git check-ignore -v modules/voltguard-battery/android/build.gradle || true
           git check-ignore --no-index -v modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt || true
-          echo '--- Git exclude configuration ---'
+          echo '--- Ignore files and exclude configuration ---'
+          find . -name .easignore -o -name .gitignore -print
           git config --show-origin --get core.excludesfile || true
+          echo '--- Git metadata and exact module Gradle file ---'
+          git ls-files --stage modules/voltguard-battery/android/build.gradle
+          ls -la modules/voltguard-battery/android/build.gradle
           git status --short --ignored modules/voltguard-battery
           echo '--- SDK 57 tracked native module files ---'
           git ls-files modules/voltguard-battery/android
