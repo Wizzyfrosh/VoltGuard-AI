@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Keep the custom Expo module's native implementation tracked.
+!/modules/voltguard-battery/android/
+!/modules/voltguard-battery/android/**
