@@ -162,7 +162,13 @@ export async function getChargingSessions(limit = 50): Promise<ChargingSession[]
   );
   const rows = await db.getAllAsync<ChargingSessionRow>(
     `SELECT id, started_at, ended_at, start_level, end_level, status, source
-     FROM charging_sessions ORDER BY started_at DESC LIMIT ?`,
+     FROM charging_sessions
+     WHERE EXISTS (
+       SELECT 1 FROM user_preferences
+       WHERE preference_key = ? AND preference_value = 'true'
+     )
+     ORDER BY started_at DESC LIMIT ?`,
+    HISTORY_PREFERENCE,
     safeLimit,
   );
   return rows.map(mapSession);
@@ -186,8 +192,16 @@ export async function getBatteryDrainAnalysis(): Promise<BatteryDrainAnalysis> {
   if (!enabled) return analyzeBatteryDrain([]);
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const rows = await db.getAllAsync<{ observed_at: string; level: number | null; battery_state: number }>(
-    'SELECT observed_at, level, battery_state FROM battery_samples WHERE observed_at >= ? ORDER BY observed_at ASC LIMIT 500',
+    `SELECT observed_at, level, battery_state
+     FROM battery_samples
+     WHERE observed_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
+     ORDER BY observed_at ASC LIMIT 500`,
     cutoff,
+    HISTORY_PREFERENCE,
   );
   return analyzeBatteryDrain(rows.map((row) => ({
     observedAt: row.observed_at,
@@ -214,9 +228,14 @@ export async function getBatteryTrendReport(period: BatteryTrendPeriod): Promise
     `SELECT observed_at, level, battery_state
      FROM battery_samples
      WHERE observed_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
      ORDER BY observed_at DESC, id DESC
      LIMIT 5000`,
     cutoff,
+    HISTORY_PREFERENCE,
   );
   const samples = rows.reverse().map((row) => ({
     observedAt: row.observed_at,
