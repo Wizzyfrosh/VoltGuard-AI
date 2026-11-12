@@ -100,6 +100,15 @@ jobs:
           fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
           NODE
           npm install
+          echo '--- Git ignore diagnostics for custom native module ---'
+          git check-ignore -v modules/voltguard-battery/android || true
+          git check-ignore -v modules/voltguard-battery/android/src || true
+          echo '--- Tracked native module files ---'
+          git ls-files modules/voltguard-battery/android
+          echo '--- Nested ignore files ---'
+          find modules -name .gitignore -print -exec cat {} \;
+          echo '--- Git status ---'
+          git status --short --ignored modules/voltguard-battery/android
           npx expo-doctor
           npm run typecheck
           npm test
