@@ -17,10 +17,21 @@ import android.app.usage.UsageStatsManager
 import android.os.Process
 import android.os.BatteryManager
 import android.os.Build
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.util.Base64
+import android.util.LruCache
+import java.io.ByteArrayOutputStream
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.functions.Coroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class VoltGuardBatteryModule : Module() {
+  // Keep rendered launcher icons in memory so a manual refresh does not repeatedly
+  // decode Drawables, allocate Bitmaps and Base64-encode the same package icons.
+  private val appDetailsCache = LruCache<String, Pair<String, String?>>(40)
   override fun definition() = ModuleDefinition {
     Name("VoltGuardBattery")
 
@@ -32,8 +43,8 @@ class VoltGuardBatteryModule : Module() {
       readOptimizationDiagnostics()
     }
 
-    Function("hasUsageAccess") {
-      hasUsageAccess()
+    AsyncFunction("hasUsageAccess") Coroutine { ->
+      withContext(Dispatchers.IO) { hasUsageAccess() }
     }
 
     Function("openUsageAccessSettings") {
@@ -44,12 +55,12 @@ class VoltGuardBatteryModule : Module() {
       } catch (_: Exception) { false }
     }
 
-    Function("getAppUsageStats") {
-      readAppUsageStats()
+    AsyncFunction("getAppUsageStats") Coroutine { ->
+      withContext(Dispatchers.IO) { readAppUsageStats() }
     }
 
-    Function("getSystemResourceDiagnostics") {
-      readSystemResourceDiagnostics()
+    AsyncFunction("getSystemResourceDiagnostics") Coroutine { ->
+      withContext(Dispatchers.IO) { readSystemResourceDiagnostics() }
     }
 
     Function("openOptimizationSetting") { setting: String ->
@@ -141,34 +152,87 @@ class VoltGuardBatteryModule : Module() {
     val end = System.currentTimeMillis()
     val start = end - 24L * 60L * 60L * 1000L
     val manager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
-      ?: return mapOf("permissionGranted" to true, "windowStart" to start, "windowEnd" to end, "apps" to emptyList<Map<String, Any?>>())
+      ?: return mapOf(
+        "permissionGranted" to true,
+        "queryAvailable" to false,
+        "windowStart" to start,
+        "windowEnd" to end,
+        "apps" to emptyList<Map<String, Any?>>()
+      )
     val stats = try {
       manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-    } catch (_: Exception) { emptyList() }
+    } catch (_: Exception) { null }
+    if (stats == null) {
+      return mapOf(
+        "permissionGranted" to true,
+        "queryAvailable" to false,
+        "windowStart" to start,
+        "windowEnd" to end,
+        "apps" to emptyList<Map<String, Any?>>()
+      )
+    }
     val ownPackage = context.packageName
-    val apps = stats
-      .asSequence()
-      .filter { it.packageName != ownPackage && it.totalTimeInForeground > 0L }
-      .groupBy { it.packageName }
-      .map { (packageName, rows) ->
-        val foregroundMs = rows.sumOf { it.totalTimeInForeground }
-        val lastUsed = rows.maxOfOrNull { it.lastTimeUsed } ?: 0L
-        val label = try {
-          @Suppress("DEPRECATION")
-          val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
-          context.packageManager.getApplicationLabel(appInfo).toString()
-        } catch (_: Exception) { packageName }
-        mapOf(
-          "packageName" to packageName,
-          "appLabel" to label,
-          "foregroundTimeMs" to foregroundMs,
-          "lastTimeUsed" to lastUsed
-        )
-      }
-      .sortedByDescending { it["foregroundTimeMs"] as Long }
+    // Aggregate and rank usage before resolving package metadata or rendering icons.
+    // Icon rendering is comparatively expensive; doing it for every package returned
+    // by UsageStatsManager creates unnecessary work on every refresh.
+    // Fold daily UsageStats rows directly into primitive accumulators.
+    // groupBy() would allocate a List for every package on each refresh.
+    val usageByPackage = HashMap<String, LongArray>()
+    for (row in stats) {
+      if (row.packageName == ownPackage || row.totalTimeInForeground <= 0L) continue
+      val totals = usageByPackage.getOrPut(row.packageName) { longArrayOf(0L, 0L) }
+      totals[0] += row.totalTimeInForeground
+      if (row.lastTimeUsed > totals[1]) totals[1] = row.lastTimeUsed
+    }
+    val topUsage = usageByPackage
+      .map { (packageName, totals) -> Triple(packageName, totals[0], totals[1]) }
+      .sortedByDescending { it.second }
       .take(20)
+
+    val apps = topUsage.map { (packageName, foregroundMs, lastUsed) ->
+      val appDetails = try {
+        @Suppress("DEPRECATION")
+        val packageInfo = context.packageManager.getPackageInfo(packageName, 0)
+        val appInfo = packageInfo.applicationInfo
+          ?: throw IllegalStateException("Application metadata is unavailable")
+        // Package update time changes when an app is upgraded, so a cached
+        // launcher icon/label cannot outlive the installed app version.
+        val cacheKey = "$packageName:${packageInfo.lastUpdateTime}"
+        synchronized(appDetailsCache) { appDetailsCache.get(cacheKey) } ?: run {
+          val label = context.packageManager.getApplicationLabel(appInfo).toString()
+          val iconDataUri = try {
+            val drawable = context.packageManager.getApplicationIcon(appInfo)
+            val bitmap = Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888)
+            try {
+              val canvas = Canvas(bitmap)
+              drawable.setBounds(0, 0, canvas.width, canvas.height)
+              drawable.draw(canvas)
+              ByteArrayOutputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+              }
+            } finally {
+              bitmap.recycle()
+            }
+          } catch (_: Exception) { null }
+          (label to iconDataUri).also { details ->
+            synchronized(appDetailsCache) { appDetailsCache.put(cacheKey, details) }
+          }
+        }
+      } catch (_: Exception) {
+        (packageName to null)
+      }
+      mapOf(
+        "packageName" to packageName,
+        "appLabel" to appDetails.first,
+        "iconDataUri" to appDetails.second,
+        "foregroundTimeMs" to foregroundMs,
+        "lastTimeUsed" to lastUsed
+      )
+    }
     return mapOf(
       "permissionGranted" to true,
+      "queryAvailable" to true,
       "windowStart" to start,
       "windowEnd" to end,
       "apps" to apps

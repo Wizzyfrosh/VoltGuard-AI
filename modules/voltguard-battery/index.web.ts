@@ -31,6 +31,7 @@ export async function sendTestChargingAlarm(): Promise<boolean> { return false; 
 export type AppUsageEntry = {
   packageName: string;
   appLabel: string;
+  iconDataUri: string | null;
   foregroundTimeMs: number;
   lastTimeUsed: number;
 };
@@ -43,9 +44,9 @@ export type AppUsageSnapshot = {
 };
 
 // Android Usage Access is not available to web builds.
-export function hasUsageAccess(): boolean { return false; }
+export async function hasUsageAccess(): Promise<boolean> { return false; }
 export function openUsageAccessSettings(): boolean { return false; }
-export function getAppUsageStats(): AppUsageSnapshot | null { return null; }
+export async function getAppUsageStats(): Promise<AppUsageSnapshot | null> { return null; }
 
 export type SystemResourceDiagnostics = {
   totalRamBytes: number | null;
@@ -55,4 +56,4 @@ export type SystemResourceDiagnostics = {
   availableStorageBytes: number | null;
 };
 
-export function getSystemResourceDiagnostics(): SystemResourceDiagnostics | null { return null; }
+export async function getSystemResourceDiagnostics(): Promise<SystemResourceDiagnostics | null> { return null; }

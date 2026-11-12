@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, View, Text, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { Info, Battery, Smartphone, Clock3, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react-native';
@@ -31,32 +31,52 @@ export default function BreakdownScreen() {
   const [loadingUsage, setLoadingUsage] = useState(false);
   const [resources, setResources] = useState<SystemResourceDiagnostics | null>(null);
   const trends = useBatteryTrends();
+  const mountedRef = useRef(false);
+  const refreshInFlightRef = useRef(false);
 
-  const refreshUsage = useCallback(() => {
-    if (Platform.OS !== 'android') return;
+  const refreshUsage = useCallback(async () => {
+    if (Platform.OS !== 'android' || refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
     setLoadingUsage(true);
     try {
-      setResources(getSystemResourceDiagnostics());
-      const granted = hasUsageAccess();
+      const [resourceSnapshot, granted] = await Promise.all([
+        getSystemResourceDiagnostics(),
+        hasUsageAccess(),
+      ]);
+      const usageSnapshot = granted ? await getAppUsageStats() : null;
+      if (!mountedRef.current) return;
+      setResources(resourceSnapshot);
       setUsageGranted(granted);
-      setUsage(granted ? getAppUsageStats() : null);
+      setUsage(usageSnapshot);
     } catch {
+      if (!mountedRef.current) return;
       setUsage(null);
+      setResources(null);
     } finally {
-      setLoadingUsage(false);
+      refreshInFlightRef.current = false;
+      if (mountedRef.current) setLoadingUsage(false);
     }
   }, []);
 
-  useEffect(() => { refreshUsage(); }, [refreshUsage]);
+  useEffect(() => {
+    mountedRef.current = true;
+    void refreshUsage();
+    const subscription = AppState.addEventListener('change', (state) => {
+      // Android returns here after the user grants or revokes Usage Access.
+      // Re-check permission and refresh the snapshot instead of requiring a
+      // manual app restart. The in-flight guard prevents overlapping queries.
+      if (state === 'active') void refreshUsage();
+    });
+    return () => {
+      mountedRef.current = false;
+      subscription.remove();
+    };
+  }, [refreshUsage]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: colors.text }]}>Power Usage</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Reliable power attribution is not available through the current cross-platform APIs.
-        </Text>
-
         <View style={[styles.usageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.usageHeader}>
             <View style={styles.appCopy}>
@@ -134,13 +154,6 @@ export default function BreakdownScreen() {
             </>
           ) : null}
         </View>
-        <View style={[styles.noticeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Battery size={28} color={colors.primary} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Battery energy attribution</Text>
-          <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Android does not expose reliable per-app battery energy (mAh) to ordinary apps. VoltGuard will not label foreground time as battery drain or invent per-app percentages.
-          </Text>
-        </View>
         <View style={[styles.usageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.usageHeader}>
             <View style={styles.usageHeading}>
@@ -152,7 +165,7 @@ export default function BreakdownScreen() {
             </Pressable>
           </View>
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Approximate time apps were in the foreground over the last 24 hours. This is usage activity, not measured battery consumption.
+            Android-reported app foreground activity from recent usage summaries. Results may be delayed or grouped into system reporting intervals; this is not measured battery consumption.
           </Text>
           {Platform.OS !== 'android' ? (
             <Text style={[styles.body, { color: colors.textSecondary }]}>App usage access is available only in the Android app.</Text>
@@ -175,13 +188,24 @@ export default function BreakdownScreen() {
             <>
               <View style={styles.usageMeta}>
                 <ShieldCheck size={15} color={colors.primary} />
-                <Text style={[styles.caption, { color: colors.textSecondary }]}>Permission granted · Local device data · Last 24 hours</Text>
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>Permission granted · Local device data · Android usage summaries</Text>
               </View>
-              {usage?.apps?.length ? usage.apps.map((app) => (
+              {usage?.queryAvailable === false ? (
+                <Text style={[styles.body, { color: colors.warning }]}>App activity is temporarily unavailable. Try refreshing in a moment.</Text>
+              ) : usage?.apps?.length ? usage.apps.map((app) => (
                 <View key={app.packageName} style={[styles.appRow, { borderTopColor: colors.border }]}>
-                  <View style={styles.appCopy}>
-                    <Text numberOfLines={1} style={[styles.appName, { color: colors.text }]}>{app.appLabel}</Text>
-                    <Text numberOfLines={1} style={[styles.caption, { color: colors.textSecondary }]}>{app.packageName}</Text>
+                  <View style={styles.appIdentity}>
+                    {app.iconDataUri ? (
+                      <Image source={{ uri: app.iconDataUri }} style={styles.appIcon} resizeMode="contain" />
+                    ) : (
+                      <View style={[styles.appIconFallback, { backgroundColor: colors.background }]}>
+                        <Smartphone size={19} color={colors.textSecondary} />
+                      </View>
+                    )}
+                    <View style={styles.appCopy}>
+                      <Text numberOfLines={1} style={[styles.appName, { color: colors.text }]}>{app.appLabel}</Text>
+                      <Text numberOfLines={1} style={[styles.caption, { color: colors.textSecondary }]}>{app.packageName}</Text>
+                    </View>
                   </View>
                   <Text style={[styles.appDuration, { color: colors.text }]}>{formatDuration(app.foregroundTimeMs)}</Text>
                 </View>
@@ -276,6 +300,9 @@ const styles = StyleSheet.create({
   sessionDuration: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#80808055', paddingTop: 9 },
   resourceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
   appRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, gap: 12 },
+  appIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  appIcon: { width: 36, height: 36, borderRadius: 9 },
+  appIconFallback: { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   appCopy: { flex: 1, gap: 3 },
   appName: { fontSize: 14, fontWeight: '700' },
   appDuration: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },

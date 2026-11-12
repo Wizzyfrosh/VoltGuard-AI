@@ -48,22 +48,22 @@ Statuses reflect source inspection, not physical-device verification.
 - [x] Charging threshold preferences/alerts and Android foreground monitoring service exist in code.
 - [x] Local opt-in history and charging-session inference exist in code (30-day retention).
 - [x] Browser testing path exists on phase-6 branch; browser Battery Status API is optional and limited.
-- [x] Analytics breakdown explicitly removed prototype/sample app-consumption values; current UI correctly explains that per-app power data is not accessible.
+- [x] Analytics breakdown displays real Android app foreground activity (opt-in Usage Access) with app labels, launcher icons and observed foreground duration; this is not per-app energy attribution.
 - [ ] Physical Android verification of native diagnostics, threshold alert sound, screen-off operation, reboot recovery, and OEM behaviour.
 - [ ] Web history persistence: verify current browser database adapter end-to-end; feature README still describes web history as unsupported, so documentation and implementation must be reconciled.
 - [ ] Production Vercel preview verification for the current web branch.
 - [ ] Resolve/verify prior native splash/startup issue on physical device.
-- [ ] Update stale `src/features/battery/README.md`: it says cycle count is intentionally null, while native code now attempts Android 14+ `EXTRA_CYCLE_COUNT`; it also describes the old web storage limitation.
+- [x] Update `src/features/battery/README.md` to document the conditional Android 14+ `EXTRA_CYCLE_COUNT` read. Web history persistence remains a separate end-to-end verification item.
 - [ ] Dependency/security audit and remediation with current lockfile and CI evidence.
-- [ ] No dedicated daily battery-care reminder exists.
-- [ ] No evidence-backed battery drain analysis engine exists.
-- [ ] No robust battery health explanation separating OS health from capacity/wear estimates exists.
+- [x] Daily battery-care reminder scheduling is implemented; physical delivery and OEM reliability verification remain open.
+- [x] Sample-based battery drain analysis exists with interval validation and coverage indicators; physical-device calibration remains open.
+- [x] Battery health presentation separates OS-reported status from capacity/wear estimates; actual wear remains unavailable without valid capacity inputs.
 - [ ] Per-app energy consumption is not implemented; current capability is not-implemented.
 - [ ] No verified screen-off/deep-sleep breakdown exists.
-- [ ] No full charging detection/optimization hub exists.
+- [ ] Charging Detect & Optimization Hub is partially implemented; complete live-state, diagnostics and physical-device acceptance checks remain open.
 - [ ] No real app candidate/protected-app sleep management exists.
 - [ ] No defensible boost score or cleaner exists; do not invent one.
-- [ ] No complete device information page covering only supported fields exists.
+- [ ] Device information coverage remains incomplete; continue adding only verified platform-supported fields and provenance.
 - [ ] No report export workflow exists.
 - [ ] No weekly/monthly battery wear/efficiency reporting is established from validated samples.
 
@@ -174,7 +174,7 @@ For every workstream:
 
 **Audit findings from source inspection:**
 - Native Kotlin currently attempts to read Android 14+ `BatteryManager.EXTRA_CYCLE_COUNT`; README and feature README disagree, and the feature README is stale.
-- The Analytics breakdown explicitly removed prototype/sample app-consumption values. Per-app energy is not available; this is correct and must not be regressed with fabricated values.
+- The Analytics breakdown shows Android UsageStats foreground activity (with app logos) when permission is granted. It must never be presented as per-app energy; per-app mAh remains unavailable to ordinary apps.
 - The telemetry capability model includes per-app power usage as `not-implemented`.
 - Charging threshold monitoring and foreground service exist in code, but audible behaviour, screen-off operation, reboot recovery and OEM behaviour still require physical-device testing.
 - Local SQLite history and inferred charging sessions exist; the browser adapter/docs need an end-to-end reconciliation and test.
@@ -508,3 +508,48 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - Web cannot reliably deliver a scheduled reminder while the browser is closed.
 - The threshold alert is a notification with alarm-style sound/vibration, not a guaranteed continuous/full-screen alarm and cannot stop charging.
 - No CSV/JSON export or cloud battery-history upload is in scope.
+
+
+## Phase D — Device insights responsiveness and app identity — 2026-11-11
+
+- [x] Convert Usage Access checks, app foreground-usage queries and system RAM/storage diagnostics to Expo asynchronous native module functions.
+- [x] Update TypeScript and web fallback interfaces to return Promise-based results.
+- [x] Await native results in the Power Usage screen, avoid duplicate refreshes, and prevent state updates after unmount.
+- [x] Display Android launcher icons beside app names in foreground-activity rows, with a fallback icon when package metadata is unavailable.
+- [x] Move Usage Access checks, UsageStats queries, RAM/storage reads and package icon/label resolution onto `Dispatchers.IO`; synchronize shared icon-cache access.
+- [x] Rank/limit foreground usage to the top 20 packages before resolving package labels and rendering icons.
+- [x] Validate TypeScript, unit tests, lint and web export on commit `4df9a3ad6de36703b3869cd4d06b7aa4ea2c01e0`.
+- [x] Validate Android Kotlin compilation on the same commit after correcting the package-version cache lookup.
+- [ ] Verify native execution queue behaviour and UI responsiveness with Android profiling; an AsyncFunction declaration alone is not proof of background-thread execution.
+- [ ] Validate Usage Access permission grant/revoke, empty history, package icon fallbacks and reported durations on physical Android devices.
+- [x] Add a concise Usage Access disclosure covering the permission purpose, local processing and revocation path. Public distribution policy review remains open.
+
+**Latest Phase D implementation commit:** `99b2d12636db52eb2cf1b03d2995526d347d8e5c`  
+**Pull request:** [#14](https://github.com/Wizzyfrosh/VoltGuard-AI/pull/14), draft, based on `phase-c/battery-analytics-hardening`.  
+**Validation:** [CI runs 43058485436](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43058485436) and [43058474956](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43058474956) passed TypeScript, unit tests, lint, web export and Android Kotlin compilation. Physical-device acceptance and Android profiling remain outstanding. Keep the PR draft and unmerged until those gates are completed.
+
+## Phase E — Security, privacy and release hardening — 2026-11-11
+
+### Dependency security
+- [x] Add Android native compilation to the safe dependency-remediation preview so a candidate lockfile cannot be accepted on web checks alone.
+- [x] Add a high-severity threshold gate for the npm install graph after omitting declared devDependencies.
+- [ ] Resolve the production-install audit gate: commit `62d8d5bb5a967b481b0f24d52837700a34fbab39` correctly fails this gate; the report shows 40 findings (2 low, 17 moderate, 19 high, 2 critical). This graph includes Expo tooling reachable through the `expo` package and is not identical to the final JavaScript shipped bundle; classify runtime reachability before accepting residual findings.
+- [ ] Safe remediation preview remains uncommitted: it reduced the full audit from 43 findings (2 low, 19 moderate, 20 high, 2 critical) to 28 (1 low, 21 moderate, 6 high, 0 critical), but Android compilation for that preview has not yet passed.
+- [ ] Verify production dependency exposure separately from development/build-tool findings; document any accepted residual risk with package path, advisory, exploitability and upgrade blocker.
+- [ ] Re-run typecheck, unit tests, lint, web export, Android compile and audit after every dependency update.
+
+### Privacy and platform compliance
+- [ ] Verify Privacy Policy, Terms and Permissions & Data Use screens against actual collection, retention, local storage, notification and Usage Access behaviour.
+- [ ] Verify Android manifest permissions are minimal and each sensitive permission has an in-app purpose and revocation route.
+- [ ] Review Usage Access and package metadata handling against Google Play policy before distribution; do not add `QUERY_ALL_PACKAGES` as a shortcut.
+- [ ] Confirm no telemetry, usage summaries, app labels/icons or battery history are uploaded; inspect network requests and build configuration.
+- [ ] Reconcile web history documentation with the actual browser database adapter and end-to-end persistence tests.
+
+### Release integrity
+- [ ] Audit deep links, external intents, notification receivers/services, exported components and PendingIntent mutability/immutability.
+- [ ] Confirm no secrets or signing credentials are committed; use CI secrets and a documented release-signing process.
+- [ ] Verify production build configuration, permissions, notification channel behaviour, crash handling and privacy disclosures.
+- [ ] Produce a release checklist and device test matrix; no public release until physical Android checks pass.
+
+**Scope exclusions:** no CSV/JSON export, no fabricated telemetry, no cloud battery-history upload, and no automatic charging stop.
+

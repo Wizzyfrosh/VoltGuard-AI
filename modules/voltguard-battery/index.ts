@@ -9,10 +9,10 @@ type VoltGuardBatteryNativeModule = {
   stopBackgroundMonitoring: () => Promise<void>;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
-  hasUsageAccess: () => boolean;
+  hasUsageAccess: () => Promise<boolean>;
   openUsageAccessSettings: () => boolean;
-  getAppUsageStats: () => AppUsageSnapshot;
-  getSystemResourceDiagnostics: () => SystemResourceDiagnostics;
+  getAppUsageStats: () => Promise<AppUsageSnapshot | null>;
+  getSystemResourceDiagnostics: () => Promise<SystemResourceDiagnostics | null>;
 };
 
 export type ChargingAlarmStatus = {
@@ -41,28 +41,30 @@ export type SystemResourceDiagnostics = {
   availableStorageBytes: number | null;
 };
 
-export function getSystemResourceDiagnostics(): SystemResourceDiagnostics | null {
+export async function getSystemResourceDiagnostics(): Promise<SystemResourceDiagnostics | null> {
   if (Platform.OS !== 'android') return null;
-  return getNativeModule()?.getSystemResourceDiagnostics() ?? null;
+  return (await getNativeModule()?.getSystemResourceDiagnostics()) ?? null;
 }
 
 export type AppUsageEntry = {
   packageName: string;
   appLabel: string;
+  iconDataUri: string | null;
   foregroundTimeMs: number;
   lastTimeUsed: number;
 };
 
 export type AppUsageSnapshot = {
   permissionGranted: boolean;
+  queryAvailable?: boolean;
   windowStart: number;
   windowEnd: number;
   apps: AppUsageEntry[];
 };
 
-export function hasUsageAccess(): boolean {
+export async function hasUsageAccess(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
-  return getNativeModule()?.hasUsageAccess() ?? false;
+  return (await getNativeModule()?.hasUsageAccess()) ?? false;
 }
 
 export function openUsageAccessSettings(): boolean {
@@ -70,9 +72,9 @@ export function openUsageAccessSettings(): boolean {
   return getNativeModule()?.openUsageAccessSettings() ?? false;
 }
 
-export function getAppUsageStats(): AppUsageSnapshot | null {
+export async function getAppUsageStats(): Promise<AppUsageSnapshot | null> {
   if (Platform.OS !== 'android') return null;
-  return getNativeModule()?.getAppUsageStats() ?? null;
+  return (await getNativeModule()?.getAppUsageStats()) ?? null;
 }
 
 export type OptimizationDiagnostics = {
