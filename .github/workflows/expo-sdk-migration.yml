@@ -63,10 +63,6 @@ jobs:
           const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           delete root.dependencies['expo-av'];
           delete root.dependencies['expo-modules-core'];
-          root.devDependencies = root.devDependencies || {};
-          // The private local Expo module needs the SDK-matched core types at
-          // build time. Keep core dev-only in the app and out of the runtime bundle.
-          root.devDependencies['expo-modules-core'] = '~55.0.26';
           root.expo = root.expo || {};
           root.expo.install = root.expo.install || {};
           root.expo.install.exclude = [...new Set([...(root.expo.install.exclude || []), 'expo-modules-core'])];
@@ -86,7 +82,7 @@ jobs:
           const localModulePath = 'modules/voltguard-battery/package.json';
           const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
           localModule.peerDependencies = { expo: '*' };
-          localModule.devDependencies = { 'expo-modules-core': '~55.0.26' };
+          delete localModule.devDependencies;
           fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
           NODE
           npm install
@@ -94,6 +90,17 @@ jobs:
       - name: Upgrade to SDK 55 and validate
         run: |
           npx expo install expo@^55.0.0 --fix
+          npm install
+          node <<'NODE'
+          const fs = require('node:fs');
+          const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          root.devDependencies = root.devDependencies || {};
+          root.devDependencies['expo-modules-core'] = '~55.0.27';
+          root.expo = root.expo || {};
+          root.expo.install = root.expo.install || {};
+          root.expo.install.exclude = [...new Set([...(root.expo.install.exclude || []), 'expo-modules-core'])];
+          fs.writeFileSync('package.json', JSON.stringify(root, null, 2) + '\n');
+          NODE
           npm install
           npx expo-doctor
           npm run typecheck
