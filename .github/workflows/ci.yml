@@ -123,7 +123,10 @@ jobs:
       - name: Apply npm fixes within existing semver ranges only
         run: npm audit fix || true
 
-      - name: Verify generated lockfile is reproducible
+      - name: Align Expo packages to the installed SDK
+        run: npx expo install --fix
+
+      - name: Verify generated manifest and lockfile are reproducible
         run: npm ci
 
       - name: Capture production and full audit results
