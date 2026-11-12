@@ -160,7 +160,7 @@ jobs:
             },
             postcss: '^8.5.32'
           };
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           NODE
           npm install --package-lock-only --ignore-scripts
           npm ci
