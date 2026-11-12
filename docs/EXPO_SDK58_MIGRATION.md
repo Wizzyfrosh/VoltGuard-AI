@@ -29,6 +29,12 @@ Official guidance:
 - Remove the obsolete `android.edgeToEdgeEnabled` field from the SDK 55 config; edge-to-edge behavior must be verified against SDK 55's Android target and safe-area layout rather than controlled by this removed config field.
 - Exclude the private local `voltguard-battery` package from React Native Directory metadata checks; this is a local module, not an unknown third-party dependency.
 
+## SDK 55 TypeScript compatibility adjustments
+
+- Native-module JavaScript entry points import `requireNativeModule` and `requireOptionalNativeModule` from the SDK's `expo` package, avoiding an application-level direct dependency on `expo-modules-core`.
+- The local module declares `expo` as its peer dependency and `expo-modules-core` as a development dependency, matching Expo's existing-library guidance.
+- Notification permission checks use a narrow runtime-safe adapter for SDK 55's incomplete inherited TypeScript declarations. The adapter accepts the documented granted status and iOS provisional authorization without assuming fields exist on malformed responses.
+
 ## SDK 55 architectural migration gate
 
 SDK 55 removes the legacy architecture option. The custom `voltguard-battery` module is built with the Expo Modules API, which supports the New Architecture, but that fact alone is not sufficient acceptance. The generated Android project must compile, and the physical-device test must verify service startup, battery broadcasts, notification actions, and native-to-JS event delivery on a SDK 55 build.

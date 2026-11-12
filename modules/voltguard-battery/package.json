@@ -5,6 +5,9 @@
   "main": "index.ts",
   "types": "index.ts",
   "peerDependencies": {
-    "expo-modules-core": "~3.0.28"
+    "expo": "*"
+  },
+  "devDependencies": {
+    "expo-modules-core": "*"
   }
 }
