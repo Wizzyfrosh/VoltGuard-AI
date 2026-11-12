@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { getBatteryDatabase, getBatteryPreference } from './battery.database';
 import type { BatterySnapshot } from './battery.types';
+import { hasBatteryHistoryConsent } from './battery.history-consent';
 
 export interface StoredBatterySample {
   id: number;
@@ -49,7 +50,7 @@ export async function saveBatterySample(snapshot: BatterySnapshot): Promise<numb
       'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
       'battery_history_enabled',
     );
-    if (preference?.preference_value !== 'true') {
+    if (!hasBatteryHistoryConsent(preference?.preference_value)) {
       throw new Error('Enable battery history before saving samples.');
     }
     const result = await database.runAsync(
