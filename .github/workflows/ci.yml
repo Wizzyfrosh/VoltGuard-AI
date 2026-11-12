@@ -2,7 +2,7 @@ name: VoltGuard validation
 
 on:
   push:
-    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native]
+    branches: [main, phase-6/web-testing, roadmap/production-feature-program, phase-0/stabilization-audit, phase-9-dependency-security, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native, security/selective-transitive-patches]
   pull_request:
     branches: [main, phase-0/stabilization-audit, phase-5/dashboard-redesign-battery-fix, phase-6/web-testing, phase-a/product-polish-settings-legal, phase-b/telemetry-reliability, phase-c/battery-analytics-hardening, phase-d/device-insights-async-native]
 
@@ -104,8 +104,8 @@ jobs:
       - name: Enforce production dependency security threshold
         run: npm audit --omit=dev --audit-level=high
 
-  safe-dependency-remediation-preview:
-    name: Safe dependency remediation preview
+  dependency-remediation-preview:
+    name: Non-mutating dependency remediation preview
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -120,51 +120,29 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Apply non-breaking dependency fixes only
+      - name: Preview npm's compatible fixes without changing the lockfile
         run: |
-          npm audit fix || audit_fix_exit=$?
-          echo "npm audit fix exit code: ${audit_fix_exit:-0}"
+          npm audit fix --dry-run --json > npm-audit-fix-preview.json || true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync('npm-audit-fix-preview.json', 'utf8');
+          try {
+            const report = JSON.parse(raw);
+            console.log('Dry-run preview summary:', JSON.stringify({
+              added: report.added,
+              removed: report.removed,
+              changed: report.changed,
+              audit: report.audit?.metadata?.vulnerabilities ?? report.metadata?.vulnerabilities ?? null
+            }, null, 2));
+          } catch {
+            console.log(raw.slice(-12000));
+          }
+          NODE
 
-      - name: Re-align Expo packages to the installed SDK
-        run: npx expo install --fix
-
-      - name: TypeScript
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Export web app
-        run: npx expo export --platform web
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Generate Android native project
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Compile Android Kotlin
-        working-directory: android
-        run: ./gradlew :app:compileDebugKotlin
-
-      - name: Generate post-remediation audit report
-        run: |
-          npm audit --json > npm-audit-after.json || true
-          node -e "const r=require('./npm-audit-after.json'); console.log('Post-remediation vulnerability summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {}));"
-
-      - name: Upload safe remediation preview
+      - name: Upload non-mutating remediation preview
         uses: actions/upload-artifact@v4
         with:
-          name: voltguard-safe-remediation-preview
-          path: |
-            package.json
-            package-lock.json
-            npm-audit-after.json
+          name: voltguard-non-mutating-remediation-preview
+          path: npm-audit-fix-preview.json
           if-no-files-found: error
           retention-days: 7
