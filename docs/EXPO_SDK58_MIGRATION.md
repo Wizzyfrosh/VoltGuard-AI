@@ -32,7 +32,7 @@ Official guidance:
 ## SDK 55 TypeScript compatibility adjustments
 
 - Native-module JavaScript entry points import `requireNativeModule` and `requireOptionalNativeModule` from the SDK's `expo` package, avoiding an application-level direct dependency on `expo-modules-core`.
-- The local module declares `expo` as its peer dependency and `expo-modules-core` as a development dependency, matching Expo's existing-library guidance.
+- The local module declares `expo` as its peer dependency and `expo-modules-core` as an SDK-matched development dependency. The root app keeps the same core package dev-only for TypeScript resolution; it is excluded from Expo's package-version check because Expo itself supplies the runtime-compatible copy.
 - Notification permission checks use a narrow runtime-safe adapter for SDK 55's incomplete inherited TypeScript declarations. The adapter accepts the documented granted status and iOS provisional authorization without assuming fields exist on malformed responses.
 
 ## SDK 55 architectural migration gate

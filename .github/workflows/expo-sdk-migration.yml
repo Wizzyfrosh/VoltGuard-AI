@@ -63,7 +63,13 @@ jobs:
           const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           delete root.dependencies['expo-av'];
           delete root.dependencies['expo-modules-core'];
+          root.devDependencies = root.devDependencies || {};
+          // The private local Expo module needs the SDK-matched core types at
+          // build time. Keep core dev-only in the app and out of the runtime bundle.
+          root.devDependencies['expo-modules-core'] = '~55.0.26';
           root.expo = root.expo || {};
+          root.expo.install = root.expo.install || {};
+          root.expo.install.exclude = [...new Set([...(root.expo.install.exclude || []), 'expo-modules-core'])];
           root.expo.doctor = root.expo.doctor || {};
           root.expo.doctor.reactNativeDirectoryCheck = root.expo.doctor.reactNativeDirectoryCheck || {};
           const excluded = root.expo.doctor.reactNativeDirectoryCheck.exclude || [];
@@ -79,8 +85,8 @@ jobs:
 
           const localModulePath = 'modules/voltguard-battery/package.json';
           const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
-          localModule.peerDependencies = { expo: '*', 'expo-modules-core': '*', 'react-native': '*' };
-          delete localModule.devDependencies;
+          localModule.peerDependencies = { expo: '*' };
+          localModule.devDependencies = { 'expo-modules-core': '~55.0.26' };
           fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
           NODE
           npm install
