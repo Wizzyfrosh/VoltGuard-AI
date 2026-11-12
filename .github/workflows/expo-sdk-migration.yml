@@ -133,7 +133,7 @@ jobs:
           echo '--- SDK 57 tracked native module files ---'
           git ls-files modules/voltguard-battery/android
           echo '--- SDK 57 nested ignore files ---'
-          find modules -name .gitignore -print -exec cat {} ;
+          find modules -name .gitignore -print -exec cat {} +
           echo '--- SDK 57 Git status ---'
           git status --short --ignored modules/voltguard-battery/android
           echo '--- SDK 57 Expo Doctor verbose output ---'
