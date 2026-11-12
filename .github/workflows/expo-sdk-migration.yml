@@ -134,7 +134,21 @@ jobs:
           git check-ignore -v modules/voltguard-battery/android/build.gradle || true
           git check-ignore --no-index -v modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt || true
           echo '--- Ignore files and exclude configuration ---'
-          find . -name .easignore -o -name .gitignore -print
+          for f in .gitignore .easignore modules/.gitignore modules/voltguard-battery/.gitignore modules/voltguard-battery/android/.gitignore; do
+            if [ -f "$f" ]; then
+              echo "--- $f ---"
+              cat "$f"
+            fi
+          done
+          echo '--- All ignore files discovered ---'
+          find . \\( -name .easignore -o -name .gitignore \\) -print
+          echo '--- Git ignore exit codes ---'
+          for f in modules/voltguard-battery/android modules/voltguard-battery/android/build.gradle modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt; do
+            git check-ignore -q "$f"; echo "tracked-check $f exit=$?"
+            git check-ignore --no-index -q "$f"; echo "no-index-check $f exit=$?"
+          done
+          echo '--- Expo Doctor ignore parser trace ---'
+          DEBUG=expo:doctor:ignore npx expo-doctor --verbose || true
           git config --show-origin --get core.excludesfile || true
           echo '--- Git metadata and exact module Gradle file ---'
           git ls-files --stage modules/voltguard-battery/android/build.gradle
