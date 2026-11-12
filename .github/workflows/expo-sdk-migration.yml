@@ -84,6 +84,9 @@ jobs:
           fs.writeFileSync('package.json', JSON.stringify(root, null, 2) + '\n');
 
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          // SDK 55 / React Native 0.83 always uses the New Architecture;
+          // both flags are removed from the SDK 55 app-config schema.
+          delete app.expo.newArchEnabled;
           delete app.expo.android.edgeToEdgeEnabled;
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
 

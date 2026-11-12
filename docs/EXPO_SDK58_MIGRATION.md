@@ -25,8 +25,13 @@ Official guidance:
 
 - Remove the deprecated, unused `expo-av` dependency; no source imports were found in the repository search.
 - Remove the direct `expo-modules-core` dependency. Expo supplies its compatible version; the local native module is linked through Expo autolinking.
-- Remove the obsolete `android.edgeToEdgeEnabled` config field rejected by the SDK 55 schema.
+- Remove `newArchEnabled`: React Native 0.83 (SDK 55) always uses the New Architecture, and this config option no longer exists.
+- Remove the obsolete `android.edgeToEdgeEnabled` field from the SDK 55 config; edge-to-edge behavior must be verified against SDK 55's Android target and safe-area layout rather than controlled by this removed config field.
 - Exclude the private local `voltguard-battery` package from React Native Directory metadata checks; this is a local module, not an unknown third-party dependency.
+
+## SDK 55 architectural migration gate
+
+SDK 55 removes the legacy architecture option. The custom `voltguard-battery` module is built with the Expo Modules API, which supports the New Architecture, but that fact alone is not sufficient acceptance. The generated Android project must compile, and the physical-device test must verify service startup, battery broadcasts, notification actions, and native-to-JS event delivery on a SDK 55 build.
 
 ## VoltGuard-specific regression focus
 
