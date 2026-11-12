@@ -1,19 +1,6 @@
 name: VoltGuard Expo SDK migration candidate
 
 on:
-  push:
-    branches:
-      - maintenance/expo-sdk58-migration
-    paths:
-      - ".github/workflows/expo-sdk-migration.yml"
-      - "package.json"
-      - "package-lock.json"
-      - "app.json"
-      - "babel.config.js"
-      - "modules/voltguard-battery/**"
-      - "src/**"
-      - "app/**"
-      - "tests/**"
   pull_request:
     branches:
       - phase-e/production-hardening
@@ -150,6 +137,17 @@ jobs:
           npm audit --omit=dev --json > migration-artifacts/sdk58-audit.json || true
           cp package.json migration-artifacts/package-sdk58.json
           cp package-lock.json migration-artifacts/package-lock-sdk58.json
+
+      - name: Capture migration workspace for diagnosis
+        if: always()
+        run: |
+          mkdir -p migration-artifacts/current-workspace
+          cp package.json migration-artifacts/current-workspace/package.json
+          cp package-lock.json migration-artifacts/current-workspace/package-lock.json
+          cp app.json migration-artifacts/current-workspace/app.json
+          cp modules/voltguard-battery/package.json migration-artifacts/current-workspace/voltguard-battery.package.json
+          npm ls --depth=0 --json > migration-artifacts/current-workspace/npm-ls.json || true
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" > migration-artifacts/current-workspace/package-versions.txt
 
       - name: Upload migration evidence and candidate manifests
         if: always()
