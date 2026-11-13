@@ -164,6 +164,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Row icon={Shield} title="Anti-Theft protection" subtitle="Arm charger-disconnect protection and secure alarm controls" onPress={() => open('/anti-theft')} />
           <Row icon={Shield} title="Permission centre" subtitle="Review notification and optional Usage Access" onPress={() => open('/permission-center')} />
           <Row icon={Info} title="Setup guide" subtitle="Review the introduction and permission setup" onPress={() => open('/onboarding')} />
           <Row icon={Settings2} title="Other settings" subtitle="Appearance and app preferences" onPress={() => open('/settings/other')} />
