@@ -7,4 +7,8 @@ object AntiTheftRestorePolicy {
 
   fun shouldReportAntiTheftRestoreFailure(antiTheftArmed: Boolean, alarmActive: Boolean): Boolean =
     antiTheftArmed || alarmActive
+
+  /** A failed first arm must not be reported as active; failed recovery preserves prior intent. */
+  fun shouldClearNewArmAfterStartupFailure(newArmRequest: Boolean, alarmActive: Boolean): Boolean =
+    newArmRequest && !alarmActive
 }
