@@ -8,7 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, ShieldAlert, ShieldCheck, LockKeyhole } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import {
-  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay, setAntiTheftVibration, setAntiTheftFlash,
+  armAntiTheft, disarmAntiTheft, disarmAntiTheftWithBiometric, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay, setAntiTheftVibration, setAntiTheftFlash,
   type AntiTheftMode, type AntiTheftStatus
 } from '../modules/voltguard-battery';
 
@@ -247,7 +247,37 @@ export default function AntiTheftScreen() {
       <Modal visible={dialog !== null} transparent animationType="fade" onRequestClose={() => setDialog(null)}>
         <View style={styles.scrim}>
           <View style={[styles.dialog, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{dialog === 'setup' ? 'Create Anti-Theft PIN' : 'Enter Anti-Theft PIN'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{dialog === 'setup' ? 'Create Anti-Theft PIN' : 'Disarm Anti-Theft'}</Text>
+            {dialog === 'disarm' && status?.biometricAvailable && (
+              <>
+                <Text style={[styles.body, { color: colors.textSecondary }]}>Authenticate with your device's enrolled fingerprint or face recognition, or enter your Anti-Theft PIN below.</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={async () => {
+                    setBusy(true);
+                    try {
+                      const authenticated = await disarmAntiTheftWithBiometric();
+                      if (!authenticated) {
+                        Alert.alert('Authentication cancelled', 'You can still disarm using your Anti-Theft PIN.');
+                        return;
+                      }
+                      setDialog(null);
+                      setPin('');
+                      refresh();
+                      Alert.alert('Protection disarmed', 'Biometric verification succeeded.');
+                    } catch (error) {
+                      Alert.alert('Biometric unavailable', error instanceof Error ? error.message : 'Use your Anti-Theft PIN instead.');
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={styles.primaryText}>Disarm with biometrics</Text>
+                </Pressable>
+              </>
+            )}
             <TextInput
               value={pin}
               onChangeText={value => setPin(value.replace(/\D/g, '').slice(0, 12))}
