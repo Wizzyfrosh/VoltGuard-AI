@@ -106,6 +106,77 @@ class VoltGuardBatteryModule : Module() {
       Unit
     }
 
+    Function("hasAntiTheftPin") {
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      VoltGuardAntiTheftSecurity.hasPin(context)
+    }
+
+    AsyncFunction("setAntiTheftPin") Coroutine { pin: String ->
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      withContext(Dispatchers.Default) {
+        VoltGuardAntiTheftSecurity.setPin(context, pin)
+        true
+      }
+    }
+
+    Function("armAntiTheft") { mode: String ->
+      require(mode == "one_time" || mode == "always") { "Invalid Anti-Theft mode" }
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      require(VoltGuardAntiTheftSecurity.hasPin(context)) { "Set an Anti-Theft PIN before arming protection" }
+      VoltGuardBatteryNotifications.createChannels(context)
+      val notifications = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      require(notifications.areNotificationsEnabled()) {
+        "Enable VoltGuard notifications before arming Anti-Theft protection"
+      }
+      val alarmChannel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        notifications.getNotificationChannel(VoltGuardBatteryNotifications.ANTI_THEFT_CHANNEL_ID)
+      } else null
+      require(Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+        (alarmChannel != null && alarmChannel.importance >= NotificationManager.IMPORTANCE_HIGH && alarmChannel.sound != null)) {
+        "Enable sound and High importance for the Anti-Theft alarm in Android notification settings"
+      }
+      context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE).edit()
+        .putBoolean("anti_theft_enabled", true)
+        .putBoolean("anti_theft_alarm_active", false)
+        .putString("anti_theft_mode", mode)
+        .putBoolean("anti_theft_baseline_connected", false)
+        .apply()
+      val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
+        action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_START
+        putExtra(VoltGuardBatteryMonitorService.EXTRA_ANTI_THEFT_MODE, mode)
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+      else context.startService(intent)
+      true
+    }
+
+    AsyncFunction("disarmAntiTheft") Coroutine { pin: String ->
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      withContext(Dispatchers.Default) {
+        require(VoltGuardAntiTheftSecurity.hasPin(context)) { "Anti-Theft PIN is not configured" }
+        if (!VoltGuardAntiTheftSecurity.verifyPin(context, pin)) {
+          throw IllegalArgumentException("Incorrect Anti-Theft PIN")
+        }
+      }
+      val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
+        action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+      else context.startService(intent)
+      true
+    }
+
+    Function("getAntiTheftStatus") {
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
+      mapOf(
+        "pinConfigured" to VoltGuardAntiTheftSecurity.hasPin(context),
+        "armed" to prefs.getBoolean("anti_theft_enabled", false),
+        "alarmActive" to prefs.getBoolean("anti_theft_alarm_active", false),
+        "mode" to prefs.getString("anti_theft_mode", "one_time")
+      )
+    }
+
     AsyncFunction("stopBackgroundMonitoring") {
       appContext.reactContext?.let { context ->
         VoltGuardBatteryMonitorService.stop(context)

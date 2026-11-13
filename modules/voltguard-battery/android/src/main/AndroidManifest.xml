@@ -21,7 +21,7 @@
       android:foregroundServiceType="specialUse">
       <property
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-        android:value="Monitor battery charging level to deliver user-requested threshold notifications." />
+        android:value="Monitor user-enabled battery threshold alerts and charger-disconnect anti-theft protection." />
     </service>
   </application>
 </manifest>

@@ -7,12 +7,25 @@ type VoltGuardBatteryNativeModule = {
   openOptimizationSetting: (setting: string) => boolean;
   startBackgroundMonitoring: (threshold: number) => Promise<void>;
   stopBackgroundMonitoring: () => Promise<void>;
+  hasAntiTheftPin: () => boolean;
+  setAntiTheftPin: (pin: string) => Promise<boolean>;
+  armAntiTheft: (mode: AntiTheftMode) => boolean;
+  disarmAntiTheft: (pin: string) => Promise<boolean>;
+  getAntiTheftStatus: () => AntiTheftStatus;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
   openUsageAccessSettings: () => boolean;
   getAppUsageStats: () => Promise<AppUsageSnapshot | null>;
   getSystemResourceDiagnostics: () => Promise<SystemResourceDiagnostics | null>;
+};
+
+export type AntiTheftMode = 'one_time' | 'always';
+export type AntiTheftStatus = {
+  pinConfigured: boolean;
+  armed: boolean;
+  alarmActive: boolean;
+  mode: AntiTheftMode;
 };
 
 export type ChargingAlarmStatus = {
@@ -40,6 +53,31 @@ export type SystemResourceDiagnostics = {
   totalStorageBytes: number | null;
   availableStorageBytes: number | null;
 };
+
+export function getAntiTheftStatus(): AntiTheftStatus | null {
+  if (Platform.OS !== 'android') return null;
+  return getNativeModule()?.getAntiTheftStatus() ?? null;
+}
+
+export async function setAntiTheftPin(pin: string): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  if (!/^\d{6,12}$/.test(pin)) throw new Error('PIN must contain 6 to 12 digits.');
+  const module = getNativeModule();
+  if (!module) return false;
+  return await module.setAntiTheftPin(pin);
+}
+
+export function armAntiTheft(mode: AntiTheftMode): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.armAntiTheft(mode) ?? false;
+}
+
+export async function disarmAntiTheft(pin: string): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  const module = getNativeModule();
+  if (!module) return false;
+  return await module.disarmAntiTheft(pin);
+}
 
 export async function getSystemResourceDiagnostics(): Promise<SystemResourceDiagnostics | null> {
   if (Platform.OS !== 'android') return null;

@@ -13,17 +13,28 @@ import android.content.pm.ServiceInfo
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.media.AudioAttributes
 import android.util.Log
 
 class VoltGuardBatteryMonitorService : Service() {
   companion object {
     const val ACTION_START = "expo.modules.voltguardbattery.START_MONITORING"
     const val ACTION_STOP = "expo.modules.voltguardbattery.STOP_MONITORING"
+    const val ACTION_RESTORE = "expo.modules.voltguardbattery.RESTORE_MONITORING"
     const val EXTRA_THRESHOLD = "threshold"
+    const val ACTION_ANTI_THEFT_START = "expo.modules.voltguardbattery.ANTI_THEFT_START"
+    const val ACTION_ANTI_THEFT_STOP = "expo.modules.voltguardbattery.ANTI_THEFT_STOP"
+    const val EXTRA_ANTI_THEFT_MODE = "anti_theft_mode"
     private const val PREFS = "voltguard_battery_monitor"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_THRESHOLD = "threshold"
     private const val KEY_NOTIFIED = "notified_this_charge"
+    private const val KEY_ANTI_THEFT_ENABLED = "anti_theft_enabled"
+    private const val KEY_ANTI_THEFT_MODE = "anti_theft_mode"
+    private const val KEY_ANTI_THEFT_BASELINE = "anti_theft_baseline_connected"
+    private const val KEY_ANTI_THEFT_ALARM = "anti_theft_alarm_active"
     private const val SERVICE_CHANNEL = VoltGuardBatteryNotifications.SERVICE_CHANNEL_ID
     private const val SERVICE_NOTIFICATION_ID = 7411
 
@@ -33,11 +44,15 @@ class VoltGuardBatteryMonitorService : Service() {
         .edit()
         .putBoolean(KEY_ENABLED, false)
         .apply()
-      context.stopService(Intent(context, VoltGuardBatteryMonitorService::class.java))
+      val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      if (!prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) && !prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
+        context.stopService(Intent(context, VoltGuardBatteryMonitorService::class.java))
+      }
     }
   }
 
   private var receiverRegistered = false
+  private var alarmPlayer: MediaPlayer? = null
 
   private val batteryReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -52,13 +67,24 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    if (intent?.action == ACTION_ANTI_THEFT_START) {
+      val mode = intent.getStringExtra(EXTRA_ANTI_THEFT_MODE) ?: "one_time"
+      require(mode == "one_time" || mode == "always")
+      prefs.edit().putBoolean(KEY_ANTI_THEFT_ENABLED, true).putString(KEY_ANTI_THEFT_MODE, mode)
+        .putBoolean(KEY_ANTI_THEFT_BASELINE, false).apply()
+    }
+    if (intent?.action == ACTION_ANTI_THEFT_STOP) {
+      prefs.edit().putBoolean(KEY_ANTI_THEFT_ENABLED, false).putBoolean(KEY_ANTI_THEFT_ALARM, false).apply()
+      stopAlarmSound()
+      VoltGuardBatteryNotifications.clearAntiTheftAlarm(this)
+    }
     if (intent?.action == ACTION_STOP) {
       getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, false).apply()
-      stopMonitoring()
+      stopIfIdle()
       return START_NOT_STICKY
     }
 
-    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     if (intent?.action == ACTION_START) {
       val requestedThreshold = intent.getIntExtra(EXTRA_THRESHOLD, prefs.getInt(KEY_THRESHOLD, 80))
       if (requestedThreshold in 50..100) {
@@ -69,7 +95,7 @@ class VoltGuardBatteryMonitorService : Service() {
       }
     }
 
-    if (!prefs.getBoolean(KEY_ENABLED, false)) {
+    if (!prefs.getBoolean(KEY_ENABLED, false) && !prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) && !prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
       stopMonitoring()
       return START_NOT_STICKY
     }
@@ -93,10 +119,13 @@ class VoltGuardBatteryMonitorService : Service() {
     if (!started) {
       // Do not leave persisted state claiming that monitoring is active after
       // Android rejected startup; otherwise boot handling can repeatedly retry.
-      prefs.edit().putBoolean(KEY_ENABLED, false).apply()
+      prefs.edit().putBoolean(KEY_ENABLED, false).putBoolean(KEY_ANTI_THEFT_ENABLED, false)
+        .putBoolean(KEY_ANTI_THEFT_ALARM, false).apply()
       stopMonitoring()
+      VoltGuardBatteryNotifications.clearAntiTheftAlarm(this)
       return START_NOT_STICKY
     }
+    if (prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) startAlarmSound()
     return START_STICKY
   }
 
@@ -114,7 +143,7 @@ class VoltGuardBatteryMonitorService : Service() {
     if (!registerBatteryReceiver()) {
       // Never leave an apparently active foreground monitor running without
       // the battery-change receiver required to evaluate the selected target.
-      stopMonitoring()
+      stopIfIdle()
       return false
     }
     val stickyIntent = try {
@@ -147,6 +176,7 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private fun evaluateBattery(intent: Intent) {
     val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    evaluateAntiTheft(intent)
     if (!prefs.getBoolean(KEY_ENABLED, false)) return
 
     val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
@@ -179,6 +209,64 @@ class VoltGuardBatteryMonitorService : Service() {
     }
   }
 
+  private fun evaluateAntiTheft(intent: Intent) {
+    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false)) return
+    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+    val baseline = prefs.getBoolean(KEY_ANTI_THEFT_BASELINE, false)
+    if (!baseline) {
+      if (plugged) prefs.edit().putBoolean(KEY_ANTI_THEFT_BASELINE, true).apply()
+      return
+    }
+    if (!plugged && !prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
+      val mode = prefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time"
+      val editor = prefs.edit().putBoolean(KEY_ANTI_THEFT_ALARM, true)
+      if (mode == "one_time") editor.putBoolean(KEY_ANTI_THEFT_ENABLED, false)
+      else editor.putBoolean(KEY_ANTI_THEFT_BASELINE, false)
+      editor.apply()
+      VoltGuardBatteryNotifications.postAntiTheftAlarm(this, mode)
+      startAlarmSound()
+    }
+  }
+
+  private fun startAlarmSound() {
+    if (alarmPlayer?.isPlaying == true) return
+    stopAlarmSound()
+    try {
+      val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: return
+      alarmPlayer = MediaPlayer().apply {
+        setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+        setDataSource(this@VoltGuardBatteryMonitorService, uri)
+        isLooping = true
+        setOnErrorListener { player, _, _ ->
+          try { player.release() } catch (_: Exception) {}
+          if (alarmPlayer === player) alarmPlayer = null
+          true
+        }
+        prepare()
+        start()
+      }
+    } catch (error: Exception) {
+      Log.w("VoltGuardMonitor", "Anti-Theft alarm audio could not start", error)
+      stopAlarmSound()
+    }
+  }
+
+  private fun stopAlarmSound() {
+    val player = alarmPlayer
+    alarmPlayer = null
+    try { player?.stop() } catch (_: Exception) {}
+    try { player?.release() } catch (_: Exception) {}
+  }
+
+  private fun stopIfIdle() {
+    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    if (prefs.getBoolean(KEY_ENABLED, false) || prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) ||
+      prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) return
+    stopMonitoring()
+  }
+
   private fun createNotificationChannels() {
     VoltGuardBatteryNotifications.createChannels(this)
   }
@@ -202,7 +290,7 @@ class VoltGuardBatteryMonitorService : Service() {
     return builder
       .setSmallIcon(R.drawable.ic_voltguard_notification)
       .setContentTitle("VoltGuard is monitoring your battery")
-      .setContentText("Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
+      .setContentText(if ((getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ANTI_THEFT_ENABLED, false) || getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ANTI_THEFT_ALARM, false))) "VoltGuard Anti-Theft protection is active" else "Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
       .setContentIntent(pendingIntent)
       .setPriority(Notification.PRIORITY_LOW)
       .setOngoing(true)
@@ -215,6 +303,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun stopMonitoring() {
+    stopAlarmSound()
     if (receiverRegistered) {
       try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
       receiverRegistered = false
@@ -228,6 +317,7 @@ class VoltGuardBatteryMonitorService : Service() {
       try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
       receiverRegistered = false
     }
+    stopAlarmSound()
     super.onDestroy()
   }
 
