@@ -163,3 +163,24 @@ After release, monitor crashes, startup failures, permission-related support iss
 - Never represent foreground app usage as battery energy consumption.
 - Never claim VoltGuard can stop charging or bypass Android notification/system restrictions.
 - Mark an item complete only with code plus validation evidence. Physical-device and store-review requirements cannot be checked off by CI alone.
+
+
+## Android native security review — CI run 492
+
+Reviewed the current Android module manifest, boot receiver, service, notification helper, and React Native bridge at commit `22f2003048a9443bf3197dacd6ae4b2525f3ebd3`.
+
+Source-level findings:
+- The battery monitor service and boot receiver are explicitly `android:exported="false"`; neither is externally callable through an exported component.
+- The notification content PendingIntents use `FLAG_IMMUTABLE | FLAG_UPDATE_CURRENT`.
+- Battery-change receiver registration uses `Context.RECEIVER_NOT_EXPORTED` on Android 13+.
+- The boot receiver only attempts recovery when the persisted monitoring preference is enabled. A synchronous restart denial clears that preference; asynchronous foreground-promotion and receiver-registration failures are handled by the service.
+- Usage Access is declared as the special `PACKAGE_USAGE_STATS` permission and checked through AppOps. It is not treated as an ordinary runtime permission. The native usage reader returns foreground-time data and does not calculate per-app energy consumption.
+- The module source reviewed here does not itself send UsageStats or battery-history data over the network. An end-to-end JavaScript/analytics/third-party SDK data-flow review is still required before making a product-wide no-transmission claim.
+
+Validation evidence for run [43382645617](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43382645617):
+- TypeScript, unit tests, lint, and web export: passed.
+- Android native project generation and Kotlin compilation: passed.
+- Production dependency audit: failed with 40 findings (2 critical, 19 high, 17 moderate, 2 low), including critical `shell-quote` and `tar` findings.
+- The CI failure is therefore isolated to the dependency audit job; it is not an Android compile failure.
+
+This review is source-level only. It does not prove physical-device service survival, Android notification delivery, reboot recovery, or Google Play approval. E2 and E3 remain open.
