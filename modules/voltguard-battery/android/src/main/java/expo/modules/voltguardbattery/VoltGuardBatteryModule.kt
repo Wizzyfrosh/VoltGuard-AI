@@ -210,6 +210,7 @@ class VoltGuardBatteryModule : Module() {
         "pinConfigured" to VoltGuardAntiTheftSecurity.hasPin(context),
         "armed" to prefs.getBoolean("anti_theft_enabled", false),
         "alarmActive" to prefs.getBoolean("anti_theft_alarm_active", false),
+        "restoreFailed" to prefs.getBoolean("anti_theft_restore_failed", false),
         "mode" to prefs.getString("anti_theft_mode", "one_time"),
         "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5),
         "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true),
