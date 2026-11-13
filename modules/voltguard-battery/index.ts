@@ -61,7 +61,7 @@ export function getAntiTheftStatus(): AntiTheftStatus | null {
 
 export async function setAntiTheftPin(pin: string): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
-  if (!/^\\d{6,12}$/.test(pin)) throw new Error('PIN must contain 6 to 12 digits.');
+  if (!/^\d{6,12}$/.test(pin)) throw new Error('PIN must contain 6 to 12 digits.');
   const module = getNativeModule();
   if (!module) return false;
   return await module.setAntiTheftPin(pin);
