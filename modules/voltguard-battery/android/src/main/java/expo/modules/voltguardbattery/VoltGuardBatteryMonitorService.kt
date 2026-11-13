@@ -308,12 +308,14 @@ class VoltGuardBatteryMonitorService : Service() {
   private fun startAlarmSound() {
     if (alarmPlayer != null) {
       startAlarmVibration()
+      startAlarmFlash()
       return
     }
     // Clean up stale audio resources before starting a new player. Start
     // vibration afterwards because stopAlarmSound() also cancels the vibrator.
     stopAlarmSound()
     startAlarmVibration()
+    startAlarmFlash()
     try {
       val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: return
       val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -399,12 +401,21 @@ class VoltGuardBatteryMonitorService : Service() {
     }
   }
 
+  private fun startAlarmFlash() {
+    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean("anti_theft_flash_enabled", false)) return
+    if (!VoltGuardAntiTheftFlash.setEnabled(this, true)) {
+      Log.w("VoltGuardMonitor", "Anti-Theft camera flash is enabled but Android could not activate the torch")
+    }
+  }
+
   private fun stopAlarmVibration() {
     try { alarmVibrator?.cancel() } catch (_: Exception) {}
     alarmVibrator = null
   }
 
   private fun stopAlarmSound() {
+    VoltGuardAntiTheftFlash.setEnabled(this, false)
     stopAlarmVibration()
     val player = alarmPlayer
     alarmPlayer = null
