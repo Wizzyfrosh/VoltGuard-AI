@@ -1,0 +1,186 @@
+# Phase E — Production Hardening
+
+**Branch:** `phase-e/production-hardening`  
+**Base:** `phase-d/device-insights-async-native`  
+**Status:** Audit started; implementation and acceptance validation are in progress.  
+**Product constraints:** preserve the existing app and five-tab navigation; no demo telemetry, fake scores, cleaner/task killer, per-app mAh claims, automatic charge stopping, CSV export, or JSON export.
+
+## Objective
+
+Close the production risks that sit between the existing feature implementation and a release candidate. Phase E is not a feature redesign. It hardens data handling, permissions, native service lifecycle, dependency integrity, error handling, and release disclosures.
+
+## Initial source audit
+
+### Verified implementation
+
+- Battery history is opt-in. Android and iOS use local SQLite; the web adapter explicitly rejects battery-history database access.
+- History collection is performed by the foreground telemetry flow after explicit opt-in. It is not a general background telemetry collector.
+- The history layer applies a 30-day retention window and disabling history deletes stored samples and charging sessions.
+- Android Usage Access is optional and is used for app foreground-time data. The app correctly distinguishes this from actual per-app energy consumption.
+- Android charging-threshold monitoring is implemented as a foreground service with a dedicated notification channel and a branded small notification icon.
+- The Android manifest declares `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `POST_NOTIFICATIONS`, and `RECEIVE_BOOT_COMPLETED`; the service declares the `specialUse` subtype.
+- Legal routes exist for Privacy Policy, Permissions & Data Use, Terms of Use, and About.
+
+### Risks and required work
+
+1. **Google Play foreground-service review:** Android 14+ `specialUse` is declared in the manifest. Before Play distribution, complete the Play Console foreground-service declaration and provide the required use-case evidence. Do not assume manifest compliance alone guarantees approval.
+2. **Privacy wording:** clarify that local battery history is supported on Android/iOS and is unavailable in the web build. Review every statement against actual collection and storage behaviour. Publish an effective date and publisher/support details before public release.
+3. **Legal readiness:** Terms currently state that publisher contact details and legal review are still required. These are release blockers, not code tasks that can be silently marked complete.
+4. **Permission lifecycle:** verify notification denial/revocation, alarm-channel changes, Usage Access grant/revoke, service start/stop, and return-from-Settings behaviour on physical Android hardware.
+5. **Service lifecycle:** verify threshold re-arming, screen-off operation, reboot/app-replacement recovery, force-stop limitations, and OEM battery restrictions. Document any observed differences by device/OS.
+6. **Dependency security:** the committed lockfile still has audit findings. The selective SDK 54 remediation preview is a separate validation artifact, not an adopted dependency update. Do not commit package manifest and lockfile out of sync, and do not force Expo SDK/Router major upgrades to satisfy npm audit.
+7. **Data lifecycle:** test opt-in, opt-out deletion, manual clear, retention cleanup, and failure paths. Confirm no stale UI state suggests history is still available after deletion or storage failure.
+8. **Release observability:** decide what crash/error diagnostics are appropriate without uploading private battery history or UsageStats. Any network telemetry must be disclosed and must not include sensitive device/app usage data by default.
+
+## Implementation log — battery-history hardening
+
+The following code changes are committed on this branch:
+
+- Centralized strict consent parsing, finite SQL limit normalization, and the 30-day cutoff helper.
+- Added a resilient in-process mutation queue and routed the battery-history mutation paths through it: telemetry snapshots, standalone sample saves, opt-out preference/deletion, manual history clearing, explicit sample deletion, and the generic battery-preference setter.
+- Added read-time retention predicates for sample and charging-session queries, plus expired-row pruning during sample reads and all supported sample-write paths.
+- Added regression tests for fail-closed consent parsing, finite/invalid limits, deterministic retention cutoffs, mutation ordering, and queue recovery after a rejected operation.
+
+**Evidence and remaining boundary:** GitHub Actions run 468 passed TypeScript, unit tests, lint, and web export. Its Android Kotlin compile job was cancelled before completion; the dependency audit failed on the existing production dependency tree (40 findings: 2 critical, 19 high, 17 moderate, 2 low). A later validation run was started after the preference-write change; the subsequent sample-read pruning commit is newer and still requires its own completed CI result.
+
+The mutation queue coordinates writes issued through these app modules in one JavaScript runtime. It is not a cross-process SQLite lock. The current test suite validates queue ordering and pure retention/limit logic, not real SQLite transaction interleavings. Android/iOS database-level testing remains required before declaring E1 complete.
+
+## Implementation log — battery-history hardening
+
+Committed implementation:
+- Strict persisted-consent parsing, finite SQL limit normalization, and a shared 30-day cutoff helper.
+- A resilient in-process mutation queue for telemetry snapshots, standalone sample saves, opt-out/deletion, manual clearing, explicit sample deletion, and generic preference writes.
+- Read-time 30-day predicates for samples and charging sessions, plus expired-row pruning during sample reads and sample writes.
+- Generic preference writes now reject `battery_history_enabled`; callers must use `setBatteryHistoryEnabled()`, which persists the choice and performs opt-out deletion in one queued transaction.
+- Regression tests cover fail-closed consent parsing, invalid/oversized limits, deterministic cutoff calculation, mutation ordering, and queue recovery after a failed operation.
+
+Validation evidence:
+- Earlier run 468 passed TypeScript, unit tests, lint, and web export. Its dependency audit failed with 40 findings (2 critical, 19 high, 17 moderate, 2 low).
+- Run 472 was cancelled during dependency installation/native project generation; it provides no validation result.
+- The latest commits after run 472 have no completed CI result yet.
+- Android SQLite interleaving has not been integration-tested. The JS queue coordinates only callers in this app runtime; it is not a cross-process database lock.
+
+E1 remains **in progress**, not accepted. Android/iOS database tests and a completed CI run on the current head are still required.
+
+## Android foreground-service review — implementation update
+
+Reviewed the native battery-monitor service, module bridge, boot receiver, notification channels, and library manifest.
+
+Committed lifecycle hardening:
+- Foreground-service promotion and receiver-registration failures are caught and logged rather than escaping as an uncaught service exception.
+- When startup fails after the service begins handling the request, persisted monitoring state is cleared so the app does not report itself armed or retry a known-failed configuration at the next boot.
+- Stopping monitoring now clears the persisted enabled flag and calls `Context.stopService()` directly. It no longer starts a background service solely to deliver a stop action, which could itself be rejected by Android background-start restrictions.
+
+Security/lifecycle findings still requiring validation:
+- The service uses an unexported manifest declaration and immutable/update-current activity PendingIntents; no externally callable service action was found in the reviewed declaration.
+- The service declares the Android 14 special-use foreground-service type and a subtype explanation. This is a Play policy-sensitive declaration, not an assurance of Play approval.
+- The boot receiver is unexported and only resumes monitoring when the persisted enabled preference is true. OS/OEM policy can still deny restart.
+- Notification/channel readiness is required before enabling threshold monitoring; Android notification denial or a muted/disabled alarm channel prevents the monitor from being armed.
+- The JS bridge's successful request to start a service is not proof that Android completed foreground promotion or that the battery receiver is active. UI state must not treat the request return as runtime confirmation.
+- No device-level verification has yet been performed for Android 12–15 background-start restrictions, notification permission denial, reboot/package replacement, force-stop, OEM battery restrictions, or channel changes.
+- Usage Access is sensitive user-granted access. The feature must remain optional, explain that it reports foreground time rather than per-app energy consumption, and never transmit usage data without a separately disclosed consent path.
+
+These changes are source-level hardening only. Android compilation and physical-device acceptance are still pending on the latest branch head.
+
+## Foreground-service follow-up — boot recovery
+
+Additional native lifecycle change committed:
+- If the boot/package-replacement receiver receives an immediate exception while requesting a monitor restart, it clears the persisted enabled preference and logs the failure. This prevents a stale enabled state from surviving a restart request that Android synchronously rejected.
+- This does not prove the service subsequently completed foreground promotion: `startForegroundService()` is asynchronous, and later service startup failures are handled inside the service itself.
+- A successful API return from `startBackgroundMonitoring` still means only that Android accepted the start request. It is not evidence that the receiver registered or monitoring is currently active.
+
+Latest validation at time of update:
+- Commit `f5f48f760f973b88596c75bbbbe3d9b203e1f6a4` has GitHub Actions run 490 pending. No job results were available yet.
+- No physical-device results are available. Do not mark Android lifecycle acceptance complete.
+
+## Phase E work plan and acceptance criteria
+
+### E1. Privacy and data lifecycle
+- [ ] Trace every battery-history write and prove it is gated by the saved opt-in preference.
+- [ ] Test enabling, disabling, clearing, retention expiry, and database failure on Android/iOS.
+- [ ] Confirm web never claims to persist battery history; preferences remain separate browser-local data.
+- [ ] Audit logs, analytics, AI/network paths and third-party SDKs for accidental battery-history or UsageStats transmission.
+- [ ] Update Privacy Policy and Permissions & Data Use copy only after the code/data-flow audit is complete.
+- [ ] Verify unsupported routes/invalid legal slugs do not silently display a misleading policy.
+
+**Acceptance:** collection and retention match the UI and legal text; opt-out removes stored battery samples and charging sessions; no private battery history or app-usage data is transmitted without a separately disclosed and consented feature.
+
+### E2. Android permissions and service reliability
+- [ ] Verify every permission is necessary and declared at the narrowest available scope.
+- [ ] Test Android 13+ notification permission denial and later grant.
+- [ ] Test channel disabled, low importance, silent sound, vibration disabled, and DND/volume restrictions.
+- [ ] Test Usage Access grant/revoke and app resume.
+- [ ] Test foreground service start/stop, threshold change, one alert per charging session, unplug re-arm, screen-off, reboot and app replacement.
+- [ ] Verify force-stop and OEM restrictions are explained accurately; do not promise uninterrupted operation.
+- [ ] Confirm the ongoing notification uses VoltGuard branding and a valid small icon.
+
+**Acceptance:** no duplicate threshold alarm in one charging session; a new session can alert again; failures are surfaced without falsely reporting monitoring as active; physical-device results are recorded.
+
+### E3. Security and dependency integrity
+- [ ] Review Android exported components, intent handling, pending-intent flags, storage boundaries and permission exposure.
+- [ ] Review SQL access for parameterization and safe bounds.
+- [ ] Review package scripts, dependency lifecycle scripts, lockfile consistency and CI permissions.
+- [ ] Adopt only dependency changes that pass Expo SDK compatibility, tests, web export and Android compilation.
+- [ ] Keep the audit report separated into production vs development-only dependencies and distinguish exploitable runtime risk from build-tool findings.
+
+**Acceptance:** no unjustified broad permission, exported component, unsafe SQL construction or unreviewed major dependency override remains; the exact lockfile used for validation is committed.
+
+### E4. Runtime resilience and accessibility
+- [ ] Audit loading, stale, unavailable, permission-denied and retry states across the five tabs.
+- [ ] Verify mounted-state and in-flight guards around asynchronous native calls.
+- [ ] Check notification scheduling rollback and persistence failure paths.
+- [ ] Check accessibility labels, roles, focus order, contrast, text scaling and safe-area layout.
+- [ ] Check repeated refreshes and long-running screen sessions for avoidable allocations or duplicate subscriptions.
+
+**Acceptance:** no uncaught permission/storage/native errors in supported flows; no stale reading is presented as live; critical controls remain accessible on narrow screens and with larger text.
+
+### E5. Release gate
+- [ ] TypeScript, unit tests, lint, web export and Android native compile pass on the final Phase E commit.
+- [ ] Security audit report is reviewed and remaining findings are documented with ownership/mitigation.
+- [ ] Privacy and Terms are finalized with real publisher contact and effective date.
+- [ ] Google Play special-use foreground-service declaration is ready for submission.
+- [ ] Physical Android test matrix and web smoke test are attached to the release candidate.
+- [ ] Confirm app version, icon, splash, package identifier, signing, store assets and open-source license notices.
+
+**Acceptance:** Phase E may close only when code checks pass and non-CI release obligations are either completed or explicitly tracked as release blockers.
+
+## Remaining phases after Phase E
+
+### Phase F — Physical Device Validation
+Validate the actual app on supported Android devices and at least one iOS device if iOS is in the release scope. Record model, OS version, readings exposed, alert behaviour, permissions, screen-off operation, reboot recovery, and OEM restrictions. This phase closes the gap CI cannot prove.
+
+### Phase G — Release Candidate and Distribution
+Prepare signed production builds, verify app identifiers and store metadata, finalize legal disclosures, complete Google Play special-use foreground-service declarations, run store-policy checks, and conduct a controlled release-candidate smoke test. No public release before required Play approval.
+
+### Phase H — Launch Monitoring and Maintenance
+After release, monitor crashes, startup failures, permission-related support issues, battery-monitor reliability and store feedback. Ship focused fixes, maintain dependency updates, and rerun the device regression matrix for native or Expo upgrades. Do not add remote collection of battery history or UsageStats as a monitoring shortcut.
+
+## Working rules
+
+- Work in focused commits and PRs; do not merge automatically.
+- Keep existing navigation and user data.
+- No CSV/JSON export.
+- Never represent foreground app usage as battery energy consumption.
+- Never claim VoltGuard can stop charging or bypass Android notification/system restrictions.
+- Mark an item complete only with code plus validation evidence. Physical-device and store-review requirements cannot be checked off by CI alone.
+
+
+## Android native security review — CI run 492
+
+Reviewed the current Android module manifest, boot receiver, service, notification helper, and React Native bridge at commit `22f2003048a9443bf3197dacd6ae4b2525f3ebd3`.
+
+Source-level findings:
+- The battery monitor service and boot receiver are explicitly `android:exported="false"`; neither is externally callable through an exported component.
+- The notification content PendingIntents use `FLAG_IMMUTABLE | FLAG_UPDATE_CURRENT`.
+- Battery-change receiver registration uses `Context.RECEIVER_NOT_EXPORTED` on Android 13+.
+- The boot receiver only attempts recovery when the persisted monitoring preference is enabled. A synchronous restart denial clears that preference; asynchronous foreground-promotion and receiver-registration failures are handled by the service.
+- Usage Access is declared as the special `PACKAGE_USAGE_STATS` permission and checked through AppOps. It is not treated as an ordinary runtime permission. The native usage reader returns foreground-time data and does not calculate per-app energy consumption.
+- The module source reviewed here does not itself send UsageStats or battery-history data over the network. An end-to-end JavaScript/analytics/third-party SDK data-flow review is still required before making a product-wide no-transmission claim.
+
+Validation evidence for run [43382645617](https://github.com/Wizzyfrosh/VoltGuard-AI/actions/runs/43382645617):
+- TypeScript, unit tests, lint, and web export: passed.
+- Android native project generation and Kotlin compilation: passed.
+- Production dependency audit: failed with 40 findings (2 critical, 19 high, 17 moderate, 2 low), including critical `shell-quote` and `tar` findings.
+- The CI failure is therefore isolated to the dependency audit job; it is not an Android compile failure.
+
+This review is source-level only. It does not prove physical-device service survival, Android notification delivery, reboot recovery, or Google Play approval. E2 and E3 remain open.

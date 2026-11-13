@@ -50,10 +50,10 @@ Statuses reflect source inspection, not physical-device verification.
 - [x] Browser testing path exists on phase-6 branch; browser Battery Status API is optional and limited.
 - [x] Analytics breakdown displays real Android app foreground activity (opt-in Usage Access) with app labels, launcher icons and observed foreground duration; this is not per-app energy attribution.
 - [ ] Physical Android verification of native diagnostics, threshold alert sound, screen-off operation, reboot recovery, and OEM behaviour.
-- [ ] Web history persistence: verify current browser database adapter end-to-end; feature README still describes web history as unsupported, so documentation and implementation must be reconciled.
+- [x] Web battery history is explicitly unsupported; browser-local storage is used only for supported preferences. Do not describe browser preferences as persistent battery history.
 - [ ] Production Vercel preview verification for the current web branch.
 - [ ] Resolve/verify prior native splash/startup issue on physical device.
-- [x] Update `src/features/battery/README.md` to document the conditional Android 14+ `EXTRA_CYCLE_COUNT` read. Web history persistence remains a separate end-to-end verification item.
+- [x] Update `src/features/battery/README.md` to document the conditional Android 14+ `EXTRA_CYCLE_COUNT` read. Web battery history remains unsupported.
 - [ ] Dependency/security audit and remediation with current lockfile and CI evidence.
 - [x] Daily battery-care reminder scheduling is implemented; physical delivery and OEM reliability verification remain open.
 - [x] Sample-based battery drain analysis exists with interval validation and coverage indicators; physical-device calibration remains open.
@@ -530,25 +530,35 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 
 ## Phase E — Security, privacy and release hardening — 2026-11-11
 
+**Current execution branch:** `phase-e/production-hardening`  
+**Working PR:** [#16](https://github.com/Wizzyfrosh/VoltGuard-AI/pull/16) (draft, not merged)
+
 ### Dependency security
 - [x] Add Android native compilation to the safe dependency-remediation preview so a candidate lockfile cannot be accepted on web checks alone.
 - [x] Add a high-severity threshold gate for the npm install graph after omitting declared devDependencies.
-- [ ] Resolve the production-install audit gate: commit `62d8d5bb5a967b481b0f24d52837700a34fbab39` correctly fails this gate; the report shows 40 findings (2 low, 17 moderate, 19 high, 2 critical). This graph includes Expo tooling reachable through the `expo` package and is not identical to the final JavaScript shipped bundle; classify runtime reachability before accepting residual findings.
-- [ ] Safe remediation preview remains uncommitted: it reduced the full audit from 43 findings (2 low, 19 moderate, 20 high, 2 critical) to 28 (1 low, 21 moderate, 6 high, 0 critical), but Android compilation for that preview has not yet passed.
-- [ ] Verify production dependency exposure separately from development/build-tool findings; document any accepted residual risk with package path, advisory, exploitability and upgrade blocker.
-- [ ] Re-run typecheck, unit tests, lint, web export, Android compile and audit after every dependency update.
+- [ ] Resolve the production-install audit gate. The baseline audit remains failing against the committed lockfile; do not use `npm audit fix --force` or jump Expo SDK major versions as a shortcut.
+- [ ] Adopt a selective dependency preview only after its complete CI run passes TypeScript, tests, lint, web export and Android Kotlin compilation. Keep package.json and package-lock.json synchronized in the same change.
+- [ ] Verify production dependency exposure separately from development/build-tool findings; document accepted residual risk with package path, advisory, exploitability and upgrade blocker.
+- [ ] Re-run all checks against the exact committed lockfile after every dependency update.
 
 ### Privacy and platform compliance
-- [ ] Verify Privacy Policy, Terms and Permissions & Data Use screens against actual collection, retention, local storage, notification and Usage Access behaviour.
+- [x] Correct Privacy Policy wording to distinguish native local battery history from unsupported web history.
+- [x] Invalid legal slugs now render a not-found state instead of silently falling back to the Privacy Policy.
+- [x] Add a user-consent check at the battery sample repository boundary; sample insertion checks consent inside the same SQLite transaction.
+- [ ] Test opt-in, opt-out deletion, clear-history, retention expiry and database failure on physical Android/iOS.
+- [ ] Verify Privacy Policy, Terms and Permissions & Data Use screens against actual collection, retention, local storage, notification and Usage Access behaviour; publisher contact, effective date and legal review remain release obligations.
 - [ ] Verify Android manifest permissions are minimal and each sensitive permission has an in-app purpose and revocation route.
 - [ ] Review Usage Access and package metadata handling against Google Play policy before distribution; do not add `QUERY_ALL_PACKAGES` as a shortcut.
 - [ ] Confirm no telemetry, usage summaries, app labels/icons or battery history are uploaded; inspect network requests and build configuration.
-- [ ] Reconcile web history documentation with the actual browser database adapter and end-to-end persistence tests.
+- [x] Reconcile web history documentation: web battery history is unsupported; browser-local storage is used for supported preferences only.
 
-### Release integrity
+### Runtime resilience and release integrity
 - [ ] Audit deep links, external intents, notification receivers/services, exported components and PendingIntent mutability/immutability.
 - [ ] Confirm no secrets or signing credentials are committed; use CI secrets and a documented release-signing process.
 - [ ] Verify production build configuration, permissions, notification channel behaviour, crash handling and privacy disclosures.
+- [ ] Audit loading, stale, unavailable, permission-denied and retry states across the app.
+- [ ] Check notification scheduling rollback and persistence failure paths.
+- [ ] Check accessibility labels, roles, focus order, contrast, text scaling and safe-area layout.
 - [ ] Produce a release checklist and device test matrix; no public release until physical Android checks pass.
 
 **Scope exclusions:** no CSV/JSON export, no fabricated telemetry, no cloud battery-history upload, and no automatic charging stop.

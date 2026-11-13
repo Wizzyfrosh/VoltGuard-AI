@@ -43,25 +43,43 @@ export function useBatteryHistory() {
   const updateEnabled = useCallback(async (nextEnabled: boolean) => {
     const currentRequest = ++requestId.current;
     try {
+      // The preference update and opt-out deletion are transactional. Once this
+      // succeeds, the user's choice is saved even if a best-effort first sample
+      // or subsequent history refresh cannot be completed.
       await setBatteryHistoryEnabled(nextEnabled);
+      if (currentRequest !== requestId.current) return true;
+
+      setEnabled(nextEnabled);
       if (!nextEnabled) {
-        if (currentRequest === requestId.current) {
-          setEnabled(false);
-          setSessions([]);
-          setSamples([]);
-          setIsAvailable(true);
-        }
+        setSessions([]);
+        setSamples([]);
+        setIsAvailable(true);
         return true;
       }
-      const currentSnapshot = await batteryTelemetryProvider.getSnapshot();
-      await recordBatterySnapshot(currentSnapshot);
-      const nextSessions = await getChargingSessions();
-      const nextSamples = await getRecentBatterySamples(20);
-      if (currentRequest === requestId.current) {
-        setEnabled(true);
-        setSessions(nextSessions);
-        setSamples(nextSamples);
-        setIsAvailable(true);
+
+      setIsAvailable(true);
+      try {
+        const currentSnapshot = await batteryTelemetryProvider.getSnapshot();
+        await recordBatterySnapshot(currentSnapshot);
+      } catch {
+        // Opt-in remains saved; the regular telemetry publisher can record
+        // the next eligible snapshot.
+      }
+
+      try {
+        const nextSessions = await getChargingSessions();
+        const nextSamples = await getRecentBatterySamples(20);
+        if (currentRequest === requestId.current) {
+          setSessions(nextSessions);
+          setSamples(nextSamples);
+          setIsAvailable(true);
+        }
+      } catch {
+        if (currentRequest === requestId.current) {
+          setSessions([]);
+          setSamples([]);
+          setIsAvailable(false);
+        }
       }
       return true;
     } catch {

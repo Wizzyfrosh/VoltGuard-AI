@@ -11,7 +11,7 @@ const documents: Record<string, { title: string; sections: Section[] }> = {
     sections: [
       { heading: 'Information handled by VoltGuard', paragraphs: [
         'VoltGuard reads battery and device information exposed by your operating system so it can display battery status, charging state and supported diagnostics.',
-        'If you enable battery history, supported readings and charging-session records are stored locally on your device. You can turn history off and clear saved records in Settings.',
+        'If you enable battery history on Android or iOS, supported readings and charging-session records are stored in the app’s local database on your device. Battery history is not available in the web build. You can turn history off or clear saved records in Settings.',
         'If you enable Android app-usage insights, Android Usage Access is used to read app foreground-time information. This is not a measurement of an app’s battery energy use.',
         'Notification preferences and scheduled reminder identifiers are stored locally so your selected alerts can work.'
       ]},
@@ -20,7 +20,7 @@ const documents: Record<string, { title: string; sections: Section[] }> = {
         'VoltGuard does not need an account to provide its local battery-monitoring features.'
       ]},
       { heading: 'Storage and retention', paragraphs: [
-        'Battery history is designed for local storage with a limited retention window. Clearing history removes saved samples and charging-session records. App preferences may remain so your settings are preserved.',
+        'On Android and iOS, battery history is retained for up to 30 days. Turning history off deletes saved battery samples and charging-session records. Clearing history deletes those records but does not necessarily reset other app preferences. On web, battery history is unavailable; supported preferences are stored separately in browser storage.',
         'Device and Android versions may expose different diagnostic fields. Unsupported readings are not replaced with invented values.'
       ]},
       { heading: 'Policy updates', paragraphs: [
@@ -60,21 +60,23 @@ export default function LegalDocumentScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const document = documents[slug ?? ''] ?? documents.privacy;
+  const document = documents[slug ?? ''];
   return (
     <>
-      <Stack.Screen options={{ title: document.title, headerShown: true }} />
+      <Stack.Screen options={{ title: document?.title ?? 'Page not found', headerShown: true }} />
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={[styles.content, { paddingTop: 18, paddingBottom: insets.bottom + 28 }]}>
-        <Text style={[styles.title, { color: colors.text }]}>{document.title}</Text>
-        {document.sections.map(section => (
+        <Text style={[styles.title, { color: colors.text }]}>{document?.title ?? 'Page not found'}</Text>
+        {document ? document.sections.map(section => (
           <React.Fragment key={section.heading}>
             <Text style={[styles.heading, { color: colors.text }]}>{section.heading}</Text>
             {section.paragraphs.map((paragraph, index) => (
               <Text key={index} style={[styles.paragraph, { color: colors.textSecondary }]}>{paragraph}</Text>
             ))}
           </React.Fragment>
-        ))}
+        )) : (
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>The requested legal page could not be found.</Text>
+        )}
       </ScrollView>
     </>
   );

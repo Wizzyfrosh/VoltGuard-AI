@@ -5,9 +5,9 @@ import type { BatterySnapshot } from './battery.types';
 import { getChargingTransition } from './battery.session';
 import { analyzeBatteryDrain, type BatteryDrainAnalysis } from './battery.analysis';
 import { buildBatteryTrendReport, type BatteryTrendPeriod, type BatteryTrendReport } from './battery.trends';
+import { getBatteryHistoryCutoff, hasBatteryHistoryConsent, normalizeBatteryHistoryLimit, runBatteryHistoryMutation } from './battery.history-consent';
 
 const HISTORY_PREFERENCE = 'battery_history_enabled';
-const RETENTION_DAYS = 30;
 
 export interface ChargingSession {
   id: number;
@@ -42,17 +42,19 @@ function mapSession(row: ChargingSessionRow): ChargingSession {
 }
 
 export async function isBatteryHistoryEnabled(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
   const db = await getBatteryDatabase();
   const row = await db.getFirstAsync<{ preference_value: string }>(
     'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
     HISTORY_PREFERENCE,
   );
-  return row?.preference_value === 'true';
+  return hasBatteryHistoryConsent(row?.preference_value);
 }
 
 export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> {
+  if (Platform.OS === 'web') throw new Error('Battery history is not available in the web build.');
   const db = await getBatteryDatabase();
-  await db.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT INTO user_preferences (preference_key, preference_value, updated_at)
        VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -67,7 +69,7 @@ export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> 
       await db.runAsync('DELETE FROM battery_samples');
       await db.runAsync('DELETE FROM charging_sessions');
     }
-  });
+  }));
 }
 
 /** Save foreground telemetry only after explicit opt-in. No background task is registered. */
@@ -75,12 +77,21 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
   if (Platform.OS === 'web' || snapshot.source === 'unavailable') return;
   const db = await getBatteryDatabase();
 
-  await db.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     const preference = await db.getFirstAsync<{ preference_value: string }>(
       'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
       HISTORY_PREFERENCE,
     );
-    if (preference?.preference_value !== 'true') return;
+    if (!hasBatteryHistoryConsent(preference?.preference_value)) return;
+
+    // Enabling history can race the telemetry hook's first publish. Treat an
+    // identical source/timestamp as one observation rather than two samples.
+    const existing = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM battery_samples WHERE observed_at = ? AND source = ? LIMIT 1',
+      snapshot.observedAt,
+      snapshot.source,
+    );
+    if (existing) return;
 
     await db.runAsync(
       `INSERT INTO battery_samples
@@ -127,38 +138,45 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
       );
     }
 
-    const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
+    const cutoff = getBatteryHistoryCutoff();
     await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
     await db.runAsync(
       "DELETE FROM charging_sessions WHERE started_at < ?",
       cutoff,
     );
-  });
+  }));
 }
 
 export async function getChargingSessions(limit = 50): Promise<ChargingSession[]> {
-  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
+  if (Platform.OS === 'web') return [];
+  const safeLimit = normalizeBatteryHistoryLimit(limit, 50, 200);
+  // Enforce the opt-in boundary at the data-access layer, not only in callers.
+  if (!(await isBatteryHistoryEnabled())) return [];
   const db = await getBatteryDatabase();
-  const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
-  await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
-  await db.runAsync(
-    "DELETE FROM charging_sessions WHERE started_at < ?",
-    cutoff,
-  );
+  const cutoff = getBatteryHistoryCutoff();
   const rows = await db.getAllAsync<ChargingSessionRow>(
     `SELECT id, started_at, ended_at, start_level, end_level, status, source
-     FROM charging_sessions ORDER BY started_at DESC LIMIT ?`,
+     FROM charging_sessions
+     WHERE started_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
+     ORDER BY started_at DESC LIMIT ?`,
+    cutoff,
+    HISTORY_PREFERENCE,
     safeLimit,
   );
   return rows.map(mapSession);
 }
 
 export async function clearBatteryHistory(): Promise<void> {
+  if (Platform.OS === 'web') return;
   const db = await getBatteryDatabase();
-  await db.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM battery_samples');
     await db.runAsync('DELETE FROM charging_sessions');
-  });
+  }));
 }
 
 export async function getBatteryDrainAnalysis(): Promise<BatteryDrainAnalysis> {
@@ -170,8 +188,16 @@ export async function getBatteryDrainAnalysis(): Promise<BatteryDrainAnalysis> {
   if (!enabled) return analyzeBatteryDrain([]);
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const rows = await db.getAllAsync<{ observed_at: string; level: number | null; battery_state: number }>(
-    'SELECT observed_at, level, battery_state FROM battery_samples WHERE observed_at >= ? ORDER BY observed_at ASC LIMIT 500',
+    `SELECT observed_at, level, battery_state
+     FROM battery_samples
+     WHERE observed_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
+     ORDER BY observed_at ASC LIMIT 500`,
     cutoff,
+    HISTORY_PREFERENCE,
   );
   return analyzeBatteryDrain(rows.map((row) => ({
     observedAt: row.observed_at,
@@ -189,7 +215,7 @@ export async function getBatteryTrendReport(period: BatteryTrendPeriod): Promise
   if (!enabled) return empty;
 
   const db = await getBatteryDatabase();
-  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+  const cutoff = getBatteryHistoryCutoff();
   const rows = await db.getAllAsync<{
     observed_at: string;
     level: number | null;
@@ -198,9 +224,14 @@ export async function getBatteryTrendReport(period: BatteryTrendPeriod): Promise
     `SELECT observed_at, level, battery_state
      FROM battery_samples
      WHERE observed_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
      ORDER BY observed_at DESC, id DESC
      LIMIT 5000`,
     cutoff,
+    HISTORY_PREFERENCE,
   );
   const samples = rows.reverse().map((row) => ({
     observedAt: row.observed_at,
