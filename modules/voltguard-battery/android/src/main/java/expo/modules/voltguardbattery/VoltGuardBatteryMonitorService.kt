@@ -325,9 +325,9 @@ class VoltGuardBatteryMonitorService : Service() {
       audioManager = manager
       val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         if (change == AudioManager.AUDIOFOCUS_LOSS) {
-          // Do not silently continue competing with another app after permanent
-          // focus loss. The persistent alarm notification remains visible.
-          stopAlarmSound()
+          // Stop only audio after permanent focus loss. Independent alarm
+          // channels (vibration and optional torch) remain active until disarm.
+          stopAlarmAudio()
         }
       }
       legacyAudioFocusListener = focusListener
@@ -361,22 +361,22 @@ class VoltGuardBatteryMonitorService : Service() {
         if (alarmStillActive && alarmPlayer === prepared) {
           try { prepared.start() } catch (error: Exception) {
             Log.w("VoltGuardMonitor", "Anti-Theft alarm playback could not start", error)
-            stopAlarmSound()
+            stopAlarmAudio()
           }
         } else {
-          stopAlarmSound()
+          stopAlarmAudio()
         }
       }
       player.setOnErrorListener { failed, what, extra ->
         Log.e("VoltGuardMonitor", "Anti-Theft MediaPlayer error: $what/$extra")
-        if (alarmPlayer === failed) stopAlarmSound()
+        if (alarmPlayer === failed) stopAlarmAudio()
         true
       }
       player.setDataSource(this, uri)
       player.prepareAsync()
     } catch (error: Exception) {
       Log.w("VoltGuardMonitor", "Anti-Theft alarm audio could not start", error)
-      stopAlarmSound()
+      stopAlarmAudio()
     }
   }
 
@@ -444,9 +444,7 @@ class VoltGuardBatteryMonitorService : Service() {
     alarmVibrator = null
   }
 
-  private fun stopAlarmSound() {
-    stopAlarmFlash()
-    stopAlarmVibration()
+  private fun stopAlarmAudio() {
     val player = alarmPlayer
     alarmPlayer = null
     try { player?.setOnPreparedListener(null) } catch (_: Exception) {}
@@ -465,6 +463,12 @@ class VoltGuardBatteryMonitorService : Service() {
       try { manager.abandonAudioFocus(legacyAudioFocusListener) } catch (_: Exception) {}
       legacyAudioFocusListener = null
     }
+  }
+
+  private fun stopAlarmSound() {
+    stopAlarmFlash()
+    stopAlarmVibration()
+    stopAlarmAudio()
   }
 
   private fun stopIfIdle() {
