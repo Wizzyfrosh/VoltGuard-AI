@@ -20,6 +20,8 @@ object VoltGuardBatteryNotifications {
   const val CHARGING_ALARM_CHANNEL_ID = "battery-threshold-alarm-v2"
   const val CHARGING_ALARM_NOTIFICATION_ID = 7412
   const val CHARGING_ALARM_TEST_NOTIFICATION_ID = 7413
+  const val ANTI_THEFT_NOTIFICATION_ID = 7414
+  const val ANTI_THEFT_CHANNEL_ID = "anti-theft-alarm-v1"
   private const val SERVICE_NOTIFICATION_ID = 7411
 
   private val vibrationPattern = longArrayOf(0, 700, 250, 700, 250)
@@ -38,7 +40,7 @@ object VoltGuardBatteryNotifications {
       }
     )
 
-    val alarmAttributes = AudioAttributes.Builder()
+    manager.createNotificationChannel(\n      NotificationChannel(\n        ANTI_THEFT_CHANNEL_ID,\n        "Anti-Theft alarm",\n        NotificationManager.IMPORTANCE_HIGH\n      ).apply {\n        description = "Alert when a protected charger connection is disconnected"\n        setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),\n          AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)\n            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())\n        enableVibration(true)\n        vibrationPattern = this@VoltGuardBatteryNotifications.vibrationPattern\n      }\n    )\n\n    val alarmAttributes = AudioAttributes.Builder()
       .setUsage(AudioAttributes.USAGE_ALARM)
       .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
       .build()
@@ -113,7 +115,7 @@ object VoltGuardBatteryNotifications {
     }
   }
 
-  fun postTestAlarm(context: Context): Boolean {
+  fun postAntiTheftAlarm(context: Context, mode: String): Boolean {\n    return try {\n      val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager\n      val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)\n      val pendingIntent = launchIntent?.let {\n        PendingIntent.getActivity(context, 7414, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)\n      }\n      val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {\n        Notification.Builder(context, ANTI_THEFT_CHANNEL_ID)\n      } else {\n        @Suppress("DEPRECATION")\n        Notification.Builder(context).setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))\n          .setVibrate(vibrationPattern)\n      }\n      manager.notify(ANTI_THEFT_NOTIFICATION_ID, builder\n        .setSmallIcon(R.drawable.ic_voltguard_notification)\n        .setContentTitle("VoltGuard Anti-Theft alert")\n        .setContentText("Charger disconnected. Open VoltGuard to disarm with your PIN.")\n        .setContentIntent(pendingIntent)\n        .setCategory(Notification.CATEGORY_ALARM)\n        .setPriority(Notification.PRIORITY_MAX)\n        .setAutoCancel(false)\n        .setOngoing(true)\n        .build())\n      true\n    } catch (_: Exception) { false }\n  }\n\n  fun clearAntiTheftAlarm(context: Context) {\n    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager\n    manager.cancel(ANTI_THEFT_NOTIFICATION_ID)\n  }\n\n  fun postTestAlarm(context: Context): Boolean {
     val status = getChargingAlarmStatus(context)
     if (status["alarmReady"] != true) {
       throw IllegalStateException(describeAlarmStatus(status))
