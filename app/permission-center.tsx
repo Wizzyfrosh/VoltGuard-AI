@@ -13,14 +13,22 @@ export default function PermissionCenterScreen() {
   const [usageGranted, setUsageGranted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
+    setStatusError(null);
     try {
-      const notification = await Notifications.getPermissionsAsync();
-      setNotificationGranted(notification.granted);
+      if (Platform.OS !== 'web') {
+        const notification = await Notifications.getPermissionsAsync();
+        setNotificationGranted(notification.granted);
+      } else {
+        setNotificationGranted(false);
+      }
       if (Platform.OS === 'android') setUsageGranted(await hasUsageAccess());
       else setUsageGranted(false);
+    } catch {
+      setStatusError('Could not read one or more permission states. Refresh or check your device settings.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -30,6 +38,7 @@ export default function PermissionCenterScreen() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const requestNotifications = async () => {
+    if (Platform.OS === 'web') return;
     try {
       const current = await Notifications.getPermissionsAsync();
       const next = current.granted ? current : await Notifications.requestPermissionsAsync();
@@ -79,10 +88,22 @@ export default function PermissionCenterScreen() {
         </Pressable>
       </View>
       {loading ? <ActivityIndicator color={colors.primary} /> : <>
-        <PermissionRow icon={Bell} title="Notifications"
-          description="Used for charging target alerts and battery-care reminders. Android notification channels can also be controlled separately."
-          granted={notificationGranted} action={() => { void requestNotifications(); }}
-          actionLabel={notificationGranted ? 'Check status' : 'Allow'} />
+        {Platform.OS === 'web' ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.row}>
+              <Bell size={21} color={colors.primary} />
+              <View style={styles.copy}>
+                <Text style={[styles.heading, { color: colors.text }]}>Notifications</Text>
+                <Text style={[styles.description, { color: colors.textSecondary }]}>Native charging alerts and scheduled reminders are not available in the web app.</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <PermissionRow icon={Bell} title="Notifications"
+            description="Used for charging target alerts and battery-care reminders. Android notification channels can also be controlled separately."
+            granted={notificationGranted} action={() => { void requestNotifications(); }}
+            actionLabel={notificationGranted ? 'Check status' : 'Allow'} />
+        )}
         {Platform.OS === 'android' ? (
           <PermissionRow icon={Smartphone} title="Usage Access (optional)"
             description="Allows VoltGuard to show app foreground time. It does not provide per-app battery consumption or mAh."
@@ -99,6 +120,7 @@ export default function PermissionCenterScreen() {
           </View>
         )}
       </>}
+      {statusError && <Text accessibilityRole="alert" style={[styles.footnote, { color: colors.warning }]}>{statusError}</Text>}
       <Text style={[styles.footnote, { color: colors.textSecondary }]}>You can revoke permissions at any time in your device settings. Some features may become unavailable when access is revoked.</Text>
     </ScrollView>
   );
