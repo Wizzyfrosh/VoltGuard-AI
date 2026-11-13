@@ -11,6 +11,7 @@ type VoltGuardBatteryNativeModule = {
   setAntiTheftPin: (pin: string) => Promise<boolean>;
   armAntiTheft: (mode: AntiTheftMode) => boolean;
   disarmAntiTheft: (pin: string) => Promise<boolean>;
+  disarmAntiTheftWithBiometric: () => Promise<boolean>;
   getAntiTheftStatus: () => AntiTheftStatus;
   setAntiTheftDelay: (seconds: number) => boolean;
   setAntiTheftVibration: (enabled: boolean) => boolean;
@@ -35,6 +36,7 @@ export type AntiTheftStatus = {
   vibrationAvailable: boolean;
   flashEnabled: boolean;
   flashAvailable: boolean;
+  biometricAvailable: boolean;
 };
 
 export type ChargingAlarmStatus = {
@@ -103,6 +105,13 @@ export async function setAntiTheftPin(pin: string): Promise<boolean> {
 export function armAntiTheft(mode: AntiTheftMode): boolean {
   if (Platform.OS !== 'android') return false;
   return getNativeModule()?.armAntiTheft(mode) ?? false;
+}
+
+export async function disarmAntiTheftWithBiometric(): Promise<boolean> {
+  if (Platform.OS !== "android") return false;
+  const module = getNativeModule();
+  if (!module) return false;
+  return await module.disarmAntiTheftWithBiometric();
 }
 
 export async function disarmAntiTheft(pin: string): Promise<boolean> {
