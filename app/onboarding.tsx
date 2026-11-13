@@ -65,7 +65,7 @@ export default function OnboardingScreen() {
     }
     if (Platform.OS === 'android') {
       void hasUsageAccess().then((granted) => { if (active) setUsageState(granted ? 'granted' : 'not-granted'); })
-        .catch(() => { if (active) setUsageState('not-granted'); });
+        .catch(() => { if (active) setUsageState('unknown'); });
     }
     return () => { active = false; };
   }, []));
@@ -129,9 +129,11 @@ export default function OnboardingScreen() {
                   </View>
                   {usageState === 'granted' && <CheckCircle2 size={20} color={colors.success} />}
                 </View>
+                {usageState === 'not-granted' && <Text style={[styles.hint, { color: colors.textSecondary }]}>Access is not enabled. You can grant it in Android Settings or skip it.</Text>}
+                {usageState === 'unknown' && <Text style={[styles.hint, { color: colors.textSecondary }]}>Access status could not be verified yet. Check again or continue without it.</Text>}
                 <View style={styles.buttonRow}>
                   <Pressable onPress={() => { void checkUsage(); }} disabled={busy} style={[styles.secondaryButton, styles.flexButton, { borderColor: colors.border }]}>
-                    <Text style={[styles.secondaryButtonText, { color: colors.text }]}>{usageState === 'granted' ? 'Access granted' : 'Check access'}</Text>
+                    <Text style={[styles.secondaryButtonText, { color: colors.text }]}>{usageState === 'granted' ? 'Access granted' : usageState === 'unknown' ? 'Check access status' : 'Check access'}</Text>
                   </Pressable>
                   <Pressable onPress={openUsageSettings} style={[styles.secondaryButton, styles.flexButton, { borderColor: colors.primary }]}>
                     <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Open settings</Text>
