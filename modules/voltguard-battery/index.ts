@@ -27,6 +27,7 @@ export type AntiTheftStatus = {
   pinConfigured: boolean;
   armed: boolean;
   alarmActive: boolean;
+  restoreFailed: boolean;
   mode: AntiTheftMode;
   delaySeconds: number;
   vibrationEnabled: boolean;
