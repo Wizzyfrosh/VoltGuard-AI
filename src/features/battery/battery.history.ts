@@ -5,10 +5,9 @@ import type { BatterySnapshot } from './battery.types';
 import { getChargingTransition } from './battery.session';
 import { analyzeBatteryDrain, type BatteryDrainAnalysis } from './battery.analysis';
 import { buildBatteryTrendReport, type BatteryTrendPeriod, type BatteryTrendReport } from './battery.trends';
-import { hasBatteryHistoryConsent } from './battery.history-consent';
+import { getBatteryHistoryCutoff, hasBatteryHistoryConsent, normalizeBatteryHistoryLimit, runBatteryHistoryMutation } from './battery.history-consent';
 
 const HISTORY_PREFERENCE = 'battery_history_enabled';
-const RETENTION_DAYS = 30;
 
 export interface ChargingSession {
   id: number;
@@ -55,7 +54,7 @@ export async function isBatteryHistoryEnabled(): Promise<boolean> {
 export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> {
   if (Platform.OS === 'web') throw new Error('Battery history is not available in the web build.');
   const db = await getBatteryDatabase();
-  await db.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT INTO user_preferences (preference_key, preference_value, updated_at)
        VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -70,7 +69,7 @@ export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> 
       await db.runAsync('DELETE FROM battery_samples');
       await db.runAsync('DELETE FROM charging_sessions');
     }
-  });
+  }));
 }
 
 /** Save foreground telemetry only after explicit opt-in. No background task is registered. */
@@ -78,7 +77,7 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
   if (Platform.OS === 'web' || snapshot.source === 'unavailable') return;
   const db = await getBatteryDatabase();
 
-  await db.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     const preference = await db.getFirstAsync<{ preference_value: string }>(
       'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
       HISTORY_PREFERENCE,
@@ -139,35 +138,32 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
       );
     }
 
-    const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
+    const cutoff = getBatteryHistoryCutoff();
     await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
     await db.runAsync(
       "DELETE FROM charging_sessions WHERE started_at < ?",
       cutoff,
     );
-  });
+  }));
 }
 
 export async function getChargingSessions(limit = 50): Promise<ChargingSession[]> {
   if (Platform.OS === 'web') return [];
-  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
+  const safeLimit = normalizeBatteryHistoryLimit(limit, 50, 200);
   // Enforce the opt-in boundary at the data-access layer, not only in callers.
   if (!(await isBatteryHistoryEnabled())) return [];
   const db = await getBatteryDatabase();
-  const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
-  await db.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
-  await db.runAsync(
-    "DELETE FROM charging_sessions WHERE started_at < ?",
-    cutoff,
-  );
+  const cutoff = getBatteryHistoryCutoff();
   const rows = await db.getAllAsync<ChargingSessionRow>(
     `SELECT id, started_at, ended_at, start_level, end_level, status, source
      FROM charging_sessions
-     WHERE EXISTS (
-       SELECT 1 FROM user_preferences
-       WHERE preference_key = ? AND preference_value = 'true'
-     )
+     WHERE started_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
      ORDER BY started_at DESC LIMIT ?`,
+    cutoff,
     HISTORY_PREFERENCE,
     safeLimit,
   );
@@ -177,10 +173,10 @@ export async function getChargingSessions(limit = 50): Promise<ChargingSession[]
 export async function clearBatteryHistory(): Promise<void> {
   if (Platform.OS === 'web') return;
   const db = await getBatteryDatabase();
-  await db.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM battery_samples');
     await db.runAsync('DELETE FROM charging_sessions');
-  });
+  }));
 }
 
 export async function getBatteryDrainAnalysis(): Promise<BatteryDrainAnalysis> {
@@ -219,7 +215,7 @@ export async function getBatteryTrendReport(period: BatteryTrendPeriod): Promise
   if (!enabled) return empty;
 
   const db = await getBatteryDatabase();
-  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+  const cutoff = getBatteryHistoryCutoff();
   const rows = await db.getAllAsync<{
     observed_at: string;
     level: number | null;
