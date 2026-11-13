@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet,
-  Text, TextInput, View, Platform
+  Text, TextInput, View, Platform, PermissionsAndroid
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -167,11 +167,11 @@ export default function AntiTheftScreen() {
         {status?.pinConfigured && !armed && !alarmActive && (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Disconnect confirmation delay</Text>
-            <Text style={[styles.body, { color: colors.textSecondary }]}>Choose how long the charger must remain disconnected before the alarm starts.</Text>
+            <Text style={[styles.body, { color: colors.textSecondary }]}>Choose how long the charger must remain disconnected before the alarm starts. Immediate starts the alarm as soon as disconnection is detected.</Text>
             <View style={styles.delayOptions}>
               {[0, 5, 10, 15, 30].map(seconds => (
                 <Pressable key={seconds} onPress={() => saveDelay(seconds)} style={[styles.delayOption, { borderColor: delaySeconds === seconds ? colors.primary : colors.border, backgroundColor: delaySeconds === seconds ? colors.primary + '12' : 'transparent' }]}>
-                  <Text style={[styles.delayText, { color: colors.text }]}>{seconds === 0 ? 'Off' : seconds + 's'}</Text>
+                  <Text style={[styles.delayText, { color: colors.text }]}>{seconds === 0 ? 'Immediate' : seconds + 's'}</Text>
                 </Pressable>
               ))}
             </View>
@@ -207,8 +207,21 @@ export default function AntiTheftScreen() {
                   accessibilityState={{ checked: flashEnabled }}
                   onPress={async () => {
                     try {
-                      await setAntiTheftFlash(!flashEnabled);
-                      setFlashEnabled(!flashEnabled);
+                      const enabling = !flashEnabled;
+                      if (enabling && Platform.OS === 'android' && Number(Platform.Version) >= 23) {
+                        const permission = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
+                          title: 'Allow camera flash for Anti-Theft',
+                          message: 'VoltGuard uses the rear camera torch during an Anti-Theft alarm. Camera access is not used to take photos or record video.',
+                          buttonPositive: 'Allow',
+                          buttonNegative: 'Not now',
+                        });
+                        if (permission !== PermissionsAndroid.RESULTS.GRANTED) {
+                          Alert.alert('Camera permission required', 'Allow camera access in Android settings to enable the alarm flash. Your other Anti-Theft alarm features will continue to work.');
+                          return;
+                        }
+                      }
+                      await setAntiTheftFlash(enabling);
+                      setFlashEnabled(enabling);
                     } catch (error) {
                       Alert.alert('Unable to update flash', error instanceof Error ? error.message : 'Check camera permission and try again.');
                     }
