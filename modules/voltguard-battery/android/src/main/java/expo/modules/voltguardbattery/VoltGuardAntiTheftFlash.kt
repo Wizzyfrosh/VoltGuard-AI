@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Build
-import androidx.core.content.ContextCompat
 
 /**
  * Owns the optional rear-camera torch used during an active Anti-Theft alarm.
@@ -21,7 +20,7 @@ object VoltGuardAntiTheftFlash {
   }
 
   fun setEnabled(context: Context, enabled: Boolean): Boolean {
-    if (enabled && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
       return false
     }
     val id = cameraId(context) ?: return false
