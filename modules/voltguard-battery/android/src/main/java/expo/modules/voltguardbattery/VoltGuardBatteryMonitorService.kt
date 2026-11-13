@@ -137,8 +137,10 @@ class VoltGuardBatteryMonitorService : Service() {
     if (!started) {
       // A rejected foreground-service restart must not erase the user's
       // Anti-Theft configuration or falsely report that it was disarmed.
-      val antiTheftNeedsRestore = prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) ||
+      val antiTheftNeedsRestore = AntiTheftRestorePolicy.shouldReportAntiTheftRestoreFailure(
+        prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false),
         prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
+      )
       prefs.edit()
         .putBoolean(KEY_ENABLED, false)
         .putBoolean("anti_theft_restore_failed", antiTheftNeedsRestore)
