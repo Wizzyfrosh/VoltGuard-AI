@@ -177,10 +177,7 @@ class VoltGuardBatteryModule : Module() {
         VoltGuardAntiTheftBiometric.authenticate(activity)
       }
       if (!authenticated) return@Coroutine false
-      val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
-        action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
-      }
-      context.startService(intent)
+      requestAntiTheftDisarm(context)
       true
     }
 
@@ -192,12 +189,9 @@ class VoltGuardBatteryModule : Module() {
           throw IllegalArgumentException("Incorrect Anti-Theft PIN")
         }
       }
-      val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
-        action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
-      }
-      // This command originates from the visible Anti-Theft screen. Use a
-      // regular service start so a stop-only command does not require FGS promotion.
-      context.startService(intent)
+      // The native state is committed before returning, so the next status
+      // refresh cannot race the asynchronous service command.
+      requestAntiTheftDisarm(context)
       true
     }
 
@@ -535,4 +529,42 @@ class VoltGuardBatteryModule : Module() {
       "technology" to technology
     )
   }
+/**
+ * Persist the disarmed state synchronously before asking the running service
+ * to release audio, vibration, torch and notifications. Roll back if Android
+ * rejects the command so the UI never reports a completed disarm falsely.
+ */
+private fun requestAntiTheftDisarm(context: Context) {
+  val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
+  val wasArmed = prefs.getBoolean("anti_theft_enabled", false)
+  val wasAlarmActive = prefs.getBoolean("anti_theft_alarm_active", false)
+  val wasBaselineConnected = prefs.getBoolean("anti_theft_baseline_connected", false)
+  check(
+    prefs.edit()
+      .putBoolean("anti_theft_enabled", false)
+      .putBoolean("anti_theft_alarm_active", false)
+      .putBoolean("anti_theft_baseline_connected", false)
+      .commit()
+  ) { "Could not persist Anti-Theft disarm state" }
+
+  try {
+    val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
+      action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
+    }
+    // The caller is the visible Anti-Theft screen, so a regular service start
+    // is permitted and does not request foreground-service promotion.
+    context.startService(intent)
+  } catch (error: Exception) {
+    val restored = prefs.edit()
+      .putBoolean("anti_theft_enabled", wasArmed)
+      .putBoolean("anti_theft_alarm_active", wasAlarmActive)
+      .putBoolean("anti_theft_baseline_connected", wasBaselineConnected)
+      .commit()
+    if (!restored) {
+      throw IllegalStateException("Android rejected disarm and the previous protection state could not be restored", error)
+    }
+    throw IllegalStateException("Android could not complete Anti-Theft disarm. Protection state was restored.", error)
+  }
+}
+
 }
