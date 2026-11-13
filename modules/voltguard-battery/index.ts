@@ -30,6 +30,7 @@ export type AntiTheftStatus = {
   armed: boolean;
   alarmActive: boolean;
   restoreFailed: boolean;
+  monitoringRunning: boolean;
   mode: AntiTheftMode;
   delaySeconds: number;
   vibrationEnabled: boolean;
