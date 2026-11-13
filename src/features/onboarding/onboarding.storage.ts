@@ -1,15 +1,8 @@
 import { getBatteryPreference, setBatteryPreference } from '../battery/battery.database';
+import { createOnboardingStorage } from './onboarding.storage-core';
 
-const ONBOARDING_COMPLETED_KEY = 'onboarding_completed_v1';
+const storage = createOnboardingStorage(getBatteryPreference, setBatteryPreference);
 
-export async function hasCompletedOnboarding(): Promise<boolean> {
-  return (await getBatteryPreference(ONBOARDING_COMPLETED_KEY)) === 'true';
-}
-
-export async function completeOnboarding(): Promise<void> {
-  await setBatteryPreference(ONBOARDING_COMPLETED_KEY, 'true');
-}
-
-export async function resetOnboarding(): Promise<void> {
-  await setBatteryPreference(ONBOARDING_COMPLETED_KEY, 'false');
-}
+export const hasCompletedOnboarding = storage.hasCompletedOnboarding;
+export const completeOnboarding = storage.completeOnboarding;
+export const resetOnboarding = storage.resetOnboarding;
