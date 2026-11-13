@@ -72,7 +72,8 @@ export default function AntiTheftScreen() {
         await setAntiTheftPin(pin);
         Alert.alert('PIN saved', 'Your Anti-Theft PIN is configured. You can now arm protection.');
       } else {
-        await disarmAntiTheft(pin);
+        const disarmed = await disarmAntiTheft(pin);
+        if (!disarmed) throw new Error('Android could not confirm that Anti-Theft was disarmed. Check the app status and try again.');
         Alert.alert('Protection disarmed', 'Anti-Theft monitoring and its alarm have been stopped.');
       }
       setDialog(null);
