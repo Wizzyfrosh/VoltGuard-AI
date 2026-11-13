@@ -12,11 +12,19 @@ import android.os.Build
  * It never opens a camera preview or captures images.
  */
 object VoltGuardAntiTheftFlash {
-  fun isAvailable(context: Context): Boolean {
+  /** Hardware discovery must not require CAMERA permission; the UI needs to
+   * show the opt-in control before it can request that permission. */
+  fun hasFlashHardware(context: Context): Boolean {
     return try {
-      context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH) &&
-        cameraId(context) != null
+      context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH)
     } catch (_: Exception) { false }
+  }
+
+  fun isAvailable(context: Context): Boolean {
+    if (!hasFlashHardware(context)) return false
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+      context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return false
+    return try { cameraId(context) != null } catch (_: Exception) { false }
   }
 
   fun setEnabled(context: Context, enabled: Boolean): Boolean {
