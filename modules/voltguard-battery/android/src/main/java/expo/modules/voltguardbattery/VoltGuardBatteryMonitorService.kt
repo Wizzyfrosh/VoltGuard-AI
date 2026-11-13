@@ -68,6 +68,9 @@ class VoltGuardBatteryMonitorService : Service() {
   private var legacyAudioFocusListener: AudioManager.OnAudioFocusChangeListener? = null
   private val mainHandler = Handler(Looper.getMainLooper())
   private var pendingDisconnect: Runnable? = null
+  private var flashPulse: Runnable? = null
+  private var flashPulseOn = false
+  private var flashPulseStartedAt = 0L
 
   private val batteryReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -403,10 +406,37 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private fun startAlarmFlash() {
     val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    if (!prefs.getBoolean("anti_theft_flash_enabled", false)) return
-    if (!VoltGuardAntiTheftFlash.setEnabled(this, true)) {
-      Log.w("VoltGuardMonitor", "Anti-Theft camera flash is enabled but Android could not activate the torch")
+    if (!prefs.getBoolean("anti_theft_flash_enabled", false) || flashPulse != null) return
+    flashPulseStartedAt = System.currentTimeMillis()
+    flashPulseOn = false
+    val pulse = object : Runnable {
+      override fun run() {
+        val alarmActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+          .getBoolean(KEY_ANTI_THEFT_ALARM, false)
+        // Limit torch use to five minutes per alarm to reduce heat and battery drain.
+        if (!alarmActive || System.currentTimeMillis() - flashPulseStartedAt >= 5 * 60 * 1000L) {
+          stopAlarmFlash()
+          return
+        }
+        flashPulseOn = !flashPulseOn
+        if (!VoltGuardAntiTheftFlash.setEnabled(this@VoltGuardBatteryMonitorService, flashPulseOn)) {
+          Log.w("VoltGuardMonitor", "Anti-Theft torch pulse failed; disabling flash for this alarm")
+          stopAlarmFlash()
+          return
+        }
+        mainHandler.postDelayed(this, if (flashPulseOn) 450L else 650L)
+      }
     }
+    flashPulse = pulse
+    mainHandler.post(pulse)
+  }
+
+  private fun stopAlarmFlash() {
+    flashPulse?.let(mainHandler::removeCallbacks)
+    flashPulse = null
+    flashPulseOn = false
+    flashPulseStartedAt = 0L
+    VoltGuardAntiTheftFlash.setEnabled(this, false)
   }
 
   private fun stopAlarmVibration() {
@@ -415,7 +445,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun stopAlarmSound() {
-    VoltGuardAntiTheftFlash.setEnabled(this, false)
+    stopAlarmFlash()
     stopAlarmVibration()
     val player = alarmPlayer
     alarmPlayer = null
