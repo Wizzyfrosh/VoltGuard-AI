@@ -8,7 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, ShieldAlert, ShieldCheck, LockKeyhole } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import {
-  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin,
+  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay,
   type AntiTheftMode, type AntiTheftStatus
 } from '../modules/voltguard-battery';
 
@@ -25,6 +25,7 @@ export default function AntiTheftScreen() {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [mode, setMode] = useState<AntiTheftMode>('one_time');
+  const [delaySeconds, setDelaySeconds] = useState(5);
 
   const refresh = useCallback(() => {
     if (Platform.OS !== 'android') {
@@ -35,7 +36,7 @@ export default function AntiTheftScreen() {
     try {
       const next = getAntiTheftStatus();
       setStatus(next);
-      if (next) setMode(next.mode);
+      if (next) { setMode(next.mode); setDelaySeconds(next.delaySeconds); }
     } catch {
       setStatus(null);
     } finally {
@@ -78,6 +79,15 @@ export default function AntiTheftScreen() {
       Alert.alert('Unable to continue', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const saveDelay = (seconds: number) => {
+    try {
+      setAntiTheftDelay(seconds);
+      setDelaySeconds(seconds);
+    } catch (error) {
+      Alert.alert('Unable to update delay', error instanceof Error ? error.message : 'Disarm protection before changing this setting.');
     }
   };
 
@@ -151,6 +161,15 @@ export default function AntiTheftScreen() {
 
         {status?.pinConfigured && !armed && !alarmActive && (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Disconnect confirmation delay</Text>
+            <Text style={[styles.body, { color: colors.textSecondary }]}>Choose how long the charger must remain disconnected before the alarm starts.</Text>
+            <View style={styles.delayOptions}>
+              {[0, 5, 10, 15, 30].map(seconds => (
+                <Pressable key={seconds} onPress={() => saveDelay(seconds)} style={[styles.delayOption, { borderColor: delaySeconds === seconds ? colors.primary : colors.border, backgroundColor: delaySeconds === seconds ? colors.primary + '12' : 'transparent' }]}>
+                  <Text style={[styles.delayText, { color: colors.text }]}>{seconds === 0 ? 'Off' : seconds + 's'}</Text>
+                </Pressable>
+              ))}
+            </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose protection mode</Text>
             <Pressable onPress={() => setMode('one_time')} style={[styles.mode, { borderColor: mode === 'one_time' ? colors.primary : colors.border, backgroundColor: mode === 'one_time' ? colors.primary + '12' : 'transparent' }]}>
               <Text style={[styles.modeTitle, { color: colors.text }]}>One-Time</Text>
@@ -232,6 +251,9 @@ const styles = StyleSheet.create({
   statusPill: { fontSize: 11, fontWeight: '800', letterSpacing: 0.6 },
   card: { borderWidth: 1, borderRadius: 16, padding: 15, gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700' },
+  delayOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  delayOption: { minWidth: 48, borderWidth: 1, borderRadius: 9, paddingVertical: 9, paddingHorizontal: 12, alignItems: 'center' },
+  delayText: { fontSize: 13, fontWeight: '700' },
   mode: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 5 },
   modeTitle: { fontSize: 14, fontWeight: '700' },
   primaryButton: { minHeight: 46, borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
