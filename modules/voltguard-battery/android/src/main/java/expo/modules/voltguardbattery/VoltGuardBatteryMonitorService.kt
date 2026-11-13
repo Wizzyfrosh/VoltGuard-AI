@@ -290,7 +290,7 @@ class VoltGuardBatteryMonitorService : Service() {
     return builder
       .setSmallIcon(R.drawable.ic_voltguard_notification)
       .setContentTitle("VoltGuard is monitoring your battery")
-      .setContentText(if (getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ANTI_THEFT_ENABLED, false)) "Anti-Theft protection is armed" else "Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
+      .setContentText(if ((getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ANTI_THEFT_ENABLED, false) || getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ANTI_THEFT_ALARM, false))) "VoltGuard Anti-Theft protection is active" else "Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
       .setContentIntent(pendingIntent)
       .setPriority(Notification.PRIORITY_LOW)
       .setOngoing(true)
