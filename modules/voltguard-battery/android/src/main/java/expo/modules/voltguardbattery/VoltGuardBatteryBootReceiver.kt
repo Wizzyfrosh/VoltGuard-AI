@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 
 class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent?) {
@@ -18,8 +19,11 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent)
       else context.startService(serviceIntent)
-    } catch (_: Exception) {
-      // Android/OEM policy may defer or deny automatic restart. The user can re-enable it in VoltGuard.
+    } catch (error: Exception) {
+      // A denied boot restart must not leave the UI claiming that monitoring
+      // is enabled when no service could be started.
+      preferences.edit().putBoolean("enabled", false).apply()
+      Log.w("VoltGuardMonitor", "Android/OEM policy denied automatic monitor restart", error)
     }
   }
 }
