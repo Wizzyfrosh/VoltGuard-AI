@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as Notifications from 'expo-notifications';
@@ -11,6 +11,7 @@ export default function PermissionCenterScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [notificationGranted, setNotificationGranted] = useState<boolean | null>(null);
+  const [notificationCanAskAgain, setNotificationCanAskAgain] = useState(true);
   const [usageGranted, setUsageGranted] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -24,7 +25,10 @@ export default function PermissionCenterScreen() {
     try {
       if (Platform.OS !== 'web') {
         const notification = await Notifications.getPermissionsAsync();
-        if (isActive()) setNotificationGranted(notification.granted);
+        if (isActive()) {
+          setNotificationGranted(notification.granted);
+          setNotificationCanAskAgain(notification.canAskAgain);
+        }
       } else if (isActive()) {
         setNotificationGranted(false);
       }
@@ -59,8 +63,13 @@ export default function PermissionCenterScreen() {
     setStatusError(null);
     try {
       const current = await Notifications.getPermissionsAsync();
+      if (!current.granted && !current.canAskAgain) {
+        await Linking.openSettings();
+        return;
+      }
       const next = current.granted ? current : await Notifications.requestPermissionsAsync();
       setNotificationGranted(next.granted);
+      setNotificationCanAskAgain(next.canAskAgain);
     } catch {
       setNotificationGranted(null);
       setStatusError('Notification permission request failed. Check device settings and try again.');
@@ -125,7 +134,7 @@ export default function PermissionCenterScreen() {
           <PermissionRow icon={Bell} title="Notifications"
             description="Used for charging target alerts and battery-care reminders. Android notification channels can also be controlled separately."
             granted={notificationGranted} action={() => { void requestNotifications(); }}
-            actionLabel={notificationGranted ? 'Check status' : 'Allow'} />
+            actionLabel={notificationGranted ? 'Check status' : notificationCanAskAgain ? 'Allow' : 'Open settings'} />
         )}
         {Platform.OS === 'android' ? (
           <PermissionRow icon={Smartphone} title="Usage Access (optional)"
