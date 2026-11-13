@@ -78,6 +78,10 @@ export async function getRecentBatterySamples(limit = 100): Promise<StoredBatter
   const safeLimit = normalizeBatteryHistoryLimit(limit, 100, 1000);
   const cutoff = getBatteryHistoryCutoff();
   const database = await getBatteryDatabase();
+  await runBatteryHistoryMutation(() => database.withTransactionAsync(async () => {
+    await database.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
+    await database.runAsync('DELETE FROM charging_sessions WHERE started_at < ?', cutoff);
+  }));
   const rows = await database.getAllAsync<BatterySampleRow>(
     `SELECT id, observed_at, platform, level, battery_state, low_power_mode, source
      FROM battery_samples
