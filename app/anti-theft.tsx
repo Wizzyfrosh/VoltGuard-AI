@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, View, Platform
@@ -66,10 +66,10 @@ export default function AntiTheftScreen() {
     setBusy(true);
     try {
       if (dialog === 'setup') {
-        setAntiTheftPin(pin);
+        await setAntiTheftPin(pin);
         Alert.alert('PIN saved', 'Your Anti-Theft PIN is configured. You can now arm protection.');
       } else {
-        disarmAntiTheft(pin);
+        await disarmAntiTheft(pin);
         Alert.alert('Protection disarmed', 'Anti-Theft monitoring and its alarm have been stopped.');
       }
       setDialog(null);
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   statusPill: { fontSize: 11, fontWeight: '800', letterSpacing: 0.6 },
   card: { borderWidth: 1, borderRadius: 16, padding: 15, gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '750' },
+  sectionTitle: { fontSize: 16, fontWeight: '700' },
   mode: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 5 },
   modeTitle: { fontSize: 14, fontWeight: '700' },
   primaryButton: { minHeight: 46, borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
