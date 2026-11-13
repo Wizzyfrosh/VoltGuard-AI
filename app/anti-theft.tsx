@@ -138,8 +138,8 @@ export default function AntiTheftScreen() {
             <>
               <View style={styles.statusRow}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Protection status</Text>
-                <Text style={[styles.statusPill, { color: alarmActive ? colors.warning : armed ? colors.success : colors.textSecondary }]}>
-                  {alarmActive ? 'ALARM ACTIVE' : armed ? 'ARMED' : 'DISARMED'}
+                <Text style={[styles.statusPill, { color: alarmActive || status?.restoreFailed ? colors.warning : armed ? colors.success : colors.textSecondary }]}>
+                  {alarmActive ? 'ALARM ACTIVE' : status?.restoreFailed && !armed ? 'NOT MONITORING' : armed ? 'ARMED' : 'DISARMED'}
                 </Text>
               </View>
               <Text style={[styles.body, { color: colors.textSecondary }]}>
