@@ -244,7 +244,7 @@ class VoltGuardBatteryModule : Module() {
         "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5),
         "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true),
         "flashEnabled" to prefs.getBoolean("anti_theft_flash_enabled", false),
-        "flashAvailable" to VoltGuardAntiTheftFlash.isAvailable(context),
+        "flashAvailable" to VoltGuardAntiTheftFlash.hasFlashHardware(context),
         "biometricAvailable" to (appContext.currentActivity as? FragmentActivity)?.let { VoltGuardAntiTheftBiometric.isAvailable(it) } ?: false,
         "vibrationAvailable" to try {
           val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
