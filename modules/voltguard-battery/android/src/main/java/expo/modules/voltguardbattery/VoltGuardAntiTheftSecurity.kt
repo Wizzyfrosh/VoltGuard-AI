@@ -44,15 +44,16 @@ object VoltGuardAntiTheftSecurity {
     val hash = derive(pin, salt)
     val payload = Base64.encodeToString(salt + hash, Base64.NO_WRAP)
     val encrypted = encrypt(payload.toByteArray(Charsets.UTF_8))
-    prefs.edit()
+    check(prefs.edit()
       .putString(KEY_PIN_RECORD, Base64.encodeToString(encrypted, Base64.NO_WRAP))
       .remove(KEY_FAILED_ATTEMPTS)
       .remove(KEY_LOCKED_UNTIL)
-      .apply()
+      .commit()) { "Could not securely save the Anti-Theft PIN" }
   }
 
   @Synchronized
   fun verifyPin(context: Context, pin: String): Boolean {
+    require(pin.matches(Regex("^[0-9]{6,12}$"))) { "PIN must contain 6 to 12 digits" }
     val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     val record = prefs.getString(KEY_PIN_RECORD, null) ?: return false
     val lockedUntil = prefs.getLong(KEY_LOCKED_UNTIL, 0L)
@@ -74,7 +75,9 @@ object VoltGuardAntiTheftSecurity {
     }
 
     if (valid) {
-      prefs.edit().remove(KEY_FAILED_ATTEMPTS).remove(KEY_LOCKED_UNTIL).apply()
+      check(prefs.edit().remove(KEY_FAILED_ATTEMPTS).remove(KEY_LOCKED_UNTIL).commit()) {
+        "Could not persist Anti-Theft security state"
+      }
       return true
     }
 
@@ -84,7 +87,7 @@ object VoltGuardAntiTheftSecurity {
       editor.putLong(KEY_LOCKED_UNTIL, System.currentTimeMillis() + LOCKOUT_MS)
         .putInt(KEY_FAILED_ATTEMPTS, 0)
     }
-    editor.apply()
+    check(editor.commit()) { "Could not persist Anti-Theft lockout state" }
     return false
   }
 
