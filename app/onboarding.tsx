@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, BatteryCharging, Bell, CheckCircle2, ShieldCheck
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { completeOnboarding } from '../src/features/onboarding/onboarding.storage';
+import { readPermissionStatus } from '../src/features/onboarding/permission-status';
 import { hasUsageAccess, openUsageAccessSettings } from '../modules/voltguard-battery';
 
 type Step = 0 | 1 | 2;
@@ -62,32 +63,48 @@ export default function OnboardingScreen() {
     }
   };
 
-  const refreshPermissionStatuses = React.useCallback(() => {
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const refreshPermissionStatuses = React.useCallback(async (isActive: () => boolean = () => mountedRef.current) => {
     if (Platform.OS !== 'web') {
-      void Notifications.getPermissionsAsync().then((result) => {
-        setNotificationState(result.granted ? 'granted' : 'denied');
-        setNotificationCanAskAgain(result.canAskAgain);
-      }).catch(() => {
-        setNotificationState('unknown');
-        setPermissionError('Notification permission status could not be read. Retry or continue without notifications.');
-      });
+      const result = await readPermissionStatus(() => Notifications.getPermissionsAsync());
+      if (isActive()) {
+        if (result.failed || !result.value) {
+          setNotificationState('unknown');
+          setPermissionError('Notification permission status could not be read. Retry or continue without notifications.');
+        } else {
+          setNotificationState(result.value.granted ? 'granted' : 'denied');
+          setNotificationCanAskAgain(result.value.canAskAgain);
+        }
+      }
     }
     if (Platform.OS === 'android') {
-      void hasUsageAccess().then((granted) => setUsageState(granted ? 'granted' : 'not-granted'))
-        .catch(() => {
+      const result = await readPermissionStatus(() => hasUsageAccess());
+      if (isActive()) {
+        if (result.failed || result.value === null) {
           setUsageState('unknown');
           setPermissionError('Usage Access status could not be read. Retry or continue without it.');
-        });
+        } else {
+          setUsageState(result.value ? 'granted' : 'not-granted');
+        }
+      }
     }
   }, []);
 
   useFocusEffect(React.useCallback(() => {
-    refreshPermissionStatuses();
+    let active = true;
+    void refreshPermissionStatuses(() => active && mountedRef.current);
+    return () => { active = false; };
   }, [refreshPermissionStatuses]));
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refreshPermissionStatuses();
+      if (state === 'active') void refreshPermissionStatuses();
     });
     return () => subscription.remove();
   }, [refreshPermissionStatuses]);
