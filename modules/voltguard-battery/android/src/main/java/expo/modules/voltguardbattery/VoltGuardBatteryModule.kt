@@ -139,14 +139,19 @@ class VoltGuardBatteryModule : Module() {
         "Enable sound and High importance for the Anti-Theft alarm in Android notification settings"
       }
       val preferences = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
-      // Persist the requested state before returning to JS so an immediate
-      // status refresh cannot race the asynchronous Android service start.
-      preferences.edit()
+      // Snapshot the previous state so a failed start cannot silently disarm an
+      // existing protection session or overwrite its mode.
+      val previousArmed = preferences.getBoolean("anti_theft_enabled", false)
+      val previousAlarmActive = preferences.getBoolean("anti_theft_alarm_active", false)
+      val previousMode = preferences.getString("anti_theft_mode", "one_time") ?: "one_time"
+      val previousBaseline = preferences.getBoolean("anti_theft_baseline_connected", false)
+      check(preferences.edit()
         .putBoolean("anti_theft_enabled", true)
         .putBoolean("anti_theft_alarm_active", false)
         .putString("anti_theft_mode", mode)
         .putBoolean("anti_theft_baseline_connected", false)
-        .apply()
+        .putBoolean("anti_theft_restore_failed", false)
+        .commit()) { "Could not persist Anti-Theft protection state" }
       val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_START
         putExtra(VoltGuardBatteryMonitorService.EXTRA_ANTI_THEFT_MODE, mode)
@@ -155,11 +160,16 @@ class VoltGuardBatteryModule : Module() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
         else context.startService(intent)
       } catch (error: Exception) {
-        preferences.edit()
-          .putBoolean("anti_theft_enabled", false)
-          .putBoolean("anti_theft_alarm_active", false)
-          .putBoolean("anti_theft_baseline_connected", false)
-          .apply()
+        val restored = preferences.edit()
+          .putBoolean("anti_theft_enabled", previousArmed)
+          .putBoolean("anti_theft_alarm_active", previousAlarmActive)
+          .putString("anti_theft_mode", previousMode)
+          .putBoolean("anti_theft_baseline_connected", previousBaseline)
+          .putBoolean("anti_theft_restore_failed", previousArmed || previousAlarmActive)
+          .commit()
+        if (!restored) {
+          throw IllegalStateException("Android could not start Anti-Theft monitoring and the previous protection state could not be restored.", error)
+        }
         throw IllegalStateException("Android could not start Anti-Theft monitoring. Check battery and background activity restrictions.", error)
       }
       true
@@ -216,7 +226,9 @@ class VoltGuardBatteryModule : Module() {
       require(!prefs.getBoolean("anti_theft_alarm_active", false)) {
         "Silence the active alarm before changing vibration settings"
       }
-      prefs.edit().putBoolean("anti_theft_vibration_enabled", enabled).apply()
+      check(prefs.edit().putBoolean("anti_theft_vibration_enabled", enabled).commit()) {
+        "Could not save Anti-Theft vibration preference"
+      }
       true
     }
 
@@ -228,7 +240,9 @@ class VoltGuardBatteryModule : Module() {
         !prefs.getBoolean("anti_theft_alarm_active", false)) {
         "Disarm Anti-Theft before changing the disconnect delay"
       }
-      prefs.edit().putInt("anti_theft_delay_seconds", seconds).apply()
+      check(prefs.edit().putInt("anti_theft_delay_seconds", seconds).commit()) {
+        "Could not save Anti-Theft disconnect delay"
+      }
       true
     }
 
