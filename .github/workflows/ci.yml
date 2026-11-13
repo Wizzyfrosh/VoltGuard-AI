@@ -68,9 +68,13 @@ jobs:
       - name: Generate Android native project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Compile Android Kotlin
+      - name: Run Android JVM unit tests
         working-directory: android
-        run: ./gradlew :app:compileDebugKotlin
+        run: ./gradlew testDebugUnitTest
+
+      - name: Assemble Android debug application
+        working-directory: android
+        run: ./gradlew :app:assembleDebug
 
   dependency-audit:
     name: npm dependency security audit
