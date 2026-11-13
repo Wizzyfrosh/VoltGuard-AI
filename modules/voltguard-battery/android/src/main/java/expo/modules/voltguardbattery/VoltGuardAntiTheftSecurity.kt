@@ -35,11 +35,16 @@ object VoltGuardAntiTheftSecurity {
   @Synchronized
   fun setPin(context: Context, pin: String) {
     require(pin.matches(Regex("^[0-9]{6,12}$"))) { "PIN must contain 6 to 12 digits" }
+    val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    require(!prefs.getBoolean("anti_theft_enabled", false) &&
+      !prefs.getBoolean("anti_theft_alarm_active", false)) {
+      "Disarm Anti-Theft before changing its PIN"
+    }
     val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
     val hash = derive(pin, salt)
     val payload = Base64.encodeToString(salt + hash, Base64.NO_WRAP)
     val encrypted = encrypt(payload.toByteArray(Charsets.UTF_8))
-    context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+    prefs.edit()
       .putString(KEY_PIN_RECORD, Base64.encodeToString(encrypted, Base64.NO_WRAP))
       .remove(KEY_FAILED_ATTEMPTS)
       .remove(KEY_LOCKED_UNTIL)
