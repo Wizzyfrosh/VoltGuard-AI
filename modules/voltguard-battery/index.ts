@@ -13,6 +13,7 @@ type VoltGuardBatteryNativeModule = {
   disarmAntiTheft: (pin: string) => Promise<boolean>;
   getAntiTheftStatus: () => AntiTheftStatus;
   setAntiTheftDelay: (seconds: number) => boolean;
+  setAntiTheftVibration: (enabled: boolean) => boolean;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
@@ -28,6 +29,7 @@ export type AntiTheftStatus = {
   alarmActive: boolean;
   mode: AntiTheftMode;
   delaySeconds: number;
+  vibrationEnabled: boolean;
 };
 
 export type ChargingAlarmStatus = {
@@ -55,6 +57,11 @@ export type SystemResourceDiagnostics = {
   totalStorageBytes: number | null;
   availableStorageBytes: number | null;
 };
+
+export function setAntiTheftVibration(enabled: boolean): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.setAntiTheftVibration(enabled) ?? false;
+}
 
 export function setAntiTheftDelay(seconds: number): boolean {
   if (Platform.OS !== 'android') return false;
