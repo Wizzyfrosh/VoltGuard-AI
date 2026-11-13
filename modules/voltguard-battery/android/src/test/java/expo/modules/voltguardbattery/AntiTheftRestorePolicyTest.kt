@@ -35,4 +35,16 @@ class AntiTheftRestorePolicyTest {
   @Test fun failedAlarmRecoveryPreservesAlarmState() {
     assertFalse(AntiTheftRestorePolicy.shouldClearNewArmAfterStartupFailure(true, true))
   }
+  @Test fun persistedArmedFlagWithoutLiveServiceIsNotMonitoring() {
+    assertFalse(AntiTheftRestorePolicy.isAntiTheftMonitoringActive(false, true, false))
+  }
+  @Test fun liveServiceWithoutAntiTheftIntentIsNotAntiTheftMonitoring() {
+    assertFalse(AntiTheftRestorePolicy.isAntiTheftMonitoringActive(true, false, false))
+  }
+  @Test fun liveServiceAndArmedIntentAreMonitoring() {
+    assertTrue(AntiTheftRestorePolicy.isAntiTheftMonitoringActive(true, true, false))
+  }
+  @Test fun liveServiceAndActiveAlarmAreMonitoring() {
+    assertTrue(AntiTheftRestorePolicy.isAntiTheftMonitoringActive(true, false, true))
+  }
 }
