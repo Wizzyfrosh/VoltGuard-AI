@@ -6,7 +6,12 @@ const DATABASE_NAME = 'voltguard.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 function getWebPreference(key: string): string | null {
-  try { return globalThis.localStorage?.getItem('voltguard:' + key) ?? null; } catch { return null; }
+  try {
+    if (!globalThis.localStorage) throw new Error('Browser storage is unavailable.');
+    return globalThis.localStorage.getItem('voltguard:' + key);
+  } catch {
+    throw new Error('VoltGuard could not read this setting from browser storage. Check private browsing or storage permissions.');
+  }
 }
 
 function setWebPreference(key: string, value: string): void {
