@@ -145,8 +145,10 @@ class VoltGuardBatteryMonitorService : Service() {
         alarmActive
       )
       val antiTheftWasArmed = prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false)
+      // Surface every failed Anti-Theft service start, including a failed
+      // first arm whose armed flag is cleared immediately below.
       val antiTheftNeedsRestore = AntiTheftRestorePolicy.shouldReportAntiTheftRestoreFailure(
-        antiTheftWasArmed && !clearFailedInitialArm,
+        antiTheftWasArmed,
         alarmActive
       )
       val failureEditor = prefs.edit()
