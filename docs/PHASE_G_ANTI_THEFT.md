@@ -18,12 +18,13 @@
 - Added Phase G push and pull-request CI triggers.
 
 ## Required engineering work still open
-- Added a pure charger-state machine and JVM JUnit tests covering unarmed events, baseline connection, One-Time/Always disconnect transitions, reconnect state, active alarm suppression, and invalid transitions. Delay scheduling/cancellation, process recreation and PIN lockout still need dedicated tests.
+- Added a pure charger-state machine and 10 JVM JUnit tests covering unarmed events, baseline connection, One-Time/Always disconnect transitions, reconnect state, active alarm suppression, and invalid transitions.
+- Extracted PIN lockout policy into a deterministic component and added 6 JVM JUnit tests for attempt thresholds, 60-second expiry, attempts during lockout, fresh counters after expiry, and successful reset.
 - Add AndroidX BiometricPrompt only after the host Activity/dependency setup is verified. The current repository does not expose a configured biometric dependency or app Android host project in source; do not ship a UI-only or simulated biometric fallback.
 - Make alarm playback lifecycle robust across process/service recreation; evaluate audio focus, asynchronous media preparation and wake behaviour on real Android hardware.
 - Add time-bounded camera flash after runtime permission and hardware capability handling are implemented. Camera permission is intentionally not requested yet.
 - Add biometric unlock with PIN fallback after AndroidX BiometricPrompt integration and host Activity lifecycle validation.
-- Add unit/state-machine tests for charger transitions, repeated broadcasts, mode semantics, lockout, alarm persistence, and reboot restoration.
+- Add tests for service-level delay scheduling/cancellation, repeated broadcasts, persisted alarm restoration and reboot restoration. Current unit tests cover pure policy/state transitions, not Android service execution.
 - Validate manifest/foreground-service policy and notification permission/channel readiness.
 - Run TypeScript, unit tests, lint, Expo export, Android JVM unit tests and Android Kotlin compile against the exact branch head. A Vercel pending status is not a substitute for GitHub Actions validation.
 - Perform physical Android testing for plug/unplug, screen off, notification denial, sound/DND, service process recreation, reboot, OEM battery management, and PIN lockout.
