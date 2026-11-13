@@ -80,7 +80,11 @@ export default function PermissionCenterScreen() {
 
   const openUsage = () => {
     if (Platform.OS !== 'android') return;
-    try { openUsageAccessSettings(); } catch {
+    try {
+      const opened = openUsageAccessSettings();
+      if (!opened) setStatusError('Android did not open Usage Access settings. Open Settings manually and refresh this screen.');
+      else setStatusError(null);
+    } catch {
       setStatusError('Could not open Android Usage Access settings. Open Settings manually and refresh this screen.');
     }
   };
