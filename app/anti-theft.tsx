@@ -107,7 +107,8 @@ export default function AntiTheftScreen() {
 
   const saveDelay = (seconds: number) => {
     try {
-      setAntiTheftDelay(seconds);
+      const saved = setAntiTheftDelay(seconds);
+      if (!saved) throw new Error('Android could not save the disconnect delay.');
       setDelaySeconds(seconds);
     } catch (error) {
       Alert.alert('Unable to update delay', error instanceof Error ? error.message : 'Disarm protection before changing this setting.');
@@ -116,7 +117,8 @@ export default function AntiTheftScreen() {
 
   const arm = (selectedMode: AntiTheftMode) => {
     try {
-      armAntiTheft(selectedMode);
+      const accepted = armAntiTheft(selectedMode);
+      if (!accepted) throw new Error('Android did not accept the Anti-Theft start request. Check notification permission and try again.');
       setMode(selectedMode);
       setStartPending(true);
       refresh();
@@ -210,7 +212,8 @@ export default function AntiTheftScreen() {
                 accessibilityState={{ checked: vibrationEnabled }}
                 onPress={() => {
                   try {
-                    setAntiTheftVibration(!vibrationEnabled);
+                    const saved = setAntiTheftVibration(!vibrationEnabled);
+                    if (!saved) throw new Error('Android could not save the vibration preference.');
                     setVibrationEnabled(!vibrationEnabled);
                   } catch (error) {
                     Alert.alert('Unable to update vibration', error instanceof Error ? error.message : 'Please try again.');
@@ -233,7 +236,8 @@ export default function AntiTheftScreen() {
                   onPress={async () => {
                     try {
                       const enabling = !flashEnabled;
-                      await setAntiTheftFlash(enabling);
+                      const saved = await setAntiTheftFlash(enabling);
+                      if (!saved) throw new Error('Android could not save the camera-flash preference.');
                       setFlashEnabled(enabling);
                     } catch (error) {
                       Alert.alert('Unable to update flash', error instanceof Error ? error.message : 'Check camera permission and try again.');
