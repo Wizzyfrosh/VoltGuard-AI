@@ -55,7 +55,7 @@ export default function AntiTheftScreen() {
   };
 
   const submit = async () => {
-    if (pin.length < 6 || pin.length > 12 || !/^\\d+$/.test(pin)) {
+    if (pin.length < 6 || pin.length > 12 || !/^\d+$/.test(pin)) {
       Alert.alert('Invalid PIN', 'Use 6 to 12 digits.');
       return;
     }
@@ -183,7 +183,7 @@ export default function AntiTheftScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{dialog === 'setup' ? 'Create Anti-Theft PIN' : 'Enter Anti-Theft PIN'}</Text>
             <TextInput
               value={pin}
-              onChangeText={value => setPin(value.replace(/\\D/g, '').slice(0, 12))}
+              onChangeText={value => setPin(value.replace(/\D/g, '').slice(0, 12))}
               placeholder="6–12 digit PIN"
               placeholderTextColor={colors.textSecondary}
               keyboardType="number-pad"
@@ -195,7 +195,7 @@ export default function AntiTheftScreen() {
             {dialog === 'setup' && (
               <TextInput
                 value={confirmPin}
-                onChangeText={value => setConfirmPin(value.replace(/\\D/g, '').slice(0, 12))}
+                onChangeText={value => setConfirmPin(value.replace(/\D/g, '').slice(0, 12))}
                 placeholder="Confirm PIN"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
