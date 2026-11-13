@@ -278,9 +278,14 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun startAlarmSound() {
-    startAlarmVibration()
-    if (alarmPlayer != null) return
+    if (alarmPlayer != null) {
+      startAlarmVibration()
+      return
+    }
+    // Clean up stale audio resources before starting a new player. Start
+    // vibration afterwards because stopAlarmSound() also cancels the vibrator.
     stopAlarmSound()
+    startAlarmVibration()
     try {
       val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: return
       val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
