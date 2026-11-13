@@ -62,6 +62,26 @@ Validation evidence:
 
 E1 remains **in progress**, not accepted. Android/iOS database tests and a completed CI run on the current head are still required.
 
+## Android foreground-service review — implementation update
+
+Reviewed the native battery-monitor service, module bridge, boot receiver, notification channels, and library manifest.
+
+Committed lifecycle hardening:
+- Foreground-service promotion and receiver-registration failures are caught and logged rather than escaping as an uncaught service exception.
+- When startup fails after the service begins handling the request, persisted monitoring state is cleared so the app does not report itself armed or retry a known-failed configuration at the next boot.
+- Stopping monitoring now clears the persisted enabled flag and calls `Context.stopService()` directly. It no longer starts a background service solely to deliver a stop action, which could itself be rejected by Android background-start restrictions.
+
+Security/lifecycle findings still requiring validation:
+- The service uses an unexported manifest declaration and immutable/update-current activity PendingIntents; no externally callable service action was found in the reviewed declaration.
+- The service declares the Android 14 special-use foreground-service type and a subtype explanation. This is a Play policy-sensitive declaration, not an assurance of Play approval.
+- The boot receiver is unexported and only resumes monitoring when the persisted enabled preference is true. OS/OEM policy can still deny restart.
+- Notification/channel readiness is required before enabling threshold monitoring; Android notification denial or a muted/disabled alarm channel prevents the monitor from being armed.
+- The JS bridge's successful request to start a service is not proof that Android completed foreground promotion or that the battery receiver is active. UI state must not treat the request return as runtime confirmation.
+- No device-level verification has yet been performed for Android 12–15 background-start restrictions, notification permission denial, reboot/package replacement, force-stop, OEM battery restrictions, or channel changes.
+- Usage Access is sensitive user-granted access. The feature must remain optional, explain that it reports foreground time rather than per-app energy consumption, and never transmit usage data without a separately disclosed consent path.
+
+These changes are source-level hardening only. Android compilation and physical-device acceptance are still pending on the latest branch head.
+
 ## Phase E work plan and acceptance criteria
 
 ### E1. Privacy and data lifecycle
