@@ -22,6 +22,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>(0);
   const [busy, setBusy] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const [notificationState, setNotificationState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown');
   const [usageState, setUsageState] = useState<'unknown' | 'granted' | 'not-granted' | 'unsupported'>('unknown');
   const slide = slides[step];
@@ -29,10 +30,12 @@ export default function OnboardingScreen() {
 
   const finish = async () => {
     setBusy(true);
+    setCompletionError(null);
     try {
       await completeOnboarding();
       router.replace('/(tabs)/dashboard');
     } catch {
+      setCompletionError('VoltGuard could not save your setup status. Check device storage and try again.');
       setBusy(false);
     }
   };
@@ -143,6 +146,14 @@ export default function OnboardingScreen() {
           </View>
         )}
       </ScrollView>
+      {completionError && (
+        <View accessibilityRole="alert" style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.danger }]}>
+          <Text style={[styles.errorText, { color: colors.danger }]}>{completionError}</Text>
+          <Pressable onPress={() => { void finish(); }} disabled={busy} accessibilityRole="button">
+            <Text style={[styles.retryText, { color: colors.primary }]}>Retry saving setup</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={styles.footer}>
         {step > 0 && (
           <Pressable onPress={() => setStep((step - 1) as Step)} style={[styles.backButton, { borderColor: colors.border }]} accessibilityRole="button">
@@ -187,6 +198,9 @@ const styles = StyleSheet.create({
   flexButton: { flex: 1 },
   noteCard: { borderWidth: 1, borderRadius: 16, padding: 15, flexDirection: 'row', gap: 12 },
   noteText: { flex: 1, fontSize: 13, lineHeight: 19 },
+  errorCard: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 8, marginBottom: 8 },
+  errorText: { fontSize: 12, lineHeight: 18 },
+  retryText: { fontSize: 13, fontWeight: '800' },
   footer: { flexDirection: 'row', gap: 10, paddingTop: 10 },
   backButton: { width: 52, height: 52, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   primaryButton: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
