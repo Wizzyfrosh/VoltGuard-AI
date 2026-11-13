@@ -20,12 +20,12 @@
 ## Required engineering work still open
 - Added a pure charger-state machine and 10 JVM JUnit tests covering unarmed events, baseline connection, One-Time/Always disconnect transitions, reconnect state, active alarm suppression, and invalid transitions.
 - Extracted PIN lockout policy into a deterministic component and added 6 JVM JUnit tests for attempt thresholds, 60-second expiry, attempts during lockout, fresh counters after expiry, and successful reset.
-- Add AndroidX BiometricPrompt only after the host Activity/dependency setup is verified. The current repository does not expose a configured biometric dependency or app Android host project in source; do not ship a UI-only or simulated biometric fallback.
+- AndroidX BiometricPrompt is integrated using the Expo host activity when it is a FragmentActivity; the native module exposes strong-biometric availability and PIN fallback. Confirm the generated Expo/RN host activity type during the Android prebuild and retain the PIN path on unsupported hosts.
 - Added service-restart recovery handling: if Android rejects a foreground-service restart, Anti-Theft armed/alarm state is preserved and a restore-failed status is exposed to the app instead of silently clearing protection state.
 - Recreate the Anti-Theft alarm notification and restart alarm audio when the service is successfully restored with a persisted active alarm.
 - Make alarm playback lifecycle robust across process/service recreation; evaluate audio focus, asynchronous media preparation and wake behaviour on real Android hardware.
-- Add time-bounded camera flash after runtime permission and hardware capability handling are implemented. Camera permission is intentionally not requested yet.
-- Add biometric unlock with PIN fallback after AndroidX BiometricPrompt integration and host Activity lifecycle validation.
+- Optional time-bounded camera flash is implemented with runtime camera permission, hardware detection, and automatic timeout; verify torch behaviour and cleanup on supported physical devices.
+- Validate biometric prompt lifecycle on a real Android device, including cancellation, lockout, activity recreation, and PIN fallback.
 - Add tests for service-level delay scheduling/cancellation, repeated broadcasts, persisted alarm restoration, boot receiver failure handling and reboot restoration. Current unit tests cover pure policy/state transitions, not Android service execution.
 - Validate manifest/foreground-service policy and notification permission/channel readiness.
 - Run TypeScript, unit tests, lint, Expo export, Android JVM unit tests and Android Kotlin compile against the exact branch head. A Vercel pending status is not a substitute for GitHub Actions validation.
@@ -36,7 +36,7 @@
 - PIN derivation and verification run off the UI thread.
 - Do not claim theft-proof protection. Android force-stop, power-off, battery restrictions, OS policy, notification denial, or hardware/OEM behaviour can interrupt monitoring or sound. A failed boot/service restart is surfaced to the user; preserving settings does not mean Android is currently monitoring.
 - No biometric API is exposed yet. Do not advertise biometrics until implemented and tested.
-- Trigger delay, flash and user-selectable alarm sound are not implemented yet.
+- Trigger delay, optional flash and vibration are implemented. User-selectable alarm sound remains out of scope for this phase.
 - One-Time mode must arm for the next detected connected charging session and disarm after its disconnect alarm. Always mode must remain armed until PIN-confirmed manual disarm.
 
 ## Release gate
