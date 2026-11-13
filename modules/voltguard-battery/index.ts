@@ -68,9 +68,14 @@ export type SystemResourceDiagnostics = {
 export async function setAntiTheftFlash(enabled: boolean): Promise<boolean> {
   if (Platform.OS !== "android") return false;
   if (enabled) {
-    const permission = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+    const permission = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
+      title: "Allow camera flash for Anti-Theft",
+      message: "VoltGuard uses the rear camera torch during an Anti-Theft alarm. Camera access is not used to take photos or record video.",
+      buttonPositive: "Allow",
+      buttonNegative: "Not now",
+    });
     if (permission !== PermissionsAndroid.RESULTS.GRANTED) {
-      throw new Error("Camera permission is required to use the Anti-Theft flash.");
+      throw new Error("Camera permission was not granted. Other Anti-Theft alarm features remain available.");
     }
   }
   return getNativeModule()?.setAntiTheftFlash(enabled) ?? false;
