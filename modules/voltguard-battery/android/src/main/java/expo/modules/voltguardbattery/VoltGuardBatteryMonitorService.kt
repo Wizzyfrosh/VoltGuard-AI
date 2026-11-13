@@ -349,6 +349,9 @@ class VoltGuardBatteryMonitorService : Service() {
       }
       if (!focusGranted) {
         Log.w("VoltGuardMonitor", "Android did not grant alarm audio focus")
+        // Release the request/listener references even when focus is denied.
+        // Vibration and optional torch are independent alarm outputs.
+        stopAlarmAudio()
         return
       }
 
