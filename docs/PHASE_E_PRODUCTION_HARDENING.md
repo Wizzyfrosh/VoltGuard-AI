@@ -82,6 +82,17 @@ Security/lifecycle findings still requiring validation:
 
 These changes are source-level hardening only. Android compilation and physical-device acceptance are still pending on the latest branch head.
 
+## Foreground-service follow-up — boot recovery
+
+Additional native lifecycle change committed:
+- If the boot/package-replacement receiver receives an immediate exception while requesting a monitor restart, it clears the persisted enabled preference and logs the failure. This prevents a stale enabled state from surviving a restart request that Android synchronously rejected.
+- This does not prove the service subsequently completed foreground promotion: `startForegroundService()` is asynchronous, and later service startup failures are handled inside the service itself.
+- A successful API return from `startBackgroundMonitoring` still means only that Android accepted the start request. It is not evidence that the receiver registered or monitoring is currently active.
+
+Latest validation at time of update:
+- Commit `f5f48f760f973b88596c75bbbbe3d9b203e1f6a4` has GitHub Actions run 490 pending. No job results were available yet.
+- No physical-device results are available. Do not mark Android lifecycle acceptance complete.
+
 ## Phase E work plan and acceptance criteria
 
 ### E1. Privacy and data lifecycle
