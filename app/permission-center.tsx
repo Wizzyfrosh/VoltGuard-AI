@@ -68,6 +68,7 @@ export default function PermissionCenterScreen() {
   const requestNotifications = async () => {
     if (Platform.OS === 'web') return;
     setStatusError(null);
+    let requestFailed = false;
     try {
       const current = await Notifications.getPermissionsAsync();
       if (!current.granted && !current.canAskAgain) {
@@ -78,10 +79,11 @@ export default function PermissionCenterScreen() {
       setNotificationGranted(next.granted);
       setNotificationCanAskAgain(next.canAskAgain);
     } catch {
+      requestFailed = true;
       setNotificationGranted(null);
       setStatusError('Notification permission request failed. Check device settings and try again.');
     } finally {
-      await refresh();
+      if (!requestFailed) await refresh();
     }
   };
 
