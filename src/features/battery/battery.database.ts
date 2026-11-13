@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
+import { runBatteryHistoryMutation } from './battery.history-consent';
 
 const DATABASE_NAME = 'voltguard.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -83,9 +84,9 @@ export async function getBatteryPreference(key: string): Promise<string | null> 
 export async function setBatteryPreference(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') { setWebPreference(key, value); return; }
   const database = await openBatteryDatabase();
-  await database.runAsync(
+  await runBatteryHistoryMutation(() => database.runAsync(
     'INSERT INTO user_preferences (preference_key, preference_value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(preference_key) DO UPDATE SET preference_value = excluded.preference_value, updated_at = CURRENT_TIMESTAMP',
     key,
     value,
-  );
+  ));
 }
