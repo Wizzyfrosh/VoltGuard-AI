@@ -563,3 +563,36 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 
 **Scope exclusions:** no CSV/JSON export, no fabricated telemetry, no cloud battery-history upload, and no automatic charging stop.
 
+
+
+## Phase F — First-run onboarding and permission setup
+
+**Execution branch:** `phase-f/onboarding-permissions`
+
+### Implemented in source — validation pending
+- [x] Added a versioned local onboarding-completion preference using the existing device preference store; no new backend or account data is introduced.
+- [x] Replaced the unconditional timed splash redirect with a persisted first-launch gate: new installs route to onboarding; completed installs route to Home.
+- [x] Added a three-step onboarding flow with progress, Back, Skip and Get started actions.
+- [x] Added user-initiated notification permission request with granted/denied state.
+- [x] Added optional Android Usage Access explanation and a deep link to Android's Usage Access settings; this permission is not requested automatically.
+- [x] Explicitly disclosed that Usage Access reports foreground time, not per-app energy or mAh.
+- [x] Added a Permission Centre to review current notification and Usage Access state and navigate to the appropriate system settings.
+- [x] Added Settings entries to revisit the setup guide and open the Permission Centre.
+- [x] Registered the onboarding and permission-centre routes in the root Expo Router stack.
+- [ ] Add automated tests for onboarding persistence, route gating and permission-state handling where testable without native Android runtime.
+- [ ] Run TypeScript, unit tests, lint and web export on the exact Phase F head.
+- [ ] Run Android Kotlin compilation on the exact Phase F head.
+- [ ] Verify first install, skip, complete, force-close/relaunch and setup-guide revisit on a physical Android device.
+- [ ] Verify notification allow/deny/revoke and Android Usage Access grant/revoke/resume on physical Android.
+- [ ] Verify iOS notification permission flow and ensure Android-only Usage Access is clearly marked unsupported.
+- [ ] Verify web first-run routing and browser storage failure behaviour.
+- [ ] Confirm notification channel settings remain user-controlled and Permission Centre does not imply it can override channel-level denial.
+
+### Implementation notes and constraints
+- Onboarding completion is stored locally under a versioned preference key. Clearing app storage resets onboarding; no server-side profile is created.
+- Skip means "skip permission setup and continue into the app", not "permanently deny permissions".
+- Basic battery level and charging state do not require notification or Usage Access permission.
+- Notification permission is requested only after the user presses Allow notifications. Existing alert/reminder flows may still request permission when the user enables those features.
+- Usage Access is optional, Android-only and user-granted through system Settings. It is never prompted on app startup.
+- The Permission Centre can refresh status and open system settings; it cannot revoke Android permissions on behalf of the user.
+- Physical-device permission and lifecycle checks remain required. CI cannot prove Android Settings handoff or OEM behaviour.

@@ -133,12 +133,16 @@ class VoltGuardBatteryModule : Module() {
   }
 
   private fun hasUsageAccess(): Boolean {
-    val context = appContext.reactContext ?: return false
-    return try {
-      val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-      @Suppress("DEPRECATION")
-      appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName) == AppOpsManager.MODE_ALLOWED
-    } catch (_: Exception) { false }
+    val context = appContext.reactContext
+      ?: throw IllegalStateException("React context is unavailable")
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
+      ?: throw IllegalStateException("Android AppOps service is unavailable")
+    @Suppress("DEPRECATION")
+    return appOps.checkOpNoThrow(
+      AppOpsManager.OPSTR_GET_USAGE_STATS,
+      Process.myUid(),
+      context.packageName
+    ) == AppOpsManager.MODE_ALLOWED
   }
 
   private fun readAppUsageStats(): Map<String, Any?> {
