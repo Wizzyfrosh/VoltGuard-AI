@@ -13,7 +13,7 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
     val thresholdEnabled = preferences.getBoolean("enabled", false)
     val antiTheftEnabled = preferences.getBoolean("anti_theft_enabled", false)
     val alarmActive = preferences.getBoolean("anti_theft_alarm_active", false)
-    if (!thresholdEnabled && !antiTheftEnabled && !alarmActive) return
+    if (!AntiTheftRestorePolicy.shouldStartService(thresholdEnabled, antiTheftEnabled, alarmActive)) return
 
     val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
       action = VoltGuardBatteryMonitorService.ACTION_RESTORE
@@ -30,7 +30,7 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
       // configuration; expose the failed restore so the app can explain it.
       preferences.edit()
         .putBoolean("enabled", false)
-        .putBoolean("anti_theft_restore_failed", antiTheftEnabled || alarmActive)
+        .putBoolean("anti_theft_restore_failed", AntiTheftRestorePolicy.shouldReportAntiTheftRestoreFailure(antiTheftEnabled, alarmActive))
         .apply()
       Log.w("VoltGuardMonitor", "Android/OEM policy denied automatic monitor restart; Anti-Theft state preserved", error)
     }
