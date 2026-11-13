@@ -8,7 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, ShieldAlert, ShieldCheck, LockKeyhole } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import {
-  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay, setAntiTheftVibration,
+  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay, setAntiTheftVibration, setAntiTheftFlash,
   type AntiTheftMode, type AntiTheftStatus
 } from '../modules/voltguard-battery';
 
@@ -27,6 +27,7 @@ export default function AntiTheftScreen() {
   const [mode, setMode] = useState<AntiTheftMode>('one_time');
   const [delaySeconds, setDelaySeconds] = useState(5);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
+  const [flashEnabled, setFlashEnabled] = useState(false);
 
   const refresh = useCallback(() => {
     if (Platform.OS !== 'android') {
@@ -37,7 +38,7 @@ export default function AntiTheftScreen() {
     try {
       const next = getAntiTheftStatus();
       setStatus(next);
-      if (next) { setMode(next.mode); setDelaySeconds(next.delaySeconds); setVibrationEnabled(next.vibrationEnabled); }
+      if (next) { setMode(next.mode); setDelaySeconds(next.delaySeconds); setVibrationEnabled(next.vibrationEnabled); setFlashEnabled(next.flashEnabled); }
     } catch {
       setStatus(null);
     } finally {
@@ -194,6 +195,29 @@ export default function AntiTheftScreen() {
                 <View style={[styles.switchThumb, { alignSelf: vibrationEnabled ? 'flex-end' : 'flex-start' }]} />
               </Pressable>
             </View>
+            {status?.flashAvailable && (
+              <View style={styles.settingRow}>
+                <View style={styles.settingCopy}>
+                  <Text style={[styles.modeTitle, { color: colors.text }]}>Camera flash during alarm</Text>
+                  <Text style={[styles.body, { color: colors.textSecondary }]}>Use the rear torch while the alarm is active. Camera permission is requested only when enabled.</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: flashEnabled }}
+                  onPress={async () => {
+                    try {
+                      await setAntiTheftFlash(!flashEnabled);
+                      setFlashEnabled(!flashEnabled);
+                    } catch (error) {
+                      Alert.alert('Unable to update flash', error instanceof Error ? error.message : 'Check camera permission and try again.');
+                    }
+                  }}
+                  style={[styles.switchTrack, { backgroundColor: flashEnabled ? colors.primary : colors.border }]}
+                >
+                  <View style={[styles.switchThumb, { alignSelf: flashEnabled ? 'flex-end' : 'flex-start' }]} />
+                </Pressable>
+              </View>
+            )}
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose protection mode</Text>
             <Pressable onPress={() => setMode('one_time')} style={[styles.mode, { borderColor: mode === 'one_time' ? colors.primary : colors.border, backgroundColor: mode === 'one_time' ? colors.primary + '12' : 'transparent' }]}>
               <Text style={[styles.modeTitle, { color: colors.text }]}>One-Time</Text>
