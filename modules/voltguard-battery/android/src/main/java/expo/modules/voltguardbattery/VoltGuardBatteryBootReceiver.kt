@@ -16,7 +16,7 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
     if (!thresholdEnabled && !antiTheftEnabled && !alarmActive) return
 
     val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
-      action = VoltGuardBatteryMonitorService.ACTION_START
+      action = VoltGuardBatteryMonitorService.ACTION_RESTORE
       putExtra(VoltGuardBatteryMonitorService.EXTRA_THRESHOLD, preferences.getInt("threshold", 80))
     }
     try {
