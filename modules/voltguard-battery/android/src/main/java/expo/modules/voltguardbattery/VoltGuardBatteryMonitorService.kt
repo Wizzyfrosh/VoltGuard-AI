@@ -147,7 +147,13 @@ class VoltGuardBatteryMonitorService : Service() {
       return START_NOT_STICKY
     }
     prefs.edit().putBoolean("anti_theft_restore_failed", false).apply()
-    if (prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) startAlarmSound()
+    if (prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
+      // Notifications are not guaranteed to survive reboot or process death.
+      // Recreate the user-visible alarm alongside audio after service restore.
+      val mode = prefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time"
+      VoltGuardBatteryNotifications.postAntiTheftAlarm(this, mode)
+      startAlarmSound()
+    }
     return START_STICKY
   }
 
