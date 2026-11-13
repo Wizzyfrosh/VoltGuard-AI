@@ -19,6 +19,7 @@ import android.media.MediaPlayer
 import android.media.AudioManager
 import android.media.AudioFocusRequest
 import android.os.PowerManager
+import android.os.SystemClock
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.os.VibrationEffect
@@ -409,14 +410,14 @@ class VoltGuardBatteryMonitorService : Service() {
   private fun startAlarmFlash() {
     val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     if (!prefs.getBoolean("anti_theft_flash_enabled", false) || flashPulse != null) return
-    flashPulseStartedAt = System.currentTimeMillis()
+    flashPulseStartedAt = SystemClock.elapsedRealtime()
     flashPulseOn = false
     val pulse = object : Runnable {
       override fun run() {
         val alarmActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
           .getBoolean(KEY_ANTI_THEFT_ALARM, false)
         // Limit torch use to five minutes per alarm to reduce heat and battery drain.
-        if (!alarmActive || System.currentTimeMillis() - flashPulseStartedAt >= 5 * 60 * 1000L) {
+        if (!alarmActive || SystemClock.elapsedRealtime() - flashPulseStartedAt >= 5 * 60 * 1000L) {
           stopAlarmFlash()
           return
         }
