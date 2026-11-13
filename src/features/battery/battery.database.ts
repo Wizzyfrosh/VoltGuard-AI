@@ -82,6 +82,12 @@ export async function getBatteryPreference(key: string): Promise<string | null> 
 }
 
 export async function setBatteryPreference(key: string, value: string): Promise<void> {
+  // Consent changes must use setBatteryHistoryEnabled(), which atomically
+  // persists the choice and deletes history on opt-out. The generic setter
+  // must not provide a path around that data-lifecycle contract.
+  if (key === 'battery_history_enabled') {
+    throw new Error('Use setBatteryHistoryEnabled() to change battery-history consent.');
+  }
   if (Platform.OS === 'web') { setWebPreference(key, value); return; }
   const database = await openBatteryDatabase();
   await runBatteryHistoryMutation(() => database.runAsync(
