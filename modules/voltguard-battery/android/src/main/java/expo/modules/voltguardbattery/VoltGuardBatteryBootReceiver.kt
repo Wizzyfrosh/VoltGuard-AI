@@ -10,7 +10,10 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent?) {
     if (intent?.action != Intent.ACTION_BOOT_COMPLETED && intent?.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
     val preferences = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
-    if (!preferences.getBoolean("enabled", false)) return
+    val thresholdEnabled = preferences.getBoolean("enabled", false)
+    val antiTheftEnabled = preferences.getBoolean("anti_theft_enabled", false)
+    val alarmActive = preferences.getBoolean("anti_theft_alarm_active", false)
+    if (!thresholdEnabled && !antiTheftEnabled && !alarmActive) return
 
     val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
       action = VoltGuardBatteryMonitorService.ACTION_START
@@ -22,7 +25,11 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
     } catch (error: Exception) {
       // A denied boot restart must not leave the UI claiming that monitoring
       // is enabled when no service could be started.
-      preferences.edit().putBoolean("enabled", false).apply()
+      preferences.edit()
+        .putBoolean("enabled", false)
+        .putBoolean("anti_theft_enabled", false)
+        .putBoolean("anti_theft_alarm_active", false)
+        .apply()
       Log.w("VoltGuardMonitor", "Android/OEM policy denied automatic monitor restart", error)
     }
   }
