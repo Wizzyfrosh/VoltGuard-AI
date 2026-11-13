@@ -108,10 +108,7 @@ class VoltGuardBatteryModule : Module() {
 
     AsyncFunction("stopBackgroundMonitoring") {
       appContext.reactContext?.let { context ->
-        val serviceIntent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
-          action = VoltGuardBatteryMonitorService.ACTION_STOP
-        }
-        context.startService(serviceIntent)
+        VoltGuardBatteryMonitorService.stop(context)
       }
       Unit
     }
