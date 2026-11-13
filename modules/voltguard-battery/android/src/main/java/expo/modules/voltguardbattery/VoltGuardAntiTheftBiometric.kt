@@ -48,9 +48,19 @@ object VoltGuardAntiTheftBiometric {
         .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
         .setNegativeButtonText("Use PIN instead")
         .build()
-      prompt.authenticate(info)
+      try {
+        prompt.authenticate(info)
+      } catch (error: Exception) {
+        // A lifecycle transition or unsupported prompt configuration can make
+        // authenticate throw synchronously. Always complete the suspended
+        // caller so the UI can offer its PIN fallback instead of hanging.
+        if (continuation.isActive) continuation.resume(false)
+        return@suspendCancellableCoroutine
+      }
       continuation.invokeOnCancellation {
-        Handler(Looper.getMainLooper()).post { prompt.cancelAuthentication() }
+        Handler(Looper.getMainLooper()).post {
+          try { prompt.cancelAuthentication() } catch (_: Exception) {}
+        }
       }
     }
   }
