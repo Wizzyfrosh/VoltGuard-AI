@@ -4,9 +4,9 @@ import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { ArrowLeft, ArrowRight, BatteryCharging, Bell, CheckCircle2, ShieldCheck, Smartphone } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../src/context/ThemeContext';
-import { completeOnboarding } from '../../src/features/onboarding/onboarding.storage';
-import { hasUsageAccess, openUsageAccessSettings } from '../../modules/voltguard-battery';
+import { useTheme } from '../src/context/ThemeContext';
+import { completeOnboarding } from '../src/features/onboarding/onboarding.storage';
+import { hasUsageAccess, openUsageAccessSettings } from '../modules/voltguard-battery';
 
 type Step = 0 | 1 | 2;
 const slides = [
