@@ -290,7 +290,7 @@ export default function AntiTheftScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{dialog === 'setup' ? 'Create Anti-Theft PIN' : 'Disarm Anti-Theft'}</Text>
             {dialog === 'disarm' && status?.biometricAvailable && (
               <>
-                <Text style={[styles.body, { color: colors.textSecondary }]}>Authenticate with your device's enrolled fingerprint or face recognition, or enter your Anti-Theft PIN below.</Text>
+                <Text style={[styles.body, { color: colors.textSecondary }]}>Authenticate with your device&apos;s enrolled fingerprint or face recognition, or enter your Anti-Theft PIN below.</Text>
                 <Pressable
                   accessibilityRole="button"
                   disabled={busy}
