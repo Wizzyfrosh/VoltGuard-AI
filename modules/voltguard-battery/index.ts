@@ -8,9 +8,9 @@ type VoltGuardBatteryNativeModule = {
   startBackgroundMonitoring: (threshold: number) => Promise<void>;
   stopBackgroundMonitoring: () => Promise<void>;
   hasAntiTheftPin: () => boolean;
-  setAntiTheftPin: (pin: string) => boolean;
+  setAntiTheftPin: (pin: string) => Promise<boolean>;
   armAntiTheft: (mode: AntiTheftMode) => boolean;
-  disarmAntiTheft: (pin: string) => boolean;
+  disarmAntiTheft: (pin: string) => Promise<boolean>;
   getAntiTheftStatus: () => AntiTheftStatus;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
@@ -59,10 +59,12 @@ export function getAntiTheftStatus(): AntiTheftStatus | null {
   return getNativeModule()?.getAntiTheftStatus() ?? null;
 }
 
-export function setAntiTheftPin(pin: string): boolean {
+export async function setAntiTheftPin(pin: string): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
   if (!/^\\d{6,12}$/.test(pin)) throw new Error('PIN must contain 6 to 12 digits.');
-  return getNativeModule()?.setAntiTheftPin(pin) ?? false;
+  const module = getNativeModule();
+  if (!module) return false;
+  return await module.setAntiTheftPin(pin);
 }
 
 export function armAntiTheft(mode: AntiTheftMode): boolean {
@@ -70,9 +72,11 @@ export function armAntiTheft(mode: AntiTheftMode): boolean {
   return getNativeModule()?.armAntiTheft(mode) ?? false;
 }
 
-export function disarmAntiTheft(pin: string): boolean {
+export async function disarmAntiTheft(pin: string): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
-  return getNativeModule()?.disarmAntiTheft(pin) ?? false;
+  const module = getNativeModule();
+  if (!module) return false;
+  return await module.disarmAntiTheft(pin);
 }
 
 export async function getSystemResourceDiagnostics(): Promise<SystemResourceDiagnostics | null> {
