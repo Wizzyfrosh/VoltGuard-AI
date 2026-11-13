@@ -111,10 +111,12 @@ class VoltGuardBatteryModule : Module() {
       VoltGuardAntiTheftSecurity.hasPin(context)
     }
 
-    Function("setAntiTheftPin") { pin: String ->
+    AsyncFunction("setAntiTheftPin") Coroutine { pin: String ->
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
-      VoltGuardAntiTheftSecurity.setPin(context, pin)
-      true
+      withContext(Dispatchers.Default) {
+        VoltGuardAntiTheftSecurity.setPin(context, pin)
+        true
+      }
     }
 
     Function("armAntiTheft") { mode: String ->
@@ -131,11 +133,13 @@ class VoltGuardBatteryModule : Module() {
       true
     }
 
-    Function("disarmAntiTheft") { pin: String ->
+    AsyncFunction("disarmAntiTheft") Coroutine { pin: String ->
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
-      require(VoltGuardAntiTheftSecurity.hasPin(context)) { "Anti-Theft PIN is not configured" }
-      if (!VoltGuardAntiTheftSecurity.verifyPin(context, pin)) {
-        throw IllegalArgumentException("Incorrect Anti-Theft PIN")
+      withContext(Dispatchers.Default) {
+        require(VoltGuardAntiTheftSecurity.hasPin(context)) { "Anti-Theft PIN is not configured" }
+        if (!VoltGuardAntiTheftSecurity.verifyPin(context, pin)) {
+          throw IllegalArgumentException("Incorrect Anti-Theft PIN")
+        }
       }
       val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
