@@ -26,4 +26,13 @@ class AntiTheftRestorePolicyTest {
   @Test fun thresholdOnlyFailureDoesNotClaimAntiTheftFailure() {
     assertFalse(AntiTheftRestorePolicy.shouldReportAntiTheftRestoreFailure(false, false))
   }
+  @Test fun failedInitialArmIsNotReportedAsArmed() {
+    assertTrue(AntiTheftRestorePolicy.shouldClearNewArmAfterStartupFailure(true, false))
+  }
+  @Test fun failedBootRecoveryPreservesArmedIntent() {
+    assertFalse(AntiTheftRestorePolicy.shouldClearNewArmAfterStartupFailure(false, false))
+  }
+  @Test fun failedAlarmRecoveryPreservesAlarmState() {
+    assertFalse(AntiTheftRestorePolicy.shouldClearNewArmAfterStartupFailure(true, true))
+  }
 }
