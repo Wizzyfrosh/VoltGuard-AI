@@ -12,6 +12,7 @@ type VoltGuardBatteryNativeModule = {
   armAntiTheft: (mode: AntiTheftMode) => boolean;
   disarmAntiTheft: (pin: string) => Promise<boolean>;
   getAntiTheftStatus: () => AntiTheftStatus;
+  setAntiTheftDelay: (seconds: number) => boolean;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
@@ -53,6 +54,14 @@ export type SystemResourceDiagnostics = {
   totalStorageBytes: number | null;
   availableStorageBytes: number | null;
 };
+
+export function setAntiTheftDelay(seconds: number): boolean {
+  if (Platform.OS !== 'android') return false;
+  if (!Number.isInteger(seconds) || seconds < 0 || seconds > 30) {
+    throw new Error('Disconnect delay must be between 0 and 30 seconds.');
+  }
+  return getNativeModule()?.setAntiTheftDelay(seconds) ?? false;
+}
 
 export function getAntiTheftStatus(): AntiTheftStatus | null {
   if (Platform.OS !== 'android') return null;
