@@ -32,6 +32,19 @@ Close the production risks that sit between the existing feature implementation 
 7. **Data lifecycle:** test opt-in, opt-out deletion, manual clear, retention cleanup, and failure paths. Confirm no stale UI state suggests history is still available after deletion or storage failure.
 8. **Release observability:** decide what crash/error diagnostics are appropriate without uploading private battery history or UsageStats. Any network telemetry must be disclosed and must not include sensitive device/app usage data by default.
 
+## Implementation log — battery-history hardening
+
+The following code changes are committed on this branch:
+
+- Centralized strict consent parsing, finite SQL limit normalization, and the 30-day cutoff helper.
+- Added a resilient in-process mutation queue and routed the battery-history mutation paths through it: telemetry snapshots, standalone sample saves, opt-out preference/deletion, manual history clearing, explicit sample deletion, and the generic battery-preference setter.
+- Added read-time retention predicates for sample and charging-session queries, plus expired-row pruning during sample reads and all supported sample-write paths.
+- Added regression tests for fail-closed consent parsing, finite/invalid limits, deterministic retention cutoffs, mutation ordering, and queue recovery after a rejected operation.
+
+**Evidence and remaining boundary:** GitHub Actions run 468 passed TypeScript, unit tests, lint, and web export. Its Android Kotlin compile job was cancelled before completion; the dependency audit failed on the existing production dependency tree (40 findings: 2 critical, 19 high, 17 moderate, 2 low). A later validation run was started after the preference-write change; the subsequent sample-read pruning commit is newer and still requires its own completed CI result.
+
+The mutation queue coordinates writes issued through these app modules in one JavaScript runtime. It is not a cross-process SQLite lock. The current test suite validates queue ordering and pure retention/limit logic, not real SQLite transaction interleavings. Android/iOS database-level testing remains required before declaring E1 complete.
+
 ## Phase E work plan and acceptance criteria
 
 ### E1. Privacy and data lifecycle
