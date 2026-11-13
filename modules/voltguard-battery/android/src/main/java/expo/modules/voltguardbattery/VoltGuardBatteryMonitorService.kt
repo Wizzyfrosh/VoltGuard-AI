@@ -19,6 +19,9 @@ import android.media.MediaPlayer
 import android.media.AudioManager
 import android.media.AudioFocusRequest
 import android.os.PowerManager
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.os.VibrationEffect
 import android.media.RingtoneManager
 import android.media.AudioAttributes
 import android.util.Log
@@ -59,6 +62,7 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private var receiverRegistered = false
   private var alarmPlayer: MediaPlayer? = null
+  private var alarmVibrator: Vibrator? = null
   private var audioManager: AudioManager? = null
   private var audioFocusRequest: AudioFocusRequest? = null
   private var legacyAudioFocusListener: AudioManager.OnAudioFocusChangeListener? = null
@@ -274,6 +278,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun startAlarmSound() {
+    startAlarmVibration()
     if (alarmPlayer != null) return
     stopAlarmSound()
     try {
@@ -337,7 +342,37 @@ class VoltGuardBatteryMonitorService : Service() {
     }
   }
 
+  private fun startAlarmVibration() {
+    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean("anti_theft_vibration_enabled", true) || alarmVibrator != null) return
+    try {
+      val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+      } else {
+        @Suppress("DEPRECATION")
+        getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+      }
+      if (!vibrator.hasVibrator()) return
+      val pattern = longArrayOf(0, 650, 350)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
+      } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(pattern, 0)
+      }
+      alarmVibrator = vibrator
+    } catch (error: Exception) {
+      Log.w("VoltGuardMonitor", "Anti-Theft vibration could not start", error)
+    }
+  }
+
+  private fun stopAlarmVibration() {
+    try { alarmVibrator?.cancel() } catch (_: Exception) {}
+    alarmVibrator = null
+  }
+
   private fun stopAlarmSound() {
+    stopAlarmVibration()
     val player = alarmPlayer
     alarmPlayer = null
     try { player?.setOnPreparedListener(null) } catch (_: Exception) {}
