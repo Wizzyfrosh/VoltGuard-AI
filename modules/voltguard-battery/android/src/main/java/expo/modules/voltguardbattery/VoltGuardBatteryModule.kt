@@ -16,6 +16,8 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.os.Process
 import android.os.BatteryManager
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -210,7 +212,16 @@ class VoltGuardBatteryModule : Module() {
         "alarmActive" to prefs.getBoolean("anti_theft_alarm_active", false),
         "mode" to prefs.getString("anti_theft_mode", "one_time"),
         "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5),
-        "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true)
+        "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true),
+        "vibrationAvailable" to try {
+          val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+          } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+          }
+          vibrator.hasVibrator()
+        } catch (_: Exception) { false }
       )
     }
 
