@@ -16,29 +16,37 @@ export default function PermissionCenterScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    setStatusError(null);
+  const refresh = useCallback(async (isActive: () => boolean = () => true) => {
+    if (isActive()) {
+      setRefreshing(true);
+      setStatusError(null);
+    }
     try {
       if (Platform.OS !== 'web') {
         const notification = await Notifications.getPermissionsAsync();
-        setNotificationGranted(notification.granted);
-      } else {
+        if (isActive()) setNotificationGranted(notification.granted);
+      } else if (isActive()) {
         setNotificationGranted(false);
       }
-      if (Platform.OS === 'android') setUsageGranted(await hasUsageAccess());
-      else setUsageGranted(false);
+      if (Platform.OS === 'android') {
+        const usage = await hasUsageAccess();
+        if (isActive()) setUsageGranted(usage);
+      } else if (isActive()) {
+        setUsageGranted(false);
+      }
     } catch {
-      setStatusError('Could not read one or more permission states. Refresh or check your device settings.');
+      if (isActive()) setStatusError('Could not read one or more permission states. Refresh or check your device settings.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isActive()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void refresh();
+    void refresh(() => active);
     return () => { active = false; };
   }, [refresh]));
 
