@@ -22,6 +22,7 @@ class VoltGuardBatteryMonitorService : Service() {
   companion object {
     const val ACTION_START = "expo.modules.voltguardbattery.START_MONITORING"
     const val ACTION_STOP = "expo.modules.voltguardbattery.STOP_MONITORING"
+    const val ACTION_RESTORE = "expo.modules.voltguardbattery.RESTORE_MONITORING"
     const val EXTRA_THRESHOLD = "threshold"
     const val ACTION_ANTI_THEFT_START = "expo.modules.voltguardbattery.ANTI_THEFT_START"
     const val ACTION_ANTI_THEFT_STOP = "expo.modules.voltguardbattery.ANTI_THEFT_STOP"
@@ -43,7 +44,10 @@ class VoltGuardBatteryMonitorService : Service() {
         .edit()
         .putBoolean(KEY_ENABLED, false)
         .apply()
-      context.stopService(Intent(context, VoltGuardBatteryMonitorService::class.java))
+      val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      if (!prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) && !prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
+        context.stopService(Intent(context, VoltGuardBatteryMonitorService::class.java))
+      }
     }
   }
 
@@ -63,6 +67,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     if (intent?.action == ACTION_ANTI_THEFT_START) {
       val mode = intent.getStringExtra(EXTRA_ANTI_THEFT_MODE) ?: "one_time"
       require(mode == "one_time" || mode == "always")
@@ -80,7 +85,6 @@ class VoltGuardBatteryMonitorService : Service() {
       return START_NOT_STICKY
     }
 
-    val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     if (intent?.action == ACTION_START) {
       val requestedThreshold = intent.getIntExtra(EXTRA_THRESHOLD, prefs.getInt(KEY_THRESHOLD, 80))
       if (requestedThreshold in 50..100) {
@@ -115,8 +119,10 @@ class VoltGuardBatteryMonitorService : Service() {
     if (!started) {
       // Do not leave persisted state claiming that monitoring is active after
       // Android rejected startup; otherwise boot handling can repeatedly retry.
-      prefs.edit().putBoolean(KEY_ENABLED, false).apply()
+      prefs.edit().putBoolean(KEY_ENABLED, false).putBoolean(KEY_ANTI_THEFT_ENABLED, false)
+        .putBoolean(KEY_ANTI_THEFT_ALARM, false).apply()
       stopMonitoring()
+      VoltGuardBatteryNotifications.clearAntiTheftAlarm(this)
       return START_NOT_STICKY
     }
     if (prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) startAlarmSound()
