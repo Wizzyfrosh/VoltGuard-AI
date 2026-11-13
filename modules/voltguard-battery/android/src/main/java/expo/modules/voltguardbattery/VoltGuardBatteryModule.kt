@@ -166,6 +166,18 @@ class VoltGuardBatteryModule : Module() {
       true
     }
 
+    Function("setAntiTheftDelay") { seconds: Int ->
+      require(seconds in 0..30) { "Disconnect delay must be between 0 and 30 seconds" }
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
+      require(!prefs.getBoolean("anti_theft_enabled", false) &&
+        !prefs.getBoolean("anti_theft_alarm_active", false)) {
+        "Disarm Anti-Theft before changing the disconnect delay"
+      }
+      prefs.edit().putInt("anti_theft_delay_seconds", seconds).apply()
+      true
+    }
+
     Function("getAntiTheftStatus") {
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
@@ -173,7 +185,8 @@ class VoltGuardBatteryModule : Module() {
         "pinConfigured" to VoltGuardAntiTheftSecurity.hasPin(context),
         "armed" to prefs.getBoolean("anti_theft_enabled", false),
         "alarmActive" to prefs.getBoolean("anti_theft_alarm_active", false),
-        "mode" to prefs.getString("anti_theft_mode", "one_time")
+        "mode" to prefs.getString("anti_theft_mode", "one_time"),
+        "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5)
       )
     }
 
