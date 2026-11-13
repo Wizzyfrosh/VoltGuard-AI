@@ -3,6 +3,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../src/context/ThemeContext';
 import { hasCompletedOnboarding } from '../src/features/onboarding/onboarding.storage';
+import { getOnboardingDestination } from '../src/features/onboarding/onboarding.flow';
 
 export default function SplashScreen() {
   const { colors } = useTheme();
@@ -13,7 +14,7 @@ export default function SplashScreen() {
     void hasCompletedOnboarding()
       .then((completed) => {
         if (!active) return;
-        router.replace(completed ? '/(tabs)/dashboard' : '/onboarding');
+        router.replace(getOnboardingDestination(completed));
       })
       .catch(() => {
         // If local preference storage cannot be read, do not silently bypass
