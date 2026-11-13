@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, View, Platform
@@ -21,6 +21,7 @@ export default function AntiTheftScreen() {
   const [status, setStatus] = useState<AntiTheftStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [startPending, setStartPending] = useState(false);
   const [dialog, setDialog] = useState<DialogMode>(null);
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -50,6 +51,25 @@ export default function AntiTheftScreen() {
     refresh();
     return undefined;
   }, [refresh]));
+
+  // Android's startForegroundService() is asynchronous. Poll briefly after
+  // arming so the UI confirms actual receiver registration, not just saved intent.
+  useEffect(() => {
+    if (!startPending) return;
+    if (status?.monitoringRunning) {
+      setStartPending(false);
+      return;
+    }
+    const interval = setInterval(refresh, 750);
+    const timeout = setTimeout(() => {
+      setStartPending(false);
+      refresh();
+    }, 10000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [startPending, status?.monitoringRunning, refresh]);
 
   const openDialog = (kind: DialogMode) => {
     setPin('');
@@ -98,6 +118,7 @@ export default function AntiTheftScreen() {
     try {
       armAntiTheft(selectedMode);
       setMode(selectedMode);
+      setStartPending(true);
       refresh();
     } catch (error) {
       Alert.alert('Could not arm Anti-Theft', error instanceof Error ? error.message : 'Please try again.');
@@ -138,16 +159,20 @@ export default function AntiTheftScreen() {
             <>
               <View style={styles.statusRow}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Protection status</Text>
-                <Text style={[styles.statusPill, { color: status?.restoreFailed || alarmActive ? colors.warning : armed ? colors.success : colors.textSecondary }]}>
-                  {status?.restoreFailed ? (alarmActive ? 'ALARM INTERRUPTED' : 'NOT MONITORING') : alarmActive ? 'ALARM ACTIVE' : armed ? 'ARMED' : 'DISARMED'}
+                <Text style={[styles.statusPill, { color: status?.restoreFailed || (armed && !status?.monitoringRunning && !startPending) || (alarmActive && !status?.monitoringRunning) ? colors.warning : armed ? colors.success : colors.textSecondary }]}>
+                  {status?.restoreFailed ? (alarmActive ? 'ALARM INTERRUPTED' : 'NOT MONITORING') :
+                    alarmActive ? (status?.monitoringRunning ? 'ALARM ACTIVE' : 'ALARM INTERRUPTED') :
+                    armed ? (status?.monitoringRunning ? 'ARMED' : startPending ? 'STARTING' : 'NOT MONITORING') : 'DISARMED'}
                 </Text>
               </View>
               <Text style={[styles.body, { color: colors.textSecondary }]}>
                 {status?.restoreFailed
                   ? 'Android could not start or restore Anti-Theft monitoring. Your settings are preserved, but protection is not currently being monitored and alarm outputs may be unavailable. Open VoltGuard and arm protection again.'
-                  : alarmActive ? 'The charger was disconnected. Enter your PIN to silence the alarm and disarm.' :
-                  armed ? (status?.mode === 'always' ? 'Always mode is monitoring the charger connection.' : 'One-Time mode is waiting for a charging session.') :
-                  'Protection is currently off.'}
+                  : alarmActive && !status?.monitoringRunning ? 'The alarm state is saved, but Android is not currently monitoring or playing the alarm. Keep VoltGuard open and restore protection.'
+                  : alarmActive ? 'The charger was disconnected. Enter your PIN to silence the alarm and disarm.'
+                  : armed && !status?.monitoringRunning ? (startPending ? 'Android is starting the monitoring service. Keep this screen open until the service confirms it is running.' : 'Anti-Theft is configured but its monitoring service is not running. Arm protection again.')
+                  : armed ? (status?.mode === 'always' ? 'Always mode is monitoring the charger connection.' : 'One-Time mode is waiting for a charging session.')
+                  : 'Protection is currently off.'}
               </Text>
             </>
           )}
