@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { getBatteryDatabase, getBatteryPreference } from './battery.database';
 import type { BatterySnapshot } from './battery.types';
-import { hasBatteryHistoryConsent } from './battery.history-consent';
+import { getBatteryHistoryCutoff, hasBatteryHistoryConsent, normalizeBatteryHistoryLimit, runBatteryHistoryMutation } from './battery.history-consent';
 
 export interface StoredBatterySample {
   id: number;
@@ -45,7 +45,7 @@ export async function saveBatterySample(snapshot: BatterySnapshot): Promise<numb
   const database = await getBatteryDatabase();
   let insertedId = 0;
 
-  await database.withTransactionAsync(async () => {
+  await runBatteryHistoryMutation(() => database.withTransactionAsync(async () => {
     const preference = await database.getFirstAsync<{ preference_value: string }>(
       'SELECT preference_value FROM user_preferences WHERE preference_key = ?',
       'battery_history_enabled',
@@ -65,25 +65,31 @@ export async function saveBatterySample(snapshot: BatterySnapshot): Promise<numb
       snapshot.source,
     );
     insertedId = result.lastInsertRowId;
-  });
+    const cutoff = getBatteryHistoryCutoff();
+    await database.runAsync('DELETE FROM battery_samples WHERE observed_at < ?', cutoff);
+    await database.runAsync('DELETE FROM charging_sessions WHERE started_at < ?', cutoff);
+  }));
 
   return insertedId;
 }
 
 export async function getRecentBatterySamples(limit = 100): Promise<StoredBatterySample[]> {
   if (Platform.OS === 'web') return [];
-  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 1000));
+  const safeLimit = normalizeBatteryHistoryLimit(limit, 100, 1000);
+  const cutoff = getBatteryHistoryCutoff();
   const database = await getBatteryDatabase();
   const rows = await database.getAllAsync<BatterySampleRow>(
     `SELECT id, observed_at, platform, level, battery_state, low_power_mode, source
      FROM battery_samples
-     WHERE EXISTS (
+     WHERE observed_at >= ?
+       AND EXISTS (
        SELECT 1 FROM user_preferences
        WHERE preference_key = 'battery_history_enabled'
          AND preference_value = 'true'
      )
      ORDER BY observed_at DESC, id DESC
      LIMIT ?`,
+    cutoff,
     safeLimit,
   );
 
