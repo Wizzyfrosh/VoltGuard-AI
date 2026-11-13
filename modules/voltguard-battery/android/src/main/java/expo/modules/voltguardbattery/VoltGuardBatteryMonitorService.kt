@@ -226,18 +226,22 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private fun evaluateAntiTheft(intent: Intent) {
     val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    if (!prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false)) {
-      cancelPendingDisconnect()
-      return
-    }
+    val state = AntiTheftPowerState(
+      armed = prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false),
+      mode = prefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time",
+      baselineConnected = prefs.getBoolean(KEY_ANTI_THEFT_BASELINE, false),
+      alarmActive = prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
+    )
     val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
-    val baseline = prefs.getBoolean(KEY_ANTI_THEFT_BASELINE, false)
+    val transition = AntiTheftPowerStateMachine.onPowerChanged(state, plugged)
     if (plugged) {
       cancelPendingDisconnect()
-      if (!baseline) prefs.edit().putBoolean(KEY_ANTI_THEFT_BASELINE, true).apply()
+      if (transition.state.baselineConnected != state.baselineConnected) {
+        prefs.edit().putBoolean(KEY_ANTI_THEFT_BASELINE, true).apply()
+      }
       return
     }
-    if (!baseline || prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false) || pendingDisconnect != null) return
+    if (!transition.confirmDisconnect || pendingDisconnect != null) return
 
     val delaySeconds = prefs.getInt(KEY_ANTI_THEFT_DELAY_SECONDS, 5).coerceIn(0, 30)
     val disconnectCheck = Runnable {
@@ -249,17 +253,24 @@ class VoltGuardBatteryMonitorService : Service() {
       val stillUnplugged = latest != null &&
         latest.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) == 0
       val currentPrefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-      if (!stillUnplugged ||
-        !currentPrefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) ||
-        currentPrefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
-      ) return@Runnable
-
-      val mode = currentPrefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time"
-      val editor = currentPrefs.edit().putBoolean(KEY_ANTI_THEFT_ALARM, true)
-      if (mode == "one_time") editor.putBoolean(KEY_ANTI_THEFT_ENABLED, false)
-      else editor.putBoolean(KEY_ANTI_THEFT_BASELINE, false)
-      editor.apply()
-      VoltGuardBatteryNotifications.postAntiTheftAlarm(this, mode)
+      val currentState = AntiTheftPowerState(
+        armed = currentPrefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false),
+        mode = currentPrefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time",
+        baselineConnected = currentPrefs.getBoolean(KEY_ANTI_THEFT_BASELINE, false),
+        alarmActive = currentPrefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
+      )
+      if (!stillUnplugged) return@Runnable
+      val confirmedState = try {
+        AntiTheftPowerStateMachine.onConfirmedDisconnect(currentState)
+      } catch (_: IllegalArgumentException) {
+        return@Runnable
+      }
+      currentPrefs.edit()
+        .putBoolean(KEY_ANTI_THEFT_ENABLED, confirmedState.armed)
+        .putBoolean(KEY_ANTI_THEFT_BASELINE, confirmedState.baselineConnected)
+        .putBoolean(KEY_ANTI_THEFT_ALARM, confirmedState.alarmActive)
+        .commit()
+      VoltGuardBatteryNotifications.postAntiTheftAlarm(this, currentState.mode)
       startAlarmSound()
       updateForegroundNotification()
     }
