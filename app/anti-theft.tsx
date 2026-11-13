@@ -141,7 +141,9 @@ export default function AntiTheftScreen() {
                 </Text>
               </View>
               <Text style={[styles.body, { color: colors.textSecondary }]}>
-                {alarmActive ? 'The charger was disconnected. Enter your PIN to silence the alarm and disarm.' :
+                {status?.restoreFailed
+                  ? 'Android could not restart background protection. Your Anti-Theft settings are preserved; open the app and arm protection again.'
+                  : alarmActive ? 'The charger was disconnected. Enter your PIN to silence the alarm and disarm.' :
                   armed ? (status?.mode === 'always' ? 'Always mode is monitoring the charger connection.' : 'One-Time mode is waiting for a charging session.') :
                   'Protection is currently off.'}
               </Text>
