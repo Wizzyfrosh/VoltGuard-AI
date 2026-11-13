@@ -9,7 +9,6 @@ import { clearBatteryHistory } from '../../src/features/battery/battery.history'
 import { useBatteryAlerts } from '../../src/features/battery/useBatteryAlerts';
 import { useBatteryCareReminder } from '../../src/features/battery/useBatteryCareReminder';
 import { getChargingAlarmReadiness, sendChargingAlarmTest } from '../../src/features/battery/battery.alerts';
-import { resetOnboarding } from '../../src/features/onboarding/onboarding.storage';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -166,11 +165,7 @@ export default function SettingsScreen() {
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Row icon={Shield} title="Permission centre" subtitle="Review notification and optional Usage Access" onPress={() => open('/permission-center')} />
-          <Row icon={Info} title="Setup guide" subtitle="Review the introduction and permission setup" onPress={() => {
-            void resetOnboarding().then(() => open('/onboarding')).catch(() =>
-              Alert.alert('Unable to open setup', 'Please try again.')
-            );
-          }} />
+          <Row icon={Info} title="Setup guide" subtitle="Review the introduction and permission setup" onPress={() => open('/onboarding')} />
           <Row icon={Settings2} title="Other settings" subtitle="Appearance and app preferences" onPress={() => open('/settings/other')} />
           <Row icon={Shield} title="Privacy & Legal" subtitle="Privacy, terms and app information" onPress={() => open('/legal')} />
         </View>
