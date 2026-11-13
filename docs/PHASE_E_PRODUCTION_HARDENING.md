@@ -45,6 +45,23 @@ The following code changes are committed on this branch:
 
 The mutation queue coordinates writes issued through these app modules in one JavaScript runtime. It is not a cross-process SQLite lock. The current test suite validates queue ordering and pure retention/limit logic, not real SQLite transaction interleavings. Android/iOS database-level testing remains required before declaring E1 complete.
 
+## Implementation log — battery-history hardening
+
+Committed implementation:
+- Strict persisted-consent parsing, finite SQL limit normalization, and a shared 30-day cutoff helper.
+- A resilient in-process mutation queue for telemetry snapshots, standalone sample saves, opt-out/deletion, manual clearing, explicit sample deletion, and generic preference writes.
+- Read-time 30-day predicates for samples and charging sessions, plus expired-row pruning during sample reads and sample writes.
+- Generic preference writes now reject `battery_history_enabled`; callers must use `setBatteryHistoryEnabled()`, which persists the choice and performs opt-out deletion in one queued transaction.
+- Regression tests cover fail-closed consent parsing, invalid/oversized limits, deterministic cutoff calculation, mutation ordering, and queue recovery after a failed operation.
+
+Validation evidence:
+- Earlier run 468 passed TypeScript, unit tests, lint, and web export. Its dependency audit failed with 40 findings (2 critical, 19 high, 17 moderate, 2 low).
+- Run 472 was cancelled during dependency installation/native project generation; it provides no validation result.
+- The latest commits after run 472 have no completed CI result yet.
+- Android SQLite interleaving has not been integration-tested. The JS queue coordinates only callers in this app runtime; it is not a cross-process database lock.
+
+E1 remains **in progress**, not accepted. Android/iOS database tests and a completed CI run on the current head are still required.
+
 ## Phase E work plan and acceptance criteria
 
 ### E1. Privacy and data lifecycle
