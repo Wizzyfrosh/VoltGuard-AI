@@ -61,6 +61,7 @@ class VoltGuardBatteryMonitorService : Service() {
   private var alarmPlayer: MediaPlayer? = null
   private var audioManager: AudioManager? = null
   private var audioFocusRequest: AudioFocusRequest? = null
+  private var legacyAudioFocusListener: AudioManager.OnAudioFocusChangeListener? = null
   private val mainHandler = Handler(Looper.getMainLooper())
   private var pendingDisconnect: Runnable? = null
 
@@ -286,6 +287,7 @@ class VoltGuardBatteryMonitorService : Service() {
           stopAlarmSound()
         }
       }
+      legacyAudioFocusListener = focusListener
       val focusGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
           .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -351,7 +353,8 @@ class VoltGuardBatteryMonitorService : Service() {
       audioFocusRequest = null
     } else if (manager != null) {
       @Suppress("DEPRECATION")
-      try { manager.abandonAudioFocus(null) } catch (_: Exception) {}
+      try { manager.abandonAudioFocus(legacyAudioFocusListener) } catch (_: Exception) {}
+      legacyAudioFocusListener = null
     }
   }
 
