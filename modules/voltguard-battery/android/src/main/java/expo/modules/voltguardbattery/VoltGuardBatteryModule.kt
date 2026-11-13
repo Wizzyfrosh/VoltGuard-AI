@@ -135,6 +135,15 @@ class VoltGuardBatteryModule : Module() {
         (alarmChannel != null && alarmChannel.importance >= NotificationManager.IMPORTANCE_HIGH && alarmChannel.sound != null)) {
         "Enable sound and High importance for the Anti-Theft alarm in Android notification settings"
       }
+      val preferences = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
+      // Persist the requested state before returning to JS so an immediate
+      // status refresh cannot race the asynchronous Android service start.
+      preferences.edit()
+        .putBoolean("anti_theft_enabled", true)
+        .putBoolean("anti_theft_alarm_active", false)
+        .putString("anti_theft_mode", mode)
+        .putBoolean("anti_theft_baseline_connected", false)
+        .apply()
       val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_START
         putExtra(VoltGuardBatteryMonitorService.EXTRA_ANTI_THEFT_MODE, mode)
@@ -143,7 +152,7 @@ class VoltGuardBatteryModule : Module() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
         else context.startService(intent)
       } catch (error: Exception) {
-        context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE).edit()
+        preferences.edit()
           .putBoolean("anti_theft_enabled", false)
           .putBoolean("anti_theft_alarm_active", false)
           .putBoolean("anti_theft_baseline_connected", false)
