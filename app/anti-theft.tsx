@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet,
-  Text, TextInput, View, Platform, PermissionsAndroid
+  Text, TextInput, View, Platform
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -208,18 +208,6 @@ export default function AntiTheftScreen() {
                   onPress={async () => {
                     try {
                       const enabling = !flashEnabled;
-                      if (enabling && Platform.OS === 'android' && Number(Platform.Version) >= 23) {
-                        const permission = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
-                          title: 'Allow camera flash for Anti-Theft',
-                          message: 'VoltGuard uses the rear camera torch during an Anti-Theft alarm. Camera access is not used to take photos or record video.',
-                          buttonPositive: 'Allow',
-                          buttonNegative: 'Not now',
-                        });
-                        if (permission !== PermissionsAndroid.RESULTS.GRANTED) {
-                          Alert.alert('Camera permission required', 'Allow camera access in Android settings to enable the alarm flash. Your other Anti-Theft alarm features will continue to work.');
-                          return;
-                        }
-                      }
                       await setAntiTheftFlash(enabling);
                       setFlashEnabled(enabling);
                     } catch (error) {
