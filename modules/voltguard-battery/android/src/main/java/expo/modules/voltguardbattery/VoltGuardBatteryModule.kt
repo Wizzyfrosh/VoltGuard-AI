@@ -179,6 +179,16 @@ class VoltGuardBatteryModule : Module() {
       true
     }
 
+    Function("setAntiTheftVibration") { enabled: Boolean ->
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
+      require(!prefs.getBoolean("anti_theft_alarm_active", false)) {
+        "Silence the active alarm before changing vibration settings"
+      }
+      prefs.edit().putBoolean("anti_theft_vibration_enabled", enabled).apply()
+      true
+    }
+
     Function("setAntiTheftDelay") { seconds: Int ->
       require(seconds in 0..30) { "Disconnect delay must be between 0 and 30 seconds" }
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
@@ -199,7 +209,8 @@ class VoltGuardBatteryModule : Module() {
         "armed" to prefs.getBoolean("anti_theft_enabled", false),
         "alarmActive" to prefs.getBoolean("anti_theft_alarm_active", false),
         "mode" to prefs.getString("anti_theft_mode", "one_time"),
-        "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5)
+        "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5),
+        "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true)
       )
     }
 
