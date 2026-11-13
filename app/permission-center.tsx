@@ -84,19 +84,23 @@ export default function PermissionCenterScreen() {
     let requestFailed = false;
     try {
       const current = await Notifications.getPermissionsAsync();
+      if (!mountedRef.current) return;
       if (!current.granted && !current.canAskAgain) {
         await Linking.openSettings();
         return;
       }
       const next = current.granted ? current : await Notifications.requestPermissionsAsync();
+      if (!mountedRef.current) return;
       setNotificationGranted(next.granted);
       setNotificationCanAskAgain(next.canAskAgain);
     } catch {
       requestFailed = true;
-      setNotificationGranted(null);
-      setStatusError('Notification permission request failed. Check device settings and try again.');
+      if (mountedRef.current) {
+        setNotificationGranted(null);
+        setStatusError('Notification permission request failed. Check device settings and try again.');
+      }
     } finally {
-      if (!requestFailed) await refresh();
+      if (!requestFailed && mountedRef.current) await refresh();
     }
   };
 
