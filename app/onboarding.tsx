@@ -165,9 +165,9 @@ export default function OnboardingScreen() {
               </View>
               {notificationState === 'granted' && <CheckCircle2 size={20} color={colors.success} />}
             </View>
-            <Pressable onPress={() => { void requestNotifications(); }} disabled={busy || notificationState === 'granted'}
-              style={[styles.secondaryButton, { borderColor: colors.primary }]}>
-              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>{notificationState === 'granted' ? 'Permission granted' : notificationState === 'unsupported' ? 'Unavailable on web' : notificationState === 'denied' ? (notificationCanAskAgain ? 'Try permission again' : 'Open device settings') : 'Allow notifications'}</Text>
+            <Pressable onPress={() => { void requestNotifications(); }} disabled={busy || notificationState === 'granted' || Platform.OS === 'web'}
+              style={[styles.secondaryButton, { borderColor: colors.primary, opacity: Platform.OS === 'web' ? 0.65 : 1 }]}>
+              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>{Platform.OS === 'web' || notificationState === 'unsupported' ? 'Unavailable on web' : notificationState === 'granted' ? 'Permission granted' : notificationState === 'denied' ? (notificationCanAskAgain ? 'Try permission again' : 'Open device settings') : 'Allow notifications'}</Text>
             </Pressable>
             {notificationState === 'denied' && <Text style={[styles.hint, { color: colors.textSecondary }]}>You can enable notifications later in your device settings.</Text>}
             {Platform.OS === 'web' && <Text style={[styles.hint, { color: colors.textSecondary }]}>Native charging alerts and scheduled reminders are available in the mobile app.</Text>}
