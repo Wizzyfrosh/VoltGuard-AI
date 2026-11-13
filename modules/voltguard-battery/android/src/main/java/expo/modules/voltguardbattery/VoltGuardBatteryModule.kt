@@ -135,18 +135,21 @@ class VoltGuardBatteryModule : Module() {
         (alarmChannel != null && alarmChannel.importance >= NotificationManager.IMPORTANCE_HIGH && alarmChannel.sound != null)) {
         "Enable sound and High importance for the Anti-Theft alarm in Android notification settings"
       }
-      context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE).edit()
-        .putBoolean("anti_theft_enabled", true)
-        .putBoolean("anti_theft_alarm_active", false)
-        .putString("anti_theft_mode", mode)
-        .putBoolean("anti_theft_baseline_connected", false)
-        .apply()
       val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_START
         putExtra(VoltGuardBatteryMonitorService.EXTRA_ANTI_THEFT_MODE, mode)
       }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
-      else context.startService(intent)
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+        else context.startService(intent)
+      } catch (error: Exception) {
+        context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE).edit()
+          .putBoolean("anti_theft_enabled", false)
+          .putBoolean("anti_theft_alarm_active", false)
+          .putBoolean("anti_theft_baseline_connected", false)
+          .apply()
+        throw IllegalStateException("Android could not start Anti-Theft monitoring. Check battery and background activity restrictions.", error)
+      }
       true
     }
 
@@ -161,8 +164,9 @@ class VoltGuardBatteryModule : Module() {
       val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
       }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
-      else context.startService(intent)
+      // This command originates from the visible Anti-Theft screen. Use a
+      // regular service start so a stop-only command does not require FGS promotion.
+      context.startService(intent)
       true
     }
 
