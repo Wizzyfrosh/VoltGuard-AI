@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+import { useFocusEffect } from 'expo-router';
 import { ArrowLeft, ArrowRight, BatteryCharging, Bell, CheckCircle2, ShieldCheck, Smartphone } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
@@ -21,7 +22,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>(0);
   const [busy, setBusy] = useState(false);
-  const [notificationState, setNotificationState] = useState<'unknown' | 'granted' | 'denied'>('unknown');
+  const [notificationState, setNotificationState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown');
   const [usageState, setUsageState] = useState<'unknown' | 'granted' | 'not-granted' | 'unsupported'>('unknown');
   const slide = slides[step];
   const progress = useMemo(() => (step + 1) / slides.length, [step]);
@@ -37,6 +38,7 @@ export default function OnboardingScreen() {
   };
 
   const requestNotifications = async () => {
+    if (Platform.OS === 'web') { setNotificationState('unsupported'); return; }
     setBusy(true);
     try {
       const current = await Notifications.getPermissionsAsync();
@@ -48,6 +50,20 @@ export default function OnboardingScreen() {
       setBusy(false);
     }
   };
+
+  useFocusEffect(React.useCallback(() => {
+    let active = true;
+    if (Platform.OS !== 'web') {
+      void Notifications.getPermissionsAsync().then((result) => {
+        if (active) setNotificationState(result.granted ? 'granted' : 'denied');
+      }).catch(() => { if (active) setNotificationState('unknown'); });
+    }
+    if (Platform.OS === 'android') {
+      void hasUsageAccess().then((granted) => { if (active) setUsageState(granted ? 'granted' : 'not-granted'); })
+        .catch(() => { if (active) setUsageState('not-granted'); });
+    }
+    return () => { active = false; };
+  }, []));
 
   const checkUsage = async () => {
     if (Platform.OS !== 'android') { setUsageState('unsupported'); return; }
@@ -93,9 +109,10 @@ export default function OnboardingScreen() {
             </View>
             <Pressable onPress={() => { void requestNotifications(); }} disabled={busy || notificationState === 'granted'}
               style={[styles.secondaryButton, { borderColor: colors.primary }]}>
-              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>{notificationState === 'granted' ? 'Permission granted' : notificationState === 'denied' ? 'Try permission again' : 'Allow notifications'}</Text>
+              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>{notificationState === 'granted' ? 'Permission granted' : notificationState === 'unsupported' ? 'Unavailable on web' : notificationState === 'denied' ? 'Try permission again' : 'Allow notifications'}</Text>
             </Pressable>
             {notificationState === 'denied' && <Text style={[styles.hint, { color: colors.textSecondary }]}>You can enable notifications later in your device settings.</Text>}
+            {Platform.OS === 'web' && <Text style={[styles.hint, { color: colors.textSecondary }]}>Native charging alerts and scheduled reminders are available in the mobile app.</Text>}
             {Platform.OS === 'android' && (
               <>
                 <View style={[styles.separator, { backgroundColor: colors.border }]} />
