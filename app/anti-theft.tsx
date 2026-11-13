@@ -52,6 +52,15 @@ export default function AntiTheftScreen() {
     return undefined;
   }, [refresh]));
 
+  // Keep runtime status fresh while protection is armed. Persisted preferences
+  // can outlive a killed Android service, so a one-time screen-focus read is
+  // not enough to detect a later service exit while this screen stays visible.
+  useEffect(() => {
+    if ((!status?.armed && !status?.alarmActive) || startPending) return;
+    const interval = setInterval(refresh, 2000);
+    return () => clearInterval(interval);
+  }, [status?.armed, status?.alarmActive, startPending, refresh]);
+
   // Android's startForegroundService() is asynchronous. Poll briefly after
   // arming so the UI confirms actual receiver registration, not just saved intent.
   useEffect(() => {
