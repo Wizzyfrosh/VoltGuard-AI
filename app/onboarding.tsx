@@ -36,8 +36,10 @@ export default function OnboardingScreen() {
     setCompletionError(null);
     try {
       await completeOnboarding();
+      if (!mountedRef.current) return;
       router.replace('/(tabs)/dashboard');
     } catch {
+      if (!mountedRef.current) return;
       setCompletionError('VoltGuard could not save your setup status. Check device storage and try again.');
       setBusy(false);
     }
@@ -49,17 +51,19 @@ export default function OnboardingScreen() {
     setBusy(true);
     try {
       const current = await Notifications.getPermissionsAsync();
+      if (!mountedRef.current) return;
       if (!current.granted && !current.canAskAgain) {
         await Linking.openSettings();
         return;
       }
       const result = current.granted ? current : await Notifications.requestPermissionsAsync();
+      if (!mountedRef.current) return;
       setNotificationState(result.granted ? 'granted' : 'denied');
       setNotificationCanAskAgain(result.canAskAgain);
     } catch {
-      setPermissionError('Notification permission could not be checked. You can retry or continue without it.');
+      if (mountedRef.current) setPermissionError('Notification permission could not be checked. You can retry or continue without it.');
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
 
@@ -112,9 +116,14 @@ export default function OnboardingScreen() {
   const checkUsage = async () => {
     if (Platform.OS !== 'android') { setUsageState('unsupported'); return; }
     setBusy(true);
-    try { setUsageState(await hasUsageAccess() ? 'granted' : 'not-granted'); }
-    catch { setPermissionError('Usage Access status could not be read. Check Android Settings or retry.'); }
-    finally { setBusy(false); }
+    try {
+      const granted = await hasUsageAccess();
+      if (mountedRef.current) setUsageState(granted ? 'granted' : 'not-granted');
+    } catch {
+      if (mountedRef.current) setPermissionError('Usage Access status could not be read. Check Android Settings or retry.');
+    } finally {
+      if (mountedRef.current) setBusy(false);
+    }
   };
 
   const openUsageSettings = () => {
