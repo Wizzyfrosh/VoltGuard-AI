@@ -23,23 +23,30 @@ object VoltGuardAntiTheftFlash {
     if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
       return false
     }
-    val id = cameraId(context) ?: return false
     return try {
-      val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+      val manager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return false
+      val id = cameraId(manager) ?: return false
       manager.setTorchMode(id, enabled)
       true
     } catch (_: SecurityException) {
+      // Permission may be revoked after the setting was enabled.
       false
     } catch (_: Exception) {
+      // Camera can be busy, unavailable, or removed while an alarm is active.
       false
     }
   }
 
   private fun cameraId(context: Context): String? {
     val manager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return null
+    return cameraId(manager)
+  }
+
+  private fun cameraId(manager: CameraManager): String? {
     return manager.cameraIdList.firstOrNull { id ->
-      manager.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true &&
-        manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+      val characteristics = manager.getCameraCharacteristics(id)
+      characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true &&
+        characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
     }
   }
 }
