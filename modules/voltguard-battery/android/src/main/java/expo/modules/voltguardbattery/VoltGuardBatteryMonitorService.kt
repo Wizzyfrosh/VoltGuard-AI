@@ -82,6 +82,9 @@ class VoltGuardBatteryMonitorService : Service() {
     }
 
     if (!started) {
+      // Do not leave persisted state claiming that monitoring is active after
+      // Android rejected startup; otherwise boot handling can repeatedly retry.
+      prefs.edit().putBoolean(KEY_ENABLED, false).apply()
       stopMonitoring()
       return START_NOT_STICKY
     }
