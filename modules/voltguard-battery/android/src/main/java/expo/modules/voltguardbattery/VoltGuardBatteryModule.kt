@@ -1,5 +1,6 @@
 package expo.modules.voltguardbattery
 
+import androidx.fragment.app.FragmentActivity
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -164,6 +165,25 @@ class VoltGuardBatteryModule : Module() {
       true
     }
 
+    AsyncFunction("disarmAntiTheftWithBiometric") Coroutine { ->
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val activity = appContext.currentActivity as? FragmentActivity
+        ?: throw IllegalStateException("The Android activity is unavailable. Use your Anti-Theft PIN instead.")
+      require(VoltGuardAntiTheftSecurity.hasPin(context)) { "Anti-Theft PIN is not configured" }
+      require(VoltGuardAntiTheftBiometric.isAvailable(activity)) {
+        "Strong biometric authentication is unavailable. Use your Anti-Theft PIN instead."
+      }
+      val authenticated = withContext(Dispatchers.Main.immediate) {
+        VoltGuardAntiTheftBiometric.authenticate(activity)
+      }
+      if (!authenticated) return@Coroutine false
+      val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
+        action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_STOP
+      }
+      context.startService(intent)
+      true
+    }
+
     AsyncFunction("disarmAntiTheft") Coroutine { pin: String ->
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       withContext(Dispatchers.Default) {
@@ -231,6 +251,7 @@ class VoltGuardBatteryModule : Module() {
         "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true),
         "flashEnabled" to prefs.getBoolean("anti_theft_flash_enabled", false),
         "flashAvailable" to VoltGuardAntiTheftFlash.isAvailable(context),
+        "biometricAvailable" to (appContext.currentActivity as? FragmentActivity)?.let { VoltGuardAntiTheftBiometric.isAvailable(it) } ?: false,
         "vibrationAvailable" to try {
           val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
