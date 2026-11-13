@@ -1,5 +1,5 @@
 import { requireNativeModule } from 'expo-modules-core';
-import { Platform } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 
 type VoltGuardBatteryNativeModule = {
   getBatteryDiagnostics: () => Record<string, unknown> | null;
@@ -14,6 +14,7 @@ type VoltGuardBatteryNativeModule = {
   getAntiTheftStatus: () => AntiTheftStatus;
   setAntiTheftDelay: (seconds: number) => boolean;
   setAntiTheftVibration: (enabled: boolean) => boolean;
+  setAntiTheftFlash: (enabled: boolean) => boolean;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
@@ -32,6 +33,8 @@ export type AntiTheftStatus = {
   delaySeconds: number;
   vibrationEnabled: boolean;
   vibrationAvailable: boolean;
+  flashEnabled: boolean;
+  flashAvailable: boolean;
 };
 
 export type ChargingAlarmStatus = {
@@ -59,6 +62,17 @@ export type SystemResourceDiagnostics = {
   totalStorageBytes: number | null;
   availableStorageBytes: number | null;
 };
+
+export async function setAntiTheftFlash(enabled: boolean): Promise<boolean> {
+  if (Platform.OS !== "android") return false;
+  if (enabled) {
+    const permission = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+    if (permission !== PermissionsAndroid.RESULTS.GRANTED) {
+      throw new Error("Camera permission is required to use the Anti-Theft flash.");
+    }
+  }
+  return getNativeModule()?.setAntiTheftFlash(enabled) ?? false;
+}
 
 export function setAntiTheftVibration(enabled: boolean): boolean {
   if (Platform.OS !== 'android') return false;
