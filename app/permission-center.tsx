@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { Bell, ChevronRight, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import { hasUsageAccess, openUsageAccessSettings } from '../modules/voltguard-battery';
+import { readPermissionStatus } from '../src/features/onboarding/permission-status';
 
 export default function PermissionCenterScreen() {
   const { colors } = useTheme();
@@ -31,27 +32,25 @@ export default function PermissionCenterScreen() {
 
     const errors: string[] = [];
     if (Platform.OS !== 'web') {
-      try {
-        const notification = await Notifications.getPermissionsAsync();
-        if (isActive()) {
-          setNotificationGranted(notification.granted);
-          setNotificationCanAskAgain(notification.canAskAgain);
-        }
-      } catch {
+      const result = await readPermissionStatus(() => Notifications.getPermissionsAsync());
+      if (result.failed) {
         errors.push('notification');
         if (isActive()) setNotificationGranted(null);
+      } else if (isActive() && result.value) {
+        setNotificationGranted(result.value.granted);
+        setNotificationCanAskAgain(result.value.canAskAgain);
       }
     } else if (isActive()) {
       setNotificationGranted(false);
     }
 
     if (Platform.OS === 'android') {
-      try {
-        const usage = await hasUsageAccess();
-        if (isActive()) setUsageGranted(usage);
-      } catch {
+      const result = await readPermissionStatus(() => hasUsageAccess());
+      if (result.failed) {
         errors.push('Usage Access');
         if (isActive()) setUsageGranted(null);
+      } else if (isActive() && result.value !== null) {
+        setUsageGranted(result.value);
       }
     } else if (isActive()) {
       setUsageGranted(false);
