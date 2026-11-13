@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, AppState, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from 'expo-router';
@@ -62,32 +62,35 @@ export default function OnboardingScreen() {
     }
   };
 
-  useFocusEffect(React.useCallback(() => {
-    let active = true;
+  const refreshPermissionStatuses = React.useCallback(() => {
     if (Platform.OS !== 'web') {
       void Notifications.getPermissionsAsync().then((result) => {
-        if (active) {
-          setNotificationState(result.granted ? 'granted' : 'denied');
-          setNotificationCanAskAgain(result.canAskAgain);
-        }
+        setNotificationState(result.granted ? 'granted' : 'denied');
+        setNotificationCanAskAgain(result.canAskAgain);
       }).catch(() => {
-        if (active) {
-          setNotificationState('unknown');
-          setPermissionError('Notification permission status could not be read. Retry or continue without notifications.');
-        }
+        setNotificationState('unknown');
+        setPermissionError('Notification permission status could not be read. Retry or continue without notifications.');
       });
     }
     if (Platform.OS === 'android') {
-      void hasUsageAccess().then((granted) => { if (active) setUsageState(granted ? 'granted' : 'not-granted'); })
+      void hasUsageAccess().then((granted) => setUsageState(granted ? 'granted' : 'not-granted'))
         .catch(() => {
-          if (active) {
-            setUsageState('unknown');
-            setPermissionError('Usage Access status could not be read. Retry or continue without it.');
-          }
+          setUsageState('unknown');
+          setPermissionError('Usage Access status could not be read. Retry or continue without it.');
         });
     }
-    return () => { active = false; };
-  }, []));
+  }, []);
+
+  useFocusEffect(React.useCallback(() => {
+    refreshPermissionStatuses();
+  }, [refreshPermissionStatuses]));
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshPermissionStatuses();
+    });
+    return () => subscription.remove();
+  }, [refreshPermissionStatuses]);
 
   const checkUsage = async () => {
     if (Platform.OS !== 'android') { setUsageState('unsupported'); return; }
