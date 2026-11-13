@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { Bell, ChevronRight, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
@@ -35,14 +36,21 @@ export default function PermissionCenterScreen() {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void refresh();
+    return () => { active = false; };
+  }, [refresh]));
 
   const requestNotifications = async () => {
     if (Platform.OS === 'web') return;
+    setStatusError(null);
     try {
       const current = await Notifications.getPermissionsAsync();
       const next = current.granted ? current : await Notifications.requestPermissionsAsync();
       setNotificationGranted(next.granted);
+    } catch {
+      setStatusError('Notification permission request failed. Check device settings and try again.');
     } finally {
       await refresh();
     }
