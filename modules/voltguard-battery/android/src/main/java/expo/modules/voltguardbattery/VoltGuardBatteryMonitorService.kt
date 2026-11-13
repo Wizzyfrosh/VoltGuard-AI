@@ -47,6 +47,10 @@ class VoltGuardBatteryMonitorService : Service() {
     private const val KEY_ANTI_THEFT_DELAY_SECONDS = "anti_theft_delay_seconds"
     private const val SERVICE_CHANNEL = VoltGuardBatteryNotifications.SERVICE_CHANNEL_ID
     private const val SERVICE_NOTIFICATION_ID = 7411
+    @Volatile private var monitoringServiceRunning = false
+
+    /** Runtime-only signal. It resets with the app process and is never treated as persisted proof. */
+    fun isMonitoringServiceRunning(): Boolean = monitoringServiceRunning
 
     /** Stop without issuing a new background service start request. */
     fun stop(context: Context) {
@@ -159,7 +163,9 @@ class VoltGuardBatteryMonitorService : Service() {
           .putBoolean(KEY_ANTI_THEFT_ENABLED, false)
           .putBoolean(KEY_ANTI_THEFT_BASELINE, false)
       }
-      failureEditor.commit()
+      if (!failureEditor.commit()) {
+        Log.e("VoltGuardMonitor", "Could not persist foreground-monitor startup failure state")
+      }
       stopMonitoring()
       if (!prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
         VoltGuardBatteryNotifications.clearAntiTheftAlarm(this)
@@ -215,9 +221,11 @@ class VoltGuardBatteryMonitorService : Service() {
         registerReceiver(batteryReceiver, filter)
       }
       receiverRegistered = true
+      monitoringServiceRunning = true
       true
     } catch (_: Exception) {
       receiverRegistered = false
+      monitoringServiceRunning = false
       false
     }
   }
@@ -534,6 +542,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun stopMonitoring() {
+    monitoringServiceRunning = false
     cancelPendingDisconnect()
     stopAlarmSound()
     if (receiverRegistered) {
@@ -545,6 +554,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   override fun onDestroy() {
+    monitoringServiceRunning = false
     if (receiverRegistered) {
       try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
       receiverRegistered = false
