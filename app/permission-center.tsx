@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -16,39 +16,53 @@ export default function PermissionCenterScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  const refresh = useCallback(async (isActive: () => boolean = () => true) => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const refresh = useCallback(async (isActive: () => boolean = () => mountedRef.current) => {
     if (isActive()) {
       setRefreshing(true);
       setStatusError(null);
     }
-    try {
-      if (Platform.OS !== 'web') {
+
+    const errors: string[] = [];
+    if (Platform.OS !== 'web') {
+      try {
         const notification = await Notifications.getPermissionsAsync();
         if (isActive()) {
           setNotificationGranted(notification.granted);
           setNotificationCanAskAgain(notification.canAskAgain);
         }
-      } else if (isActive()) {
-        setNotificationGranted(false);
+      } catch {
+        errors.push('notification');
+        if (isActive()) setNotificationGranted(null);
       }
-      if (Platform.OS === 'android') {
+    } else if (isActive()) {
+      setNotificationGranted(false);
+    }
+
+    if (Platform.OS === 'android') {
+      try {
         const usage = await hasUsageAccess();
         if (isActive()) setUsageGranted(usage);
-      } else if (isActive()) {
-        setUsageGranted(false);
+      } catch {
+        errors.push('Usage Access');
+        if (isActive()) setUsageGranted(null);
       }
-    } catch {
-      if (isActive()) {
-        setNotificationGranted(null);
-        if (Platform.OS === 'android') setUsageGranted(null);
-        setStatusError('Could not read one or more permission states. Refresh or check your device settings.');
-      }
-    } finally {
-      if (isActive()) {
-        setLoading(false);
-        setRefreshing(false);
-      }
+    } else if (isActive()) {
+      setUsageGranted(false);
+    }
+
+    if (isActive()) {
+      setStatusError(errors.length
+        ? `Could not read ${errors.join(' and ')} permission status. Refresh or check device settings.`
+        : null);
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -60,7 +74,7 @@ export default function PermissionCenterScreen() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void refresh();
+      if (state === 'active') void refresh(() => mountedRef.current);
     });
     return () => subscription.remove();
   }, [refresh]);
