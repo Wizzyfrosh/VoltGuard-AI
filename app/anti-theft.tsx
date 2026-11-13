@@ -138,13 +138,13 @@ export default function AntiTheftScreen() {
             <>
               <View style={styles.statusRow}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Protection status</Text>
-                <Text style={[styles.statusPill, { color: alarmActive || status?.restoreFailed ? colors.warning : armed ? colors.success : colors.textSecondary }]}>
-                  {alarmActive ? 'ALARM ACTIVE' : status?.restoreFailed && !armed ? 'NOT MONITORING' : armed ? 'ARMED' : 'DISARMED'}
+                <Text style={[styles.statusPill, { color: status?.restoreFailed || alarmActive ? colors.warning : armed ? colors.success : colors.textSecondary }]}>
+                  {status?.restoreFailed ? (alarmActive ? 'ALARM INTERRUPTED' : 'NOT MONITORING') : alarmActive ? 'ALARM ACTIVE' : armed ? 'ARMED' : 'DISARMED'}
                 </Text>
               </View>
               <Text style={[styles.body, { color: colors.textSecondary }]}>
                 {status?.restoreFailed
-                  ? 'Android could not restart background protection. Your Anti-Theft settings are preserved; open the app and arm protection again.'
+                  ? 'Android could not start or restore Anti-Theft monitoring. Your settings are preserved, but protection is not currently being monitored and alarm outputs may be unavailable. Open VoltGuard and arm protection again.'
                   : alarmActive ? 'The charger was disconnected. Enter your PIN to silence the alarm and disarm.' :
                   armed ? (status?.mode === 'always' ? 'Always mode is monitoring the charger connection.' : 'One-Time mode is waiting for a charging session.') :
                   'Protection is currently off.'}
