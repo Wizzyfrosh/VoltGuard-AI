@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 
 class VoltGuardBatteryMonitorService : Service() {
   companion object {
@@ -64,7 +65,26 @@ class VoltGuardBatteryMonitorService : Service() {
       return START_NOT_STICKY
     }
 
-    if (!startAsForegroundService()) return START_NOT_STICKY
+    val started = try {
+      startAsForegroundService()
+    } catch (error: SecurityException) {
+      // Android can reject foreground promotion when the manifest permission,
+      // notification policy, or OS foreground-service rules are not satisfied.
+      Log.e("VoltGuardMonitor", "Android denied foreground-service promotion", error)
+      false
+    } catch (error: IllegalStateException) {
+      // Includes OS restrictions such as a disallowed background FGS start.
+      Log.e("VoltGuardMonitor", "Foreground monitoring could not be started", error)
+      false
+    } catch (error: Exception) {
+      Log.e("VoltGuardMonitor", "Unexpected foreground-monitor startup failure", error)
+      false
+    }
+
+    if (!started) {
+      stopMonitoring()
+      return START_NOT_STICKY
+    }
     return START_STICKY
   }
 
