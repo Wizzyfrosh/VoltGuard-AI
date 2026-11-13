@@ -8,7 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, ShieldAlert, ShieldCheck, LockKeyhole } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import {
-  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay,
+  armAntiTheft, disarmAntiTheft, getAntiTheftStatus, setAntiTheftPin, setAntiTheftDelay, setAntiTheftVibration,
   type AntiTheftMode, type AntiTheftStatus
 } from '../modules/voltguard-battery';
 
@@ -26,6 +26,7 @@ export default function AntiTheftScreen() {
   const [confirmPin, setConfirmPin] = useState('');
   const [mode, setMode] = useState<AntiTheftMode>('one_time');
   const [delaySeconds, setDelaySeconds] = useState(5);
+  const [vibrationEnabled, setVibrationEnabled] = useState(true);
 
   const refresh = useCallback(() => {
     if (Platform.OS !== 'android') {
@@ -36,7 +37,7 @@ export default function AntiTheftScreen() {
     try {
       const next = getAntiTheftStatus();
       setStatus(next);
-      if (next) { setMode(next.mode); setDelaySeconds(next.delaySeconds); }
+      if (next) { setMode(next.mode); setDelaySeconds(next.delaySeconds); setVibrationEnabled(next.vibrationEnabled); }
     } catch {
       setStatus(null);
     } finally {
@@ -170,6 +171,27 @@ export default function AntiTheftScreen() {
                 </Pressable>
               ))}
             </View>
+            <View style={styles.settingRow}>
+              <View style={styles.settingCopy}>
+                <Text style={[styles.modeTitle, { color: colors.text }]}>Vibrate during alarm</Text>
+                <Text style={[styles.body, { color: colors.textSecondary }]}>Repeat vibration while the Anti-Theft alarm is active.</Text>
+              </View>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: vibrationEnabled }}
+                onPress={() => {
+                  try {
+                    setAntiTheftVibration(!vibrationEnabled);
+                    setVibrationEnabled(!vibrationEnabled);
+                  } catch (error) {
+                    Alert.alert('Unable to update vibration', error instanceof Error ? error.message : 'Please try again.');
+                  }
+                }}
+                style={[styles.switchTrack, { backgroundColor: vibrationEnabled ? colors.primary : colors.border }]}
+              >
+                <View style={[styles.switchThumb, { alignSelf: vibrationEnabled ? 'flex-end' : 'flex-start' }]} />
+              </Pressable>
+            </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose protection mode</Text>
             <Pressable onPress={() => setMode('one_time')} style={[styles.mode, { borderColor: mode === 'one_time' ? colors.primary : colors.border, backgroundColor: mode === 'one_time' ? colors.primary + '12' : 'transparent' }]}>
               <Text style={[styles.modeTitle, { color: colors.text }]}>One-Time</Text>
@@ -254,6 +276,10 @@ const styles = StyleSheet.create({
   delayOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   delayOption: { minWidth: 48, borderWidth: 1, borderRadius: 9, paddingVertical: 9, paddingHorizontal: 12, alignItems: 'center' },
   delayText: { fontSize: 13, fontWeight: '700' },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  settingCopy: { flex: 1, gap: 4 },
+  switchTrack: { width: 48, height: 28, borderRadius: 16, padding: 3, justifyContent: 'center' },
+  switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' },
   mode: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 5 },
   modeTitle: { fontSize: 14, fontWeight: '700' },
   primaryButton: { minHeight: 46, borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
