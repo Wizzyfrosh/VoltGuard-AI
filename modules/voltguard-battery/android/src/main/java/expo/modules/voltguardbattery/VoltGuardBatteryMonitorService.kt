@@ -26,6 +26,15 @@ class VoltGuardBatteryMonitorService : Service() {
     private const val KEY_NOTIFIED = "notified_this_charge"
     private const val SERVICE_CHANNEL = VoltGuardBatteryNotifications.SERVICE_CHANNEL_ID
     private const val SERVICE_NOTIFICATION_ID = 7411
+
+    /** Stop without issuing a new background service start request. */
+    fun stop(context: Context) {
+      context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(KEY_ENABLED, false)
+        .apply()
+      context.stopService(Intent(context, VoltGuardBatteryMonitorService::class.java))
+    }
   }
 
   private var receiverRegistered = false
