@@ -30,6 +30,7 @@ export type AntiTheftStatus = {
   mode: AntiTheftMode;
   delaySeconds: number;
   vibrationEnabled: boolean;
+  vibrationAvailable: boolean;
 };
 
 export type ChargingAlarmStatus = {
