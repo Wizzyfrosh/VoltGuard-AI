@@ -124,6 +124,23 @@ class VoltGuardBatteryModule : Module() {
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       require(VoltGuardAntiTheftSecurity.hasPin(context)) { "Set an Anti-Theft PIN before arming protection" }
       VoltGuardBatteryNotifications.createChannels(context)
+      val notifications = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      require(notifications.areNotificationsEnabled()) {
+        "Enable VoltGuard notifications before arming Anti-Theft protection"
+      }
+      val alarmChannel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        notifications.getNotificationChannel(VoltGuardBatteryNotifications.ANTI_THEFT_CHANNEL_ID)
+      } else null
+      require(Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+        (alarmChannel != null && alarmChannel.importance >= NotificationManager.IMPORTANCE_HIGH && alarmChannel.sound != null)) {
+        "Enable sound and High importance for the Anti-Theft alarm in Android notification settings"
+      }
+      context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE).edit()
+        .putBoolean("anti_theft_enabled", true)
+        .putBoolean("anti_theft_alarm_active", false)
+        .putString("anti_theft_mode", mode)
+        .putBoolean("anti_theft_baseline_connected", false)
+        .apply()
       val intent = Intent(context, VoltGuardBatteryMonitorService::class.java).apply {
         action = VoltGuardBatteryMonitorService.ACTION_ANTI_THEFT_START
         putExtra(VoltGuardBatteryMonitorService.EXTRA_ANTI_THEFT_MODE, mode)
