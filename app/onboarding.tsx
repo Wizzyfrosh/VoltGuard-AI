@@ -23,6 +23,7 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<Step>(0);
   const [busy, setBusy] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
   const [notificationState, setNotificationState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown');
   const [usageState, setUsageState] = useState<'unknown' | 'granted' | 'not-granted' | 'unsupported'>('unknown');
   const slide = slides[step];
@@ -41,6 +42,7 @@ export default function OnboardingScreen() {
   };
 
   const requestNotifications = async () => {
+    setPermissionError(null);
     if (Platform.OS === 'web') { setNotificationState('unsupported'); return; }
     setBusy(true);
     try {
@@ -48,7 +50,7 @@ export default function OnboardingScreen() {
       const result = current.granted ? current : await Notifications.requestPermissionsAsync();
       setNotificationState(result.granted ? 'granted' : 'denied');
     } catch {
-      setNotificationState('denied');
+      setPermissionError('Notification permission could not be checked. You can retry or continue without it.');
     } finally {
       setBusy(false);
     }
@@ -72,13 +74,13 @@ export default function OnboardingScreen() {
     if (Platform.OS !== 'android') { setUsageState('unsupported'); return; }
     setBusy(true);
     try { setUsageState(await hasUsageAccess() ? 'granted' : 'not-granted'); }
-    catch { setUsageState('not-granted'); }
+    catch { setPermissionError('Usage Access status could not be read. Check Android Settings or retry.'); }
     finally { setBusy(false); }
   };
 
   const openUsageSettings = () => {
     if (Platform.OS !== 'android') return;
-    try { openUsageAccessSettings(); } catch { setUsageState('not-granted'); }
+    try { openUsageAccessSettings(); } catch { setPermissionError('Could not open Android Usage Access settings. Open Settings manually and try again.'); }
   };
 
   return (
@@ -137,6 +139,14 @@ export default function OnboardingScreen() {
                 </View>
               </>
             )}
+          </View>
+        )}
+        {permissionError && (
+          <View accessibilityRole="alert" style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.warning }]}>
+            <Text style={[styles.errorText, { color: colors.text }]}>{permissionError}</Text>
+            <Pressable onPress={() => setPermissionError(null)} accessibilityRole="button">
+              <Text style={[styles.retryText, { color: colors.primary }]}>Dismiss</Text>
+            </Pressable>
           </View>
         )}
         {step === 2 && (
