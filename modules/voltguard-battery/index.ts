@@ -27,6 +27,7 @@ export type AntiTheftStatus = {
   armed: boolean;
   alarmActive: boolean;
   mode: AntiTheftMode;
+  delaySeconds: number;
 };
 
 export type ChargingAlarmStatus = {
