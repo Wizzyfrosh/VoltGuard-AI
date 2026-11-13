@@ -265,11 +265,15 @@ class VoltGuardBatteryMonitorService : Service() {
       } catch (_: IllegalArgumentException) {
         return@Runnable
       }
-      currentPrefs.edit()
+      val persisted = currentPrefs.edit()
         .putBoolean(KEY_ANTI_THEFT_ENABLED, confirmedState.armed)
         .putBoolean(KEY_ANTI_THEFT_BASELINE, confirmedState.baselineConnected)
         .putBoolean(KEY_ANTI_THEFT_ALARM, confirmedState.alarmActive)
         .commit()
+      if (!persisted) {
+        Log.e("VoltGuardMonitor", "Could not persist confirmed Anti-Theft disconnect; alarm not activated")
+        return@Runnable
+      }
       VoltGuardBatteryNotifications.postAntiTheftAlarm(this, currentState.mode)
       startAlarmSound()
       updateForegroundNotification()
