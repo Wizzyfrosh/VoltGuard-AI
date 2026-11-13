@@ -10,8 +10,8 @@ import { hasUsageAccess, openUsageAccessSettings } from '../modules/voltguard-ba
 export default function PermissionCenterScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [notificationGranted, setNotificationGranted] = useState(false);
-  const [usageGranted, setUsageGranted] = useState(false);
+  const [notificationGranted, setNotificationGranted] = useState<boolean | null>(null);
+  const [usageGranted, setUsageGranted] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -35,7 +35,11 @@ export default function PermissionCenterScreen() {
         setUsageGranted(false);
       }
     } catch {
-      if (isActive()) setStatusError('Could not read one or more permission states. Refresh or check your device settings.');
+      if (isActive()) {
+        setNotificationGranted(null);
+        if (Platform.OS === 'android') setUsageGranted(null);
+        setStatusError('Could not read one or more permission states. Refresh or check your device settings.');
+      }
     } finally {
       if (isActive()) {
         setLoading(false);
@@ -58,6 +62,7 @@ export default function PermissionCenterScreen() {
       const next = current.granted ? current : await Notifications.requestPermissionsAsync();
       setNotificationGranted(next.granted);
     } catch {
+      setNotificationGranted(null);
       setStatusError('Notification permission request failed. Check device settings and try again.');
     } finally {
       await refresh();
@@ -66,11 +71,13 @@ export default function PermissionCenterScreen() {
 
   const openUsage = () => {
     if (Platform.OS !== 'android') return;
-    try { openUsageAccessSettings(); } catch { /* User can retry with refresh. */ }
+    try { openUsageAccessSettings(); } catch {
+      setStatusError('Could not open Android Usage Access settings. Open Settings manually and refresh this screen.');
+    }
   };
 
   const PermissionRow = ({ icon: Icon, title, description, granted, action, actionLabel }: {
-    icon: typeof Bell; title: string; description: string; granted: boolean; action: () => void; actionLabel: string;
+    icon: typeof Bell; title: string; description: string; granted: boolean | null; action: () => void; actionLabel: string;
   }) => (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.row}>
@@ -81,7 +88,7 @@ export default function PermissionCenterScreen() {
         </View>
       </View>
       <View style={styles.actionRow}>
-        <Text style={[styles.status, { color: granted ? colors.success : colors.textSecondary }]}>{granted ? 'Enabled' : 'Not enabled'}</Text>
+        <Text style={[styles.status, { color: granted === true ? colors.success : colors.textSecondary }]}>{granted === true ? 'Enabled' : granted === false ? 'Not enabled' : 'Status unavailable'}</Text>
         <Pressable onPress={action} accessibilityRole="button" style={[styles.button, { borderColor: colors.primary }]}>
           <Text style={[styles.buttonText, { color: colors.primary }]}>{actionLabel}</Text>
           <ChevronRight size={15} color={colors.primary} />
