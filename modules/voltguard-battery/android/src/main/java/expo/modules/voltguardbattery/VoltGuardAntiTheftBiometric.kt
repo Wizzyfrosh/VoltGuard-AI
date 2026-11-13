@@ -3,8 +3,6 @@ package expo.modules.voltguardbattery
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
-import android.os.CancellationSignal
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -26,7 +24,9 @@ object VoltGuardAntiTheftBiometric {
   suspend fun authenticate(activity: FragmentActivity): Boolean {
     require(isAvailable(activity)) { "Strong biometric authentication is not available on this device." }
     return suspendCancellableCoroutine { continuation ->
-      val executor: Executor = activity.mainExecutor
+      // Avoid Activity.mainExecutor (API 28+) so the native module remains compatible
+      // with the app's lower Android minSdk versions.
+      val executor: Executor = Executor { command -> Handler(Looper.getMainLooper()).post(command) }
       val prompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
           if (continuation.isActive) continuation.resume(true)
