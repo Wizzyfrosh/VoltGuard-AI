@@ -136,16 +136,28 @@ class VoltGuardBatteryMonitorService : Service() {
     }
 
     if (!started) {
-      // A rejected foreground-service restart must not erase the user's
-      // Anti-Theft configuration or falsely report that it was disarmed.
-      val antiTheftNeedsRestore = AntiTheftRestorePolicy.shouldReportAntiTheftRestoreFailure(
-        prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false),
-        prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
+      // A rejected first arm is not an active protection session. Recovery
+      // failures are different: preserve the user's previous armed/alarm
+      // intent so the UI can explain that recovery is needed.
+      val alarmActive = prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
+      val clearFailedInitialArm = AntiTheftRestorePolicy.shouldClearNewArmAfterStartupFailure(
+        intent?.action == ACTION_ANTI_THEFT_START,
+        alarmActive
       )
-      prefs.edit()
+      val antiTheftWasArmed = prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false)
+      val antiTheftNeedsRestore = AntiTheftRestorePolicy.shouldReportAntiTheftRestoreFailure(
+        antiTheftWasArmed && !clearFailedInitialArm,
+        alarmActive
+      )
+      val failureEditor = prefs.edit()
         .putBoolean(KEY_ENABLED, false)
         .putBoolean("anti_theft_restore_failed", antiTheftNeedsRestore)
-        .apply()
+      if (clearFailedInitialArm) {
+        failureEditor
+          .putBoolean(KEY_ANTI_THEFT_ENABLED, false)
+          .putBoolean(KEY_ANTI_THEFT_BASELINE, false)
+      }
+      failureEditor.commit()
       stopMonitoring()
       if (!prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
         VoltGuardBatteryNotifications.clearAntiTheftAlarm(this)
