@@ -18,14 +18,14 @@
 - Added Phase G push and pull-request CI triggers.
 
 ## Required engineering work still open
-- Add automated tests for One-Time and Always state transitions, delay cancellation, process recreation and PIN lockout. Current mode behavior is implemented but not verified by tests.
+- Added a pure charger-state machine and JVM JUnit tests covering unarmed events, baseline connection, One-Time/Always disconnect transitions, reconnect state, active alarm suppression, and invalid transitions. Delay scheduling/cancellation, process recreation and PIN lockout still need dedicated tests.
 - Add AndroidX BiometricPrompt only after the host Activity/dependency setup is verified. The current repository does not expose a configured biometric dependency or app Android host project in source; do not ship a UI-only or simulated biometric fallback.
 - Make alarm playback lifecycle robust across process/service recreation; evaluate audio focus, asynchronous media preparation and wake behaviour on real Android hardware.
 - Add time-bounded camera flash after runtime permission and hardware capability handling are implemented. Camera permission is intentionally not requested yet.
 - Add biometric unlock with PIN fallback after AndroidX BiometricPrompt integration and host Activity lifecycle validation.
 - Add unit/state-machine tests for charger transitions, repeated broadcasts, mode semantics, lockout, alarm persistence, and reboot restoration.
 - Validate manifest/foreground-service policy and notification permission/channel readiness.
-- Run TypeScript, unit tests, lint, Expo export, and Android Kotlin compile against the exact branch head. A Vercel pending status is not a substitute for GitHub Actions validation.
+- Run TypeScript, unit tests, lint, Expo export, Android JVM unit tests and Android Kotlin compile against the exact branch head. A Vercel pending status is not a substitute for GitHub Actions validation.
 - Perform physical Android testing for plug/unplug, screen off, notification denial, sound/DND, service process recreation, reboot, OEM battery management, and PIN lockout.
 
 ## Security and platform constraints
