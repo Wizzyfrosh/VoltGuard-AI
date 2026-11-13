@@ -35,7 +35,7 @@
 - The PIN is not stored in plaintext. The verifier is encrypted using an Android Keystore AES-GCM key; device credential/key invalidation requires a safe recovery/reset flow before release.
 - PIN derivation and verification run off the UI thread.
 - Do not claim theft-proof protection. Android force-stop, power-off, battery restrictions, OS policy, notification denial, or hardware/OEM behaviour can interrupt monitoring or sound. A failed boot/service restart is surfaced to the user; preserving settings does not mean Android is currently monitoring.
-- No biometric API is exposed yet. Do not advertise biometrics until implemented and tested.
+- Strong-biometric disarming is exposed through AndroidX BiometricPrompt when the current host is a FragmentActivity; the Anti-Theft PIN remains available as fallback. Do not mark biometrics release-ready until prompt lifecycle and device compatibility are physically tested.
 - Trigger delay, optional flash and vibration are implemented. User-selectable alarm sound remains out of scope for this phase.
 - One-Time mode must arm for the next detected connected charging session and disarm after its disconnect alarm. Always mode must remain armed until PIN-confirmed manual disarm.
 
