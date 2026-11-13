@@ -16,6 +16,9 @@ import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
 import android.media.MediaPlayer
+import android.media.AudioManager
+import android.media.AudioFocusRequest
+import android.os.PowerManager
 import android.media.RingtoneManager
 import android.media.AudioAttributes
 import android.util.Log
@@ -56,6 +59,8 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private var receiverRegistered = false
   private var alarmPlayer: MediaPlayer? = null
+  private var audioManager: AudioManager? = null
+  private var audioFocusRequest: AudioFocusRequest? = null
   private val mainHandler = Handler(Looper.getMainLooper())
   private var pendingDisconnect: Runnable? = null
 
@@ -268,23 +273,62 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun startAlarmSound() {
-    if (alarmPlayer?.isPlaying == true) return
+    if (alarmPlayer != null) return
     stopAlarmSound()
     try {
       val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: return
-      alarmPlayer = MediaPlayer().apply {
-        setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
-          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-        setDataSource(this@VoltGuardBatteryMonitorService, uri)
-        isLooping = true
-        setOnErrorListener { player, _, _ ->
-          try { player.release() } catch (_: Exception) {}
-          if (alarmPlayer === player) alarmPlayer = null
-          true
+      val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+      audioManager = manager
+      val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        if (change == AudioManager.AUDIOFOCUS_LOSS) {
+          // Do not silently continue competing with another app after permanent
+          // focus loss. The persistent alarm notification remains visible.
+          stopAlarmSound()
         }
-        prepare()
-        start()
       }
+      val focusGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+          .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+          .setOnAudioFocusChangeListener(focusListener)
+          .setWillPauseWhenDucked(false)
+          .build()
+        audioFocusRequest = request
+        manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+      } else {
+        @Suppress("DEPRECATION")
+        manager.requestAudioFocus(focusListener, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+      }
+      if (!focusGranted) {
+        Log.w("VoltGuardMonitor", "Android did not grant alarm audio focus")
+        return
+      }
+
+      val player = MediaPlayer()
+      alarmPlayer = player
+      player.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+      player.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK)
+      player.isLooping = true
+      player.setOnPreparedListener { prepared ->
+        val alarmStillActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+          .getBoolean(KEY_ANTI_THEFT_ALARM, false)
+        if (alarmStillActive && alarmPlayer === prepared) {
+          try { prepared.start() } catch (error: Exception) {
+            Log.w("VoltGuardMonitor", "Anti-Theft alarm playback could not start", error)
+            stopAlarmSound()
+          }
+        } else {
+          stopAlarmSound()
+        }
+      }
+      player.setOnErrorListener { failed, what, extra ->
+        Log.e("VoltGuardMonitor", "Anti-Theft MediaPlayer error: $what/$extra")
+        if (alarmPlayer === failed) stopAlarmSound()
+        true
+      }
+      player.setDataSource(this, uri)
+      player.prepareAsync()
     } catch (error: Exception) {
       Log.w("VoltGuardMonitor", "Anti-Theft alarm audio could not start", error)
       stopAlarmSound()
@@ -294,8 +338,21 @@ class VoltGuardBatteryMonitorService : Service() {
   private fun stopAlarmSound() {
     val player = alarmPlayer
     alarmPlayer = null
+    try { player?.setOnPreparedListener(null) } catch (_: Exception) {}
+    try { player?.setOnErrorListener(null) } catch (_: Exception) {}
     try { player?.stop() } catch (_: Exception) {}
     try { player?.release() } catch (_: Exception) {}
+    val manager = audioManager
+    audioManager = null
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      audioFocusRequest?.let { request ->
+        try { manager?.abandonAudioFocusRequest(request) } catch (_: Exception) {}
+      }
+      audioFocusRequest = null
+    } else if (manager != null) {
+      @Suppress("DEPRECATION")
+      try { manager.abandonAudioFocus(null) } catch (_: Exception) {}
+    }
   }
 
   private fun stopIfIdle() {
