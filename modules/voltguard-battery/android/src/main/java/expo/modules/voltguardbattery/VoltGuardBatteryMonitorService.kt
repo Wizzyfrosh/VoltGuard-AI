@@ -13,6 +13,8 @@ import android.content.pm.ServiceInfo
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.AudioAttributes
@@ -35,6 +37,7 @@ class VoltGuardBatteryMonitorService : Service() {
     private const val KEY_ANTI_THEFT_MODE = "anti_theft_mode"
     private const val KEY_ANTI_THEFT_BASELINE = "anti_theft_baseline_connected"
     private const val KEY_ANTI_THEFT_ALARM = "anti_theft_alarm_active"
+    private const val KEY_ANTI_THEFT_DELAY_SECONDS = "anti_theft_delay_seconds"
     private const val SERVICE_CHANNEL = VoltGuardBatteryNotifications.SERVICE_CHANNEL_ID
     private const val SERVICE_NOTIFICATION_ID = 7411
 
@@ -53,6 +56,8 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private var receiverRegistered = false
   private var alarmPlayer: MediaPlayer? = null
+  private val mainHandler = Handler(Looper.getMainLooper())
+  private var pendingDisconnect: Runnable? = null
 
   private val batteryReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -211,22 +216,55 @@ class VoltGuardBatteryMonitorService : Service() {
 
   private fun evaluateAntiTheft(intent: Intent) {
     val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    if (!prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false)) return
-    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
-    val baseline = prefs.getBoolean(KEY_ANTI_THEFT_BASELINE, false)
-    if (!baseline) {
-      if (plugged) prefs.edit().putBoolean(KEY_ANTI_THEFT_BASELINE, true).apply()
+    if (!prefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false)) {
+      cancelPendingDisconnect()
       return
     }
-    if (!plugged && !prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)) {
-      val mode = prefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time"
-      val editor = prefs.edit().putBoolean(KEY_ANTI_THEFT_ALARM, true)
+    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+    val baseline = prefs.getBoolean(KEY_ANTI_THEFT_BASELINE, false)
+    if (plugged) {
+      cancelPendingDisconnect()
+      if (!baseline) prefs.edit().putBoolean(KEY_ANTI_THEFT_BASELINE, true).apply()
+      return
+    }
+    if (!baseline || prefs.getBoolean(KEY_ANTI_THEFT_ALARM, false) || pendingDisconnect != null) return
+
+    val delaySeconds = prefs.getInt(KEY_ANTI_THEFT_DELAY_SECONDS, 5).coerceIn(0, 30)
+    val disconnectCheck = Runnable {
+      pendingDisconnect = null
+      val latest = try {
+        @Suppress("DEPRECATION")
+        registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+      } catch (_: Exception) { null }
+      val stillUnplugged = latest != null &&
+        latest.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) == 0
+      val currentPrefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      if (!stillUnplugged ||
+        !currentPrefs.getBoolean(KEY_ANTI_THEFT_ENABLED, false) ||
+        currentPrefs.getBoolean(KEY_ANTI_THEFT_ALARM, false)
+      ) return@Runnable
+
+      val mode = currentPrefs.getString(KEY_ANTI_THEFT_MODE, "one_time") ?: "one_time"
+      val editor = currentPrefs.edit().putBoolean(KEY_ANTI_THEFT_ALARM, true)
       if (mode == "one_time") editor.putBoolean(KEY_ANTI_THEFT_ENABLED, false)
       else editor.putBoolean(KEY_ANTI_THEFT_BASELINE, false)
       editor.apply()
       VoltGuardBatteryNotifications.postAntiTheftAlarm(this, mode)
       startAlarmSound()
+      updateForegroundNotification()
     }
+    pendingDisconnect = disconnectCheck
+    mainHandler.postDelayed(disconnectCheck, delaySeconds * 1000L)
+  }
+
+  private fun cancelPendingDisconnect() {
+    pendingDisconnect?.let(mainHandler::removeCallbacks)
+    pendingDisconnect = null
+  }
+
+  private fun updateForegroundNotification() {
+    val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    manager.notify(SERVICE_NOTIFICATION_ID, buildServiceNotification())
   }
 
   private fun startAlarmSound() {
@@ -303,6 +341,7 @@ class VoltGuardBatteryMonitorService : Service() {
   }
 
   private fun stopMonitoring() {
+    cancelPendingDisconnect()
     stopAlarmSound()
     if (receiverRegistered) {
       try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
@@ -317,6 +356,7 @@ class VoltGuardBatteryMonitorService : Service() {
       try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
       receiverRegistered = false
     }
+    cancelPendingDisconnect()
     stopAlarmSound()
     super.onDestroy()
   }
