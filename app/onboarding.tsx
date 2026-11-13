@@ -70,11 +70,21 @@ export default function OnboardingScreen() {
           setNotificationState(result.granted ? 'granted' : 'denied');
           setNotificationCanAskAgain(result.canAskAgain);
         }
-      }).catch(() => { if (active) setNotificationState('unknown'); });
+      }).catch(() => {
+        if (active) {
+          setNotificationState('unknown');
+          setPermissionError('Notification permission status could not be read. Retry or continue without notifications.');
+        }
+      });
     }
     if (Platform.OS === 'android') {
       void hasUsageAccess().then((granted) => { if (active) setUsageState(granted ? 'granted' : 'not-granted'); })
-        .catch(() => { if (active) setUsageState('unknown'); });
+        .catch(() => {
+          if (active) {
+            setUsageState('unknown');
+            setPermissionError('Usage Access status could not be read. Retry or continue without it.');
+          }
+        });
     }
     return () => { active = false; };
   }, []));
@@ -89,7 +99,12 @@ export default function OnboardingScreen() {
 
   const openUsageSettings = () => {
     if (Platform.OS !== 'android') return;
-    try { openUsageAccessSettings(); } catch { setPermissionError('Could not open Android Usage Access settings. Open Settings manually and try again.'); }
+    try {
+      const opened = openUsageAccessSettings();
+      if (!opened) setPermissionError('Android could not open Usage Access settings. Open Settings manually and retry.');
+    } catch {
+      setPermissionError('Could not open Android Usage Access settings. Open Settings manually and try again.');
+    }
   };
 
   return (
