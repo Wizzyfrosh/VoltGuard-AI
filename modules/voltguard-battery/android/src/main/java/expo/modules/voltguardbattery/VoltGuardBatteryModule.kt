@@ -181,6 +181,21 @@ class VoltGuardBatteryModule : Module() {
       true
     }
 
+    Function("setAntiTheftFlash") { enabled: Boolean ->
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
+      require(!prefs.getBoolean("anti_theft_alarm_active", false)) {
+        "Silence the active alarm before changing flash settings"
+      }
+      if (enabled) {
+        require(VoltGuardAntiTheftFlash.isAvailable(context)) { "This device does not have a supported rear camera flash" }
+      }
+      prefs.edit().putBoolean("anti_theft_flash_enabled", enabled).commit().also {
+        check(it) { "Could not save Anti-Theft flash preference" }
+      }
+      true
+    }
+
     Function("setAntiTheftVibration") { enabled: Boolean ->
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       val prefs = context.getSharedPreferences("voltguard_battery_monitor", Context.MODE_PRIVATE)
@@ -214,6 +229,8 @@ class VoltGuardBatteryModule : Module() {
         "mode" to prefs.getString("anti_theft_mode", "one_time"),
         "delaySeconds" to prefs.getInt("anti_theft_delay_seconds", 5),
         "vibrationEnabled" to prefs.getBoolean("anti_theft_vibration_enabled", true),
+        "flashEnabled" to prefs.getBoolean("anti_theft_flash_enabled", false),
+        "flashAvailable" to VoltGuardAntiTheftFlash.isAvailable(context),
         "vibrationAvailable" to try {
           val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
