@@ -26,8 +26,6 @@ object VoltGuardAntiTheftSecurity {
   private const val KEY_ALIAS = "voltguard_anti_theft_pin_v1"
   private const val ITERATIONS = 210_000
   private const val KEY_BITS = 256
-  private const val MAX_ATTEMPTS = 5
-  private const val LOCKOUT_MS = 60_000L
 
   fun hasPin(context: Context): Boolean =
     context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_PIN_RECORD)
@@ -56,8 +54,12 @@ object VoltGuardAntiTheftSecurity {
     require(pin.matches(Regex("^[0-9]{6,12}$"))) { "PIN must contain 6 to 12 digits" }
     val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     val record = prefs.getString(KEY_PIN_RECORD, null) ?: return false
-    val lockedUntil = prefs.getLong(KEY_LOCKED_UNTIL, 0L)
-    if (System.currentTimeMillis() < lockedUntil) {
+    val now = System.currentTimeMillis()
+    val lockoutState = AntiTheftLockoutState(
+      failedAttempts = prefs.getInt(KEY_FAILED_ATTEMPTS, 0),
+      lockedUntilEpochMs = prefs.getLong(KEY_LOCKED_UNTIL, 0L)
+    )
+    if (AntiTheftPinLockout.isLocked(lockoutState, now)) {
       throw IllegalStateException("Too many incorrect PIN attempts. Try again later.")
     }
 
@@ -75,19 +77,19 @@ object VoltGuardAntiTheftSecurity {
     }
 
     if (valid) {
-      check(prefs.edit().remove(KEY_FAILED_ATTEMPTS).remove(KEY_LOCKED_UNTIL).commit()) {
-        "Could not persist Anti-Theft security state"
-      }
+      val cleared = AntiTheftPinLockout.clear()
+      check(prefs.edit()
+        .putInt(KEY_FAILED_ATTEMPTS, cleared.failedAttempts)
+        .putLong(KEY_LOCKED_UNTIL, cleared.lockedUntilEpochMs)
+        .commit()) { "Could not persist Anti-Theft security state" }
       return true
     }
 
-    val attempts = prefs.getInt(KEY_FAILED_ATTEMPTS, 0) + 1
-    val editor = prefs.edit().putInt(KEY_FAILED_ATTEMPTS, attempts)
-    if (attempts >= MAX_ATTEMPTS) {
-      editor.putLong(KEY_LOCKED_UNTIL, System.currentTimeMillis() + LOCKOUT_MS)
-        .putInt(KEY_FAILED_ATTEMPTS, 0)
-    }
-    check(editor.commit()) { "Could not persist Anti-Theft lockout state" }
+    val failed = AntiTheftPinLockout.recordFailure(lockoutState, now)
+    check(prefs.edit()
+      .putInt(KEY_FAILED_ATTEMPTS, failed.state.failedAttempts)
+      .putLong(KEY_LOCKED_UNTIL, failed.state.lockedUntilEpochMs)
+      .commit()) { "Could not persist Anti-Theft lockout state" }
     return false
   }
 
