@@ -102,10 +102,10 @@ export async function deleteBatterySamplesBefore(isoTimestamp: string): Promise<
     throw new Error('A valid ISO timestamp is required.');
   }
   const database = await getBatteryDatabase();
-  const result = await database.runAsync(
+  const result = await runBatteryHistoryMutation(() => database.runAsync(
     'DELETE FROM battery_samples WHERE observed_at < ?',
     isoTimestamp,
-  );
+  ));
 
   return result.changes;
 }
