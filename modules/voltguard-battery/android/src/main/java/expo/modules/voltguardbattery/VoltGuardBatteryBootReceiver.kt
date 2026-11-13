@@ -25,12 +25,14 @@ class VoltGuardBatteryBootReceiver : BroadcastReceiver() {
     } catch (error: Exception) {
       // A denied boot restart must not leave the UI claiming that monitoring
       // is enabled when no service could be started.
+      // Preserve Anti-Theft intent and active-alarm state. A transient
+      // boot-time restriction must not silently erase the user's protection
+      // configuration; expose the failed restore so the app can explain it.
       preferences.edit()
         .putBoolean("enabled", false)
-        .putBoolean("anti_theft_enabled", false)
-        .putBoolean("anti_theft_alarm_active", false)
+        .putBoolean("anti_theft_restore_failed", antiTheftEnabled || alarmActive)
         .apply()
-      Log.w("VoltGuardMonitor", "Android/OEM policy denied automatic monitor restart", error)
+      Log.w("VoltGuardMonitor", "Android/OEM policy denied automatic monitor restart; Anti-Theft state preserved", error)
     }
   }
 }
