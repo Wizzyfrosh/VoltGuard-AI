@@ -483,3 +483,28 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] Test toggling history off while a refresh is in progress; verify deletion remains effective and history stays disabled.
 - [ ] Verify clear-history confirmation and subsequent refresh on a physical Android device.
 - [ ] Verify background session transition accuracy on physical hardware; foreground observation limits remain.
+
+
+## Phase 10 — Alert and reminder reliability — 2026-11-11
+
+**Branch:** `phase-10-alert-reliability`
+
+### Implemented
+- [x] Serialized battery-care reminder updates to prevent overlapping enable/disable/time changes from racing.
+- [x] Each update reads the latest persisted settings from inside the serialized queue.
+- [x] Replacements are scheduled before the old notification is cancelled; failed persistence cancels the replacement and preserves the previous reminder.
+- [x] Settings state updates are guarded after screen unmount.
+- [x] Added Phase 10 branch to push CI and enabled pull-request validation against the stabilization branch.
+
+### Validation gates
+- [ ] Latest TypeScript, tests, lint and web export pass on the latest Phase 10 commit.
+- [ ] Android native compile passes on the same commit.
+- [ ] Verify rapid reminder time changes, enable/disable races, failed permission requests and persisted notification IDs on a physical device.
+- [ ] Verify Android charging alarm sound/channel state using the Settings test action. Android channel sound and importance are user-controlled after channel creation.
+- [ ] Confirm actual threshold crossing once per charging session, disconnect/reconnect reset, notification denial recovery and service restart behavior on physical hardware.
+
+### Limitations
+- Local notifications are subject to Android/iOS notification permissions, channel settings, Do Not Disturb/Focus and device power policies.
+- Web cannot reliably deliver a scheduled reminder while the browser is closed.
+- The threshold alert is a notification with alarm-style sound/vibration, not a guaranteed continuous/full-screen alarm and cannot stop charging.
+- No CSV/JSON export or cloud battery-history upload is in scope.

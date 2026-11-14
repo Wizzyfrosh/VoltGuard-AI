@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { getBatteryPreference, setBatteryPreference } from './battery.database';
@@ -66,73 +66,104 @@ export function useBatteryCareReminder() {
   const [time, setTime] = useState(DEFAULT_TIME);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const mutationQueue = useRef<Promise<void>>(Promise.resolve());
+
+  const enqueueMutation = useCallback(<T,>(operation: () => Promise<T>): Promise<T> => {
+    const result = mutationQueue.current.then(operation, operation);
+    mutationQueue.current = result.then(() => undefined, () => undefined);
+    return result;
+  }, []);
 
   useEffect(() => {
-    let active = true;
+    mountedRef.current = true;
     void getBatteryPreference(PREFERENCE_KEY)
       .then((value) => {
-        if (!active) return;
+        if (!mountedRef.current) return;
         const saved = parseSettings(value);
         setEnabled(saved.enabled);
         setTime(saved.time);
       })
       .catch((reason) => {
-        if (active) setError(reason instanceof Error ? reason.message : 'Could not load reminder settings.');
+        if (mountedRef.current) setError(reason instanceof Error ? reason.message : 'Could not load reminder settings.');
       })
-      .finally(() => { if (active) setIsLoading(false); });
-    return () => { active = false; };
+      .finally(() => { if (mountedRef.current) setIsLoading(false); });
+    return () => { mountedRef.current = false; };
   }, []);
 
-  const update = useCallback(async (nextEnabled: boolean, nextTime = time) => {
+  const updateEnabled = useCallback((nextEnabled: boolean) => enqueueMutation(async () => {
     if (Platform.OS === 'web') {
-      setError('Scheduled reminders while the browser is closed are not supported on web. Use the Android or iOS app.');
+      if (mountedRef.current) setError('Scheduled reminders while the browser is closed are not supported on web. Use the Android or iOS app.');
       return false;
     }
-    setError(null);
+    if (mountedRef.current) setError(null);
     try {
       const stored = parseSettings(await getBatteryPreference(PREFERENCE_KEY));
-      // Schedule the replacement before cancelling the existing reminder. If
-      // scheduling fails, the user's previous reminder remains active.
-      const notificationId = nextEnabled ? await scheduleReminder(nextTime) : null;
+      const scheduledId = nextEnabled ? await scheduleReminder(stored.time) : null;
+      // Create the replacement first. If scheduling or persistence fails, the
+      // currently active reminder remains intact.
       try {
         await setBatteryPreference(PREFERENCE_KEY, JSON.stringify({
           enabled: nextEnabled,
-          time: nextTime,
-          notificationId,
+          time: stored.time,
+          notificationId: scheduledId,
         }));
       } catch (persistError) {
-        if (notificationId) {
-          await Notifications.cancelScheduledNotificationAsync(notificationId).catch(() => undefined);
+        if (scheduledId) {
+          await Notifications.cancelScheduledNotificationAsync(scheduledId).catch(() => undefined);
         }
         throw persistError;
       }
-      if (stored.notificationId && stored.notificationId !== notificationId) {
+      if (stored.notificationId && stored.notificationId !== scheduledId) {
         await Notifications.cancelScheduledNotificationAsync(stored.notificationId).catch(() => undefined);
       }
-      setEnabled(nextEnabled);
-      setTime(nextTime);
+      if (mountedRef.current) {
+        setEnabled(nextEnabled);
+        setTime(stored.time);
+      }
       return true;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not update the battery-care reminder.');
+      if (mountedRef.current) setError(reason instanceof Error ? reason.message : 'Could not update the battery-care reminder.');
       return false;
     }
-  }, [time]);
+  }), [enqueueMutation]);
 
-  const updateTime = useCallback(async (nextTime: string) => {
+  const updateTime = useCallback((nextTime: string) => enqueueMutation(async () => {
     if (!AVAILABLE_TIMES.includes(nextTime as typeof AVAILABLE_TIMES[number])) return false;
-    if (!enabled) {
-      setTime(nextTime);
-      try {
-        const stored = parseSettings(await getBatteryPreference(PREFERENCE_KEY));
-        await setBatteryPreference(PREFERENCE_KEY, JSON.stringify({ ...stored, time: nextTime }));
-        return true;
-      } catch (reason) {
-        setError(reason instanceof Error ? reason.message : 'Could not save reminder time.');
-        return false;
-      }
+    if (Platform.OS === 'web') {
+      if (mountedRef.current) setError('Scheduled reminders while the browser is closed are not supported on web. Use the Android or iOS app.');
+      return false;
     }
-    return update(true, nextTime);
-  }, [enabled, update]);
+    if (mountedRef.current) setError(null);
+    let replacementId: string | null = null;
+    try {
+      const stored = parseSettings(await getBatteryPreference(PREFERENCE_KEY));
+      if (stored.enabled) replacementId = await scheduleReminder(nextTime);
+      try {
+        await setBatteryPreference(PREFERENCE_KEY, JSON.stringify({
+          enabled: stored.enabled,
+          time: nextTime,
+          notificationId: stored.enabled ? replacementId : stored.notificationId,
+        }));
+      } catch (persistError) {
+        if (replacementId) {
+          await Notifications.cancelScheduledNotificationAsync(replacementId).catch(() => undefined);
+        }
+        throw persistError;
+      }
+      if (stored.enabled && stored.notificationId && stored.notificationId !== replacementId) {
+        await Notifications.cancelScheduledNotificationAsync(stored.notificationId).catch(() => undefined);
+      }
+      if (mountedRef.current) {
+        setTime(nextTime);
+        setEnabled(stored.enabled);
+      }
+      return true;
+    } catch (reason) {
+      if (mountedRef.current) setError(reason instanceof Error ? reason.message : 'Could not update the reminder time.');
+      return false;
+    }
+  }), [enqueueMutation]);
 
-  return { enabled, time, isLoading, error, updateEnabled: (value: boolean) => update(value), updateTime };
+  return { enabled, time, isLoading, error, updateEnabled, updateTime };
 }
