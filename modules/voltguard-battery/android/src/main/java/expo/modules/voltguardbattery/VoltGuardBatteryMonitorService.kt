@@ -160,7 +160,7 @@ class VoltGuardBatteryMonitorService : Service() {
       Notification.Builder(this)
     }
     return builder
-      .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
+      .setSmallIcon(R.drawable.ic_voltguard_notification)
       .setContentTitle("VoltGuard is monitoring your battery")
       .setContentText("Alert at ${getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THRESHOLD, 80)}% while charging")
       .setContentIntent(pendingIntent)

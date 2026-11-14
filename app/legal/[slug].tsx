@@ -1,0 +1,98 @@
+import React from 'react';
+import { ScrollView, Text, StyleSheet } from 'react-native';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../src/context/ThemeContext';
+
+type Section = { heading: string; paragraphs: string[] };
+const documents: Record<string, { title: string; sections: Section[] }> = {
+  privacy: {
+    title: 'Privacy Policy',
+    sections: [
+      { heading: 'Information handled by VoltGuard', paragraphs: [
+        'VoltGuard reads battery and device information exposed by your operating system so it can display battery status, charging state and supported diagnostics.',
+        'If you enable battery history, supported readings and charging-session records are stored locally on your device. You can turn history off and clear saved records in Settings.',
+        'If you enable Android app-usage insights, Android Usage Access is used to read app foreground-time information. This is not a measurement of an app’s battery energy use.',
+        'Notification preferences and scheduled reminder identifiers are stored locally so your selected alerts can work.'
+      ]},
+      { heading: 'Permissions and choices', paragraphs: [
+        'You control optional battery history, app-usage access and notifications through the app and your device settings. Revoking a permission can disable the related feature.',
+        'VoltGuard does not need an account to provide its local battery-monitoring features.'
+      ]},
+      { heading: 'Storage and retention', paragraphs: [
+        'Battery history is designed for local storage with a limited retention window. Clearing history removes saved samples and charging-session records. App preferences may remain so your settings are preserved.',
+        'Device and Android versions may expose different diagnostic fields. Unsupported readings are not replaced with invented values.'
+      ]},
+      { heading: 'Policy updates', paragraphs: [
+        'This policy applies to the version of VoltGuard distributed with it. If the app’s data practices change, this policy should be updated before those changes are released.'
+      ]}
+    ]
+  },
+  permissions: {
+    title: 'Permissions & Data Use',
+    sections: [
+      { heading: 'Notifications', paragraphs: ['Used for charging-target alerts and battery-care reminders that you enable. You can manage notification permission and channel settings in your device settings.'] },
+      { heading: 'Background operation', paragraphs: ['Android foreground-service access is used only while the charging-target monitor is enabled. Android displays an ongoing notification while that service runs.'] },
+      { heading: 'Usage Access (Android)', paragraphs: ['Optional access provides app foreground-time information for the usage insights screen. It does not provide reliable per-app battery energy measurements. You can revoke this access at any time in Android Settings.'] },
+      { heading: 'Battery and device readings', paragraphs: ['The app reads battery status and supported hardware diagnostics provided by the operating system. Availability varies by device and operating-system version.'] }
+    ]
+  },
+  terms: {
+    title: 'Terms of Use',
+    sections: [
+      { heading: 'Using VoltGuard', paragraphs: ['VoltGuard provides battery status, charging notifications and device information for general informational purposes. Use the app in accordance with your device manufacturer’s guidance and applicable law.'] },
+      { heading: 'No charging control', paragraphs: ['Charging-target alerts are reminders. VoltGuard does not disconnect power, stop charging or replace built-in battery protection.'] },
+      { heading: 'Accuracy and availability', paragraphs: ['Diagnostic availability and accuracy depend on information exposed by your device and operating system. Do not rely on the app as the sole basis for safety-critical decisions.'] },
+      { heading: 'Changes', paragraphs: ['You are responsible for using VoltGuard in accordance with applicable law and the terms that apply to your device and app distribution platform.'] }
+    ]
+  },
+  about: {
+    title: 'About VoltGuard AI',
+    sections: [
+      { heading: 'VoltGuard AI', paragraphs: ['Battery monitoring and battery-care insights for supported Android, iOS and web environments.'] },
+      { heading: 'Product information', paragraphs: ['Version 1.0.0. Features and diagnostic availability vary by platform and device.'] },
+      { heading: 'Third-party software', paragraphs: ['VoltGuard includes third-party open-source software. Applicable licence notices accompany the software where required.'] }
+    ]
+  }
+};
+
+export default function LegalDocumentScreen() {
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const document = documents[slug ?? ''];
+  if (!document) {
+    return (
+      <>
+        <Stack.Screen options={{ title: 'Document unavailable', headerShown: true }} />
+        <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={[styles.content, { paddingTop: 18, paddingBottom: insets.bottom + 28 }]}>
+          <Text style={[styles.title, { color: colors.text }]}>Document unavailable</Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>The requested document could not be found.</Text>
+        </ScrollView>
+      </>
+    );
+  }
+  return (
+    <>
+      <Stack.Screen options={{ title: document.title, headerShown: true }} />
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={[styles.content, { paddingTop: 18, paddingBottom: insets.bottom + 28 }]}>
+        <Text style={[styles.title, { color: colors.text }]}>{document.title}</Text>
+        {document.sections.map(section => (
+          <React.Fragment key={section.heading}>
+            <Text style={[styles.heading, { color: colors.text }]}>{section.heading}</Text>
+            {section.paragraphs.map((paragraph, index) => (
+              <Text key={index} style={[styles.paragraph, { color: colors.textSecondary }]}>{paragraph}</Text>
+            ))}
+          </React.Fragment>
+        ))}
+      </ScrollView>
+    </>
+  );
+}
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: 20, gap: 12 },
+  title: { fontSize: 23, fontWeight: '800', marginBottom: 6 },
+  heading: { fontSize: 15, fontWeight: '700', marginTop: 8 },
+  paragraph: { fontSize: 13, lineHeight: 20 },
+});
