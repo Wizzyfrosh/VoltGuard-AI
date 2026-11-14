@@ -24,7 +24,7 @@ const documents: Record<string, { title: string; sections: Section[] }> = {
         'Device and Android versions may expose different diagnostic fields. Unsupported readings are not replaced with invented values.'
       ]},
       { heading: 'Policy updates', paragraphs: [
-        'This policy must be reviewed whenever data collection, analytics, network services or third-party SDKs change. The effective date should be published with the production release.'
+        'This policy applies to the version of VoltGuard distributed with it. If the app’s data practices change, this policy should be updated before those changes are released.'
       ]}
     ]
   },
@@ -43,7 +43,7 @@ const documents: Record<string, { title: string; sections: Section[] }> = {
       { heading: 'Using VoltGuard', paragraphs: ['VoltGuard provides battery status, charging notifications and device information for general informational purposes. Use the app in accordance with your device manufacturer’s guidance and applicable law.'] },
       { heading: 'No charging control', paragraphs: ['Charging-target alerts are reminders. VoltGuard does not disconnect power, stop charging or replace built-in battery protection.'] },
       { heading: 'Accuracy and availability', paragraphs: ['Diagnostic availability and accuracy depend on information exposed by your device and operating system. Do not rely on the app as the sole basis for safety-critical decisions.'] },
-      { heading: 'Changes', paragraphs: ['These terms must be reviewed and finalized with the publisher’s legal and support contact details before public distribution.'] }
+      { heading: 'Changes', paragraphs: ['You are responsible for using VoltGuard in accordance with applicable law and the terms that apply to your device and app distribution platform.'] }
     ]
   },
   about: {
@@ -51,7 +51,7 @@ const documents: Record<string, { title: string; sections: Section[] }> = {
     sections: [
       { heading: 'VoltGuard AI', paragraphs: ['Battery monitoring and battery-care insights for supported Android, iOS and web environments.'] },
       { heading: 'Product information', paragraphs: ['Version 1.0.0. Features and diagnostic availability vary by platform and device.'] },
-      { heading: 'Third-party software', paragraphs: ['VoltGuard uses open-source libraries. Their licence notices must be included with the distributed app build.'] }
+      { heading: 'Third-party software', paragraphs: ['VoltGuard includes third-party open-source software. Applicable licence notices accompany the software where required.'] }
     ]
   }
 };
@@ -60,7 +60,18 @@ export default function LegalDocumentScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const document = documents[slug ?? ''] ?? documents.privacy;
+  const document = documents[slug ?? ''];
+  if (!document) {
+    return (
+      <>
+        <Stack.Screen options={{ title: 'Document unavailable', headerShown: true }} />
+        <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={[styles.content, { paddingTop: 18, paddingBottom: insets.bottom + 28 }]}>
+          <Text style={[styles.title, { color: colors.text }]}>Document unavailable</Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>The requested document could not be found.</Text>
+        </ScrollView>
+      </>
+    );
+  }
   return (
     <>
       <Stack.Screen options={{ title: document.title, headerShown: true }} />
