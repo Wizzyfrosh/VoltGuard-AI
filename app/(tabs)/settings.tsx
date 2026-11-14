@@ -65,7 +65,7 @@ export default function SettingsScreen() {
               <Text style={[styles.body, { color: colors.textSecondary }]}>Save supported battery readings and charging sessions locally on this device.</Text>
             </View>
             {history.isLoading ? <ActivityIndicator color={colors.primary} /> : (
-              <Switch value={history.enabled} onValueChange={history.updateEnabled} disabled={!history.isAvailable}
+              <Switch value={history.enabled} onValueChange={value => { void history.updateEnabled(value); }} disabled={!history.isAvailable}
                 trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF"
                 accessibilityLabel="Enable battery history" />
             )}
@@ -99,7 +99,7 @@ export default function SettingsScreen() {
               <Text style={[styles.body, { color: colors.textSecondary }]}>Notify when your selected level is reached</Text>
             </View>
             {alerts.isLoading ? <ActivityIndicator color={colors.primary} /> : (
-              <Switch value={alerts.enabled} onValueChange={alerts.updateEnabled} disabled={!alerts.isAvailable}
+              <Switch value={alerts.enabled} onValueChange={value => { void alerts.updateEnabled(value); }} disabled={!alerts.isAvailable}
                 trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF"
                 accessibilityLabel="Enable charging target alert" />
             )}
@@ -190,6 +190,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 15, fontWeight: '700' },
   body: { fontSize: 13, lineHeight: 18 },
   caption: { fontSize: 12, lineHeight: 17 },
+  privacy: { fontSize: 12, lineHeight: 18 },
   thresholds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },
   inlinePanel: { borderWidth: 1, borderRadius: 12, padding: 11, gap: 8 },
