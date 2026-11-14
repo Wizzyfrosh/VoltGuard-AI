@@ -38,6 +38,6 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
-/android
+# Generated native project folders at the repository root only.
+/ios/
+/android/

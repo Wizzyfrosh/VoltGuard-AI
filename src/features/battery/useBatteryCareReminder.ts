@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { isNotificationPermissionGranted } from './notification-permissions';
 import { getBatteryPreference, setBatteryPreference } from './battery.database';
 
 const PREFERENCE_KEY = 'battery_care_reminder_v1';
@@ -29,8 +30,10 @@ function parseSettings(value: string | null): ReminderSettings {
 
 async function ensureNotificationPermission(): Promise<void> {
   const current = await Notifications.getPermissionsAsync();
-  const permission = current.granted ? current : await Notifications.requestPermissionsAsync();
-  if (!permission.granted) throw new Error('Notification permission is required for battery-care reminders.');
+  const permission = isNotificationPermissionGranted(current)
+    ? current
+    : await Notifications.requestPermissionsAsync();
+  if (!isNotificationPermissionGranted(permission)) throw new Error('Notification permission is required for battery-care reminders.');
 }
 
 async function scheduleReminder(time: string): Promise<string> {

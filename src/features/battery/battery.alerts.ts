@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { isNotificationPermissionGranted } from './notification-permissions';
 import { getChargingAlarmStatus, sendTestChargingAlarm } from '../../../modules/voltguard-battery';
 
 
@@ -17,8 +18,10 @@ export async function requestBatteryAlertPermission(): Promise<boolean> {
     getChargingAlarmStatus();
   }
   const current = await Notifications.getPermissionsAsync();
-  const permission = current.granted ? current : await Notifications.requestPermissionsAsync();
-  if (!permission.granted) return false;
+  const permission = isNotificationPermissionGranted(current)
+    ? current
+    : await Notifications.requestPermissionsAsync();
+  if (!isNotificationPermissionGranted(permission)) return false;
   if (Platform.OS === 'android') {
     const status = getChargingAlarmStatus();
     if (!status?.alarmReady) {

@@ -1,0 +1,226 @@
+name: VoltGuard Expo SDK migration candidate
+
+on:
+  pull_request:
+    branches:
+      - phase-e/production-hardening
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voltguard-expo-sdk-migration
+  cancel-in-progress: false
+
+jobs:
+  staged-migration:
+    name: Baseline and staged SDK migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install locked baseline
+        run: npm ci
+
+      - name: Record baseline versions
+        run: |
+          mkdir -p migration-artifacts
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/baseline-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/baseline-audit.json || true
+
+      - name: Baseline application checks
+        run: |
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+
+      - name: Baseline Android native compile
+        run: |
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+
+      - name: Prepare SDK 55-compatible project metadata
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          delete root.dependencies['expo-av'];
+          delete root.dependencies['expo-modules-core'];
+          root.expo = root.expo || {};
+          root.expo.install = root.expo.install || {};
+          root.expo.install.exclude = [...new Set([...(root.expo.install.exclude || []), 'expo-modules-core'])];
+          root.expo.doctor = root.expo.doctor || {};
+          root.expo.doctor.reactNativeDirectoryCheck = root.expo.doctor.reactNativeDirectoryCheck || {};
+          const excluded = root.expo.doctor.reactNativeDirectoryCheck.exclude || [];
+          root.expo.doctor.reactNativeDirectoryCheck.exclude = [...new Set([...excluded, 'voltguard-battery'])];
+          fs.writeFileSync('package.json', JSON.stringify(root, null, 2) + '\n');
+
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          // SDK 55 / React Native 0.83 always uses the New Architecture;
+          // both flags are removed from the SDK 55 app-config schema.
+          delete app.expo.newArchEnabled;
+          delete app.expo.android.edgeToEdgeEnabled;
+          fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
+
+          const localModulePath = 'modules/voltguard-battery/package.json';
+          const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
+          localModule.peerDependencies = { expo: '*' };
+          delete localModule.devDependencies;
+          fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
+          NODE
+          npm install
+
+      - name: Upgrade to SDK 55 and validate
+        run: |
+          npx expo install expo@^55.0.0 --fix
+          npm install
+          node <<'NODE'
+          const fs = require('node:fs');
+          const root = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          // Keep expo-modules-core at the app root. Putting it in the local
+          // file dependency's devDependencies makes npm create
+          // modules/voltguard-battery/node_modules; Expo Doctor's
+          // modules/**/android/build.gradle glob then scans dependency modules
+          // under that directory and falsely reports them as gitignored.
+          const localModulePath = 'modules/voltguard-battery/package.json';
+          const localModule = JSON.parse(fs.readFileSync(localModulePath, 'utf8'));
+          delete localModule.devDependencies;
+          fs.writeFileSync(localModulePath, JSON.stringify(localModule, null, 2) + '\n');
+          root.devDependencies = root.devDependencies || {};
+          root.devDependencies['expo-modules-core'] = '~55.0.27';
+          fs.writeFileSync('package.json', JSON.stringify(root, null, 2) + '\n');
+          NODE
+          npm install
+          echo '--- Git ignore diagnostics for custom native module ---'
+          git check-ignore -v modules/voltguard-battery/android || true
+          git check-ignore -v modules/voltguard-battery/android/src || true
+          echo '--- Tracked native module files ---'
+          git ls-files modules/voltguard-battery/android
+          echo '--- Nested ignore files ---'
+          find modules -name .gitignore -print -exec cat {} \;
+          echo '--- Git status ---'
+          git status --short --ignored modules/voltguard-battery/android
+          npx expo-doctor
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk55-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk55-audit.json || true
+          cp package.json migration-artifacts/package-sdk55.json
+          cp package-lock.json migration-artifacts/package-lock-sdk55.json
+      - name: Upgrade to SDK 57 and validate
+        run: |
+          npx expo install expo@^57.0.17 --fix
+          npm install
+          echo '--- SDK 57 Git ignore diagnostics for custom native module ---'
+          git check-ignore --no-index -v modules/voltguard-battery/android || true
+          git check-ignore --no-index -v modules/voltguard-battery/android/src || true
+          git check-ignore --no-index -v modules/voltguard-battery/android/src/main || true
+          git check-ignore --no-index -v modules/voltguard-battery/android/build.gradle || true
+          git check-ignore -v modules/voltguard-battery/android/build.gradle || true
+          git check-ignore --no-index -v modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt || true
+          echo '--- Ignore files and exclude configuration ---'
+          for f in .gitignore .easignore modules/.gitignore modules/voltguard-battery/.gitignore modules/voltguard-battery/android/.gitignore; do
+            if [ -f "$f" ]; then
+              echo "--- $f ---"
+              cat "$f"
+            fi
+          done
+          echo '--- All ignore files discovered ---'
+          find . -name .easignore -print
+          find . -name .gitignore -print
+          echo '--- Git ignore exit codes ---'
+          for f in modules/voltguard-battery/android modules/voltguard-battery/android/build.gradle modules/voltguard-battery/android/src/main/java/expo/modules/voltguardbattery/VoltGuardBatteryModule.kt; do
+            if git check-ignore -q "$f"; then tracked_rc=0; else tracked_rc=$?; fi
+            echo "tracked-check $f exit=$tracked_rc"
+            if git check-ignore --no-index -q "$f"; then no_index_rc=0; else no_index_rc=$?; fi
+            echo "no-index-check $f exit=$no_index_rc"
+          done
+          echo '--- Expo Doctor ignore parser trace ---'
+          DEBUG=expo:doctor:ignore npx expo-doctor --verbose || true
+          git config --show-origin --get core.excludesfile || true
+          echo '--- Git metadata and exact module Gradle file ---'
+          git ls-files --stage modules/voltguard-battery/android/build.gradle
+          ls -la modules/voltguard-battery/android/build.gradle
+          git status --short --ignored modules/voltguard-battery
+          echo '--- SDK 57 tracked native module files ---'
+          git ls-files modules/voltguard-battery/android
+          echo '--- SDK 57 nested ignore files ---'
+          find modules -name .gitignore -print -exec cat {} +
+          echo '--- SDK 57 Git status ---'
+          git status --short --ignored modules/voltguard-battery/android
+          echo '--- SDK 57 Expo Doctor verbose output ---'
+          npx expo-doctor --verbose
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk57-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk57-audit.json || true
+          cp package.json migration-artifacts/package-sdk57.json
+          cp package-lock.json migration-artifacts/package-lock-sdk57.json
+
+      - name: Upgrade to SDK 58 and validate
+        run: |
+          npx expo install expo@^58.0.0 --fix
+          npm install
+          npx expo-doctor
+          npm run typecheck
+          npm test
+          npm run lint
+          npm run build:web
+          npx expo prebuild --platform android --no-install --clean
+          cd android
+          ./gradlew :app:compileDebugKotlin
+          ./gradlew :app:assembleDebug
+          cd ..
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" | tee migration-artifacts/sdk58-versions.txt
+          npm audit --omit=dev --json > migration-artifacts/sdk58-audit.json || true
+          cp package.json migration-artifacts/package-sdk58.json
+          cp package-lock.json migration-artifacts/package-lock-sdk58.json
+
+      - name: Capture migration workspace for diagnosis
+        if: always()
+        run: |
+          mkdir -p migration-artifacts/current-workspace
+          cp package.json migration-artifacts/current-workspace/package.json
+          cp package-lock.json migration-artifacts/current-workspace/package-lock.json
+          cp app.json migration-artifacts/current-workspace/app.json
+          cp modules/voltguard-battery/package.json migration-artifacts/current-workspace/voltguard-battery.package.json
+          npm ls --depth=0 --json > migration-artifacts/current-workspace/npm-ls.json || true
+          node -e "for (const p of ['expo','react','react-native','expo-router','react-native-reanimated','react-native-worklets','expo-modules-core']) { try { console.log(p + ': ' + require(p + '/package.json').version) } catch { console.log(p + ': not installed') } }" > migration-artifacts/current-workspace/package-versions.txt
+
+      - name: Upload migration evidence and candidate manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltguard-expo-sdk58-migration-candidate
+          path: migration-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
