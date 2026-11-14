@@ -1,7 +1,7 @@
 # Phase G — Android Anti-Theft
 
 **Branch:** `phase-g/anti-theft`  
-**Status:** Initial implementation in progress; not signed off.
+**Status:** Native implementation and CI build validation passed; physical-device acceptance and dependency-security remediation remain open.
 
 ## Implemented in source
 - Added an Android Keystore-backed AES-GCM encrypted PIN verifier with a per-PIN random salt, PBKDF2-HMAC-SHA256 (210,000 iterations), constant-time comparison, and a five-attempt / 60-second lockout.
@@ -28,8 +28,8 @@
 - Validate biometric prompt lifecycle on a real Android device, including cancellation, lockout, activity recreation, and PIN fallback.
 - Add tests for service-level delay scheduling/cancellation, repeated broadcasts, persisted alarm restoration, boot receiver failure handling and reboot restoration. Current unit tests cover pure policy/state transitions, not Android service execution.
 - Validate manifest/foreground-service policy and notification permission/channel readiness.
-- Run TypeScript, unit tests, lint, Expo export, Android JVM unit tests and Android Kotlin compile against the exact branch head. A Vercel pending status is not a substitute for GitHub Actions validation.
-- Perform physical Android testing for plug/unplug, screen off, notification denial, sound/DND, service process recreation, reboot, OEM battery management, and PIN lockout.
+- CI run `43527849291` passed TypeScript, application unit tests, lint, Expo web export, Expo Android prebuild, Android JVM unit tests, and `:app:assembleDebug` on the then-current Phase G head (`15da389`). The Android native job completed successfully. This validates compilation and APK assembly only; it does not prove runtime behaviour on a physical device.
+- Perform physical Android testing for plug/unplug, screen off, notification denial, sound/DND, service process recreation, reboot, OEM battery management, biometric prompt lifecycle, camera permission revocation, torch timeout, and PIN lockout.
 
 ## Security and platform constraints
 - The PIN is not stored in plaintext. The verifier is encrypted using an Android Keystore AES-GCM key; device credential/key invalidation requires a safe recovery/reset flow before release.
@@ -40,4 +40,4 @@
 - One-Time mode must arm for the next detected connected charging session and disarm after its disconnect alarm. Always mode must remain armed until PIN-confirmed manual disarm.
 
 ## Release gate
-This PR is a feature-development branch, not a release candidate. Do not merge until CI is green, security review is complete, physical Android acceptance is recorded, and Phase F's Android permission acceptance is completed. Dependency audit remains a separate production gate.
+This PR is a feature-development branch, not a release candidate. The Android build, JVM tests, TypeScript, application tests, lint and web export passed in CI run `43527849291`; the separate production dependency audit failed. Do not merge until dependency vulnerabilities are remediated or formally assessed, security review is complete, physical Android acceptance is recorded, and Phase F's Android permission acceptance is completed.
