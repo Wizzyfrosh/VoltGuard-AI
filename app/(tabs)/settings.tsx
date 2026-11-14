@@ -1,16 +1,22 @@
-import React from 'react';
-import { Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, View, Text, StyleSheet, Switch, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings2, Info, Database } from 'lucide-react-native';
+import { Settings2, Info, Database, BellRing } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBatteryHistory } from '../../src/features/battery/useBatteryHistory';
+import { clearBatteryHistory } from '../../src/features/battery/battery.history';
 import { useBatteryAlerts } from '../../src/features/battery/useBatteryAlerts';
+import { useBatteryCareReminder } from '../../src/features/battery/useBatteryCareReminder';
+import { getChargingAlarmReadiness, sendChargingAlarmTest } from '../../src/features/battery/battery.alerts';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const history = useBatteryHistory();
   const alerts = useBatteryAlerts(false);
+  const careReminder = useBatteryCareReminder();
+  const [alarmTestMessage, setAlarmTestMessage] = useState<string | null>(null);
+  const [alarmTestBusy, setAlarmTestBusy] = useState(false);
 
   const handleHistoryChange = async (enabled: boolean) => {
     await history.updateEnabled(enabled);
@@ -19,6 +25,26 @@ export default function SettingsScreen() {
   const handleAlertChange = async (enabled: boolean) => {
     await alerts.updateEnabled(enabled);
   };
+
+  const handleAlarmTest = async () => {
+    setAlarmTestBusy(true);
+    setAlarmTestMessage(null);
+    try {
+      const sent = await sendChargingAlarmTest();
+      setAlarmTestMessage(sent
+        ? 'Test alert sent. Confirm that your phone played the alarm sound and vibration.'
+        : 'The native alarm test is available in the Android app only.');
+    } catch (error) {
+      setAlarmTestMessage(error instanceof Error ? error.message : 'Could not send the alarm test.');
+    } finally {
+      setAlarmTestBusy(false);
+    }
+  };
+
+  let alarmReadiness: ReturnType<typeof getChargingAlarmReadiness> = null;
+  if (Platform.OS === 'android') {
+    try { alarmReadiness = getChargingAlarmReadiness(); } catch { alarmReadiness = null; }
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -54,6 +80,26 @@ export default function SettingsScreen() {
               Local history storage is unavailable here. Browser-based history storage will be added separately; no readings are being saved.
             </Text>
           )}
+          {history.enabled && history.isAvailable && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => Alert.alert(
+                'Clear battery history?',
+                'This permanently deletes saved battery readings and charging sessions from this device. Battery history will remain enabled.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Clear history', style: 'destructive', onPress: () => {
+                    void clearBatteryHistory().then(() => history.refresh()).catch(() => {
+                      Alert.alert('Could not clear history', 'VoltGuard could not delete the local history. Please try again.');
+                    });
+                  } },
+                ],
+              )}
+              style={[styles.clearHistoryButton, { borderColor: colors.warning }]}
+            >
+              <Text style={[styles.clearHistoryText, { color: colors.warning }]}>Clear saved history</Text>
+            </Pressable>
+          )}
         </View>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.row}>
@@ -68,6 +114,30 @@ export default function SettingsScreen() {
                 accessibilityLabel="Enable charging target notification" />
             )}
           </View>
+          {Platform.OS === 'android' && (
+            <View style={[styles.alarmPanel, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <View style={styles.row}>
+                <BellRing size={19} color={colors.primary} />
+                <View style={styles.copy}>
+                  <Text style={[styles.heading, { color: colors.text }]}>Audible alarm</Text>
+                  <Text style={[styles.privacy, { color: colors.textSecondary }]}>
+                    {alarmReadiness?.alarmReady
+                      ? 'High-priority alarm channel is enabled with sound. Android volume, Do Not Disturb and manufacturer settings can still silence it.'
+                      : 'Alarm sound readiness has not been confirmed. Check the channel settings before relying on this alert.'}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => { void handleAlarmTest(); }}
+                disabled={alarmTestBusy}
+                accessibilityRole="button"
+                style={[styles.testButton, { backgroundColor: colors.primary, opacity: alarmTestBusy ? 0.6 : 1 }]}
+              >
+                {alarmTestBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.testButtonText}>Test alarm sound</Text>}
+              </Pressable>
+              {alarmTestMessage && <Text style={[styles.privacy, { color: colors.textSecondary }]}>{alarmTestMessage}</Text>}
+            </View>
+          )}
           <Text style={[styles.body, { color: colors.textSecondary }]}>Notify me at</Text>
           <View style={styles.thresholds}>
             {[70, 80, 85, 90, 95, 100].map((value) => (
@@ -93,6 +163,59 @@ export default function SettingsScreen() {
           )}
           {alerts.permissionDenied && <Text style={[styles.error, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
           
+        </View>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.row}>
+            <BellRing size={22} color={colors.primary} />
+            <View style={styles.copy}>
+              <Text style={[styles.heading, { color: colors.text }]}>Daily battery-care reminder</Text>
+              <Text style={[styles.body, { color: colors.textSecondary }]}>
+                A gentle daily notification to review battery temperature, charging habits and battery activity.
+              </Text>
+            </View>
+            {careReminder.isLoading ? <ActivityIndicator color={colors.primary} /> : (
+              <Switch
+                value={careReminder.enabled}
+                onValueChange={(value) => { void careReminder.updateEnabled(value); }}
+                disabled={Platform.OS === 'web'}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#FFFFFF"
+                accessibilityLabel="Enable daily battery-care reminder"
+              />
+            )}
+          </View>
+          <Text style={[styles.body, { color: colors.textSecondary }]}>Reminder time</Text>
+          <View style={styles.thresholds}>
+            {(['07:00', '12:00', '20:00'] as const).map((value) => (
+              <Pressable
+                key={value}
+                disabled={Platform.OS === 'web' || careReminder.isLoading}
+                onPress={() => { void careReminder.updateTime(value); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: careReminder.time === value }}
+                style={[styles.thresholdButton, {
+                  borderColor: careReminder.time === value ? colors.primary : colors.border,
+                  backgroundColor: careReminder.time === value ? colors.primary : 'transparent',
+                  opacity: Platform.OS === 'web' ? 0.5 : 1,
+                }]}
+              >
+                <Text style={{ color: careReminder.time === value ? '#FFFFFF' : colors.text, fontWeight: '700' }}>
+                  {value}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>
+            Uses your device&apos;s local notification scheduler. It does not require an account or send battery data to a server. Android and iOS may delay notifications because of battery-saving or Focus settings.
+          </Text>
+          {Platform.OS === 'web' && (
+            <Text style={[styles.error, { color: colors.warning }]}>
+              Scheduled reminders while the browser is closed are not supported in this web build. Configure this on your phone in the installed app.
+            </Text>
+          )}
+          {careReminder.error && (
+            <Text style={[styles.error, { color: colors.warning }]}>{careReminder.error}</Text>
+          )}
         </View>
         <View style={styles.note}>
           <Info size={17} color={colors.textSecondary} />
@@ -125,7 +248,12 @@ const styles = StyleSheet.create({
   error: { fontSize: 12, lineHeight: 18 },
   errorPanel: { borderWidth: 1, borderRadius: 12, padding: 11, gap: 6 },
   thresholds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  alarmPanel: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 10 },
+  testButton: { minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  testButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   thresholdButton: { minWidth: 48, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 },
+  clearHistoryButton: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 9 },
+  clearHistoryText: { fontSize: 12, fontWeight: '700' },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   noteText: { flex: 1, fontSize: 12, lineHeight: 18 },
 });

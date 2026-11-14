@@ -21,6 +21,10 @@ const emptySnapshot: BatterySnapshot = {
     batteryHealth: 'not-implemented',
     cycleCount: 'not-implemented',
     perAppPowerUsage: 'not-implemented',
+    batteryTechnology: 'not-implemented',
+    batteryCurrent: 'not-implemented',
+    remainingCharge: 'not-implemented',
+    energyCounter: 'not-implemented',
   },
   androidDiagnostics: null,
 };
@@ -81,6 +85,10 @@ export function useBatteryTelemetry() {
               batteryHealth: androidDiagnostics?.health
                 ? 'available'
                 : nextSnapshot.capabilities.batteryHealth,
+              batteryTechnology: androidDiagnostics?.technology ? 'available' : nextSnapshot.capabilities.batteryTechnology,
+              batteryCurrent: androidDiagnostics?.currentNowMicroAmps !== null && androidDiagnostics?.currentNowMicroAmps !== undefined || androidDiagnostics?.currentAverageMicroAmps !== null && androidDiagnostics?.currentAverageMicroAmps !== undefined ? 'available' : nextSnapshot.capabilities.batteryCurrent,
+              remainingCharge: androidDiagnostics?.chargeCounterMicroAmpHours !== null && androidDiagnostics?.chargeCounterMicroAmpHours !== undefined ? 'available' : nextSnapshot.capabilities.remainingCharge,
+              energyCounter: androidDiagnostics?.energyCounterNanoWattHours !== null && androidDiagnostics?.energyCounterNanoWattHours !== undefined ? 'available' : nextSnapshot.capabilities.energyCounter,
             },
             source: androidDiagnostics !== null ? 'native' : nextSnapshot.source,
           };
@@ -116,6 +124,10 @@ export function useBatteryTelemetry() {
               batteryHealth: current.androidDiagnostics?.health
                 ? 'available'
                 : nextSnapshot.capabilities.batteryHealth,
+              batteryTechnology: current.androidDiagnostics?.technology ? 'available' : nextSnapshot.capabilities.batteryTechnology,
+              batteryCurrent: current.androidDiagnostics?.currentNowMicroAmps !== null && current.androidDiagnostics?.currentNowMicroAmps !== undefined || current.androidDiagnostics?.currentAverageMicroAmps !== null && current.androidDiagnostics?.currentAverageMicroAmps !== undefined ? 'available' : nextSnapshot.capabilities.batteryCurrent,
+              remainingCharge: current.androidDiagnostics?.chargeCounterMicroAmpHours !== null && current.androidDiagnostics?.chargeCounterMicroAmpHours !== undefined ? 'available' : nextSnapshot.capabilities.remainingCharge,
+              energyCounter: current.androidDiagnostics?.energyCounterNanoWattHours !== null && current.androidDiagnostics?.energyCounterNanoWattHours !== undefined ? 'available' : nextSnapshot.capabilities.energyCounter,
             },
             source: current.androidDiagnostics !== null ? 'native' : nextSnapshot.source,
           }));

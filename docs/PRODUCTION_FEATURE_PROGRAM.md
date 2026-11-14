@@ -131,7 +131,7 @@ Statuses reflect source inspection, not physical-device verification.
 - [ ] Validate sampling cadence and history consent/retention behaviour.
 - [ ] Add daily/weekly/monthly charged/discharged trends only when sample coverage supports them.
 - [ ] Track battery wear only when actual capacity measurements support a defensible trend.
-- [ ] Add export (CSV/JSON initially) for user-owned local history, with privacy warning and no cloud upload by default.
+- [x] Export is intentionally excluded by product decision: no CSV/JSON export controls, files or export dependencies.
 - [ ] Improve gaps/missing-data display; never interpolate as if observed.
 - Acceptance: aggregates state their date range and sample coverage; export matches stored data.
 
@@ -184,3 +184,302 @@ For every workstream:
 **Next action:** complete Phase 0 audit. Reconcile capability and README discrepancies, inspect telemetry/history/alerts implementation end-to-end, verify latest CI and Vercel preview, and record an actionable bug list. Then implement the first Phase 0 fixes in a focused PR.
 
 **Important:** do not begin by building the reminder UI. First establish reliable telemetry, native alert behaviour and production build health. Read this file before continuing after a chat reset.
+
+
+## 8. Phase 0 audit update — 2026-11-05
+
+**Work branch:** `phase-0/stabilization-audit`
+
+### Completed in this audit commit
+- [x] Corrected `src/features/battery/README.md`: documents Android 14+ conditional cycle-count read; clearly separates web localStorage preferences from unsupported web SQLite history; clarifies opt-in local sampling, 30-day retention and foreground-only refresh.
+- [x] Updated `.github/workflows/ci.yml` so pull requests targeting `phase-6/web-testing` are included in CI, and push validation runs on the roadmap/stabilization branches.
+- [x] Confirmed PR #6 is open, clean/mergeable, and has successful TypeScript, unit-test, lint and web-export CI at commit `17024adcf921352c887b416c3cc0ed0bbc07ee0d`.
+- [x] Confirmed PR #7 is open and clean/mergeable; this stabilization branch is based on the roadmap branch and will include its tracker.
+
+### Findings still requiring work or device evidence
+- [ ] Android threshold alarm currently sends a notification from the native service; actual audible output depends on channel sound, notification permission, user channel settings, DND, volume and OEM policy. Inspect service implementation and add robust channel diagnostics/test path; physical-device test remains mandatory.
+- [ ] Native Android diagnostics have not been physically verified on the target device.
+- [ ] No trustworthy per-app mAh/energy API is implemented. The breakdown screen correctly states this limitation.
+- [ ] Web battery-history database remains unsupported. The Settings/history hook catches storage errors; UI behaviour needs review to ensure the unsupported state is clearly communicated.
+- [ ] Investigate current sample recording cadence and possible duplicate writes in `useBatteryTelemetry`/history layer before using samples for drain analytics.
+- [ ] Inspect README root and package/dependency lockfile for security findings; no dependency remediation has been performed yet.
+- [ ] Native splash/startup issue remains unverified.
+
+### CI status for this branch
+The workflow change has been committed, but its new Actions run has not yet been observed at the time of this update. Do not report it green until GitHub Actions confirms success.
+
+### Next implementation step
+Inspect native foreground service and notification channel creation end-to-end. Verify channel ID/importance/sound, one-alert-per-charge-session rearming, permission error reporting, service start/stop and reboot receiver behaviour. Add tests where logic can be isolated. Do not claim sound works until physical-device verification.
+
+
+### Charging alarm hardening implementation update — 2026-11-05
+
+**Implemented in source on `phase-0/stabilization-audit`; CI and device validation pending.**
+- [x] Added a dedicated Android `battery-threshold-alarm-v2` notification channel at HIGH importance.
+- [x] Configured alarm-category audio attributes, system alarm sound URI, vibration pattern and lights at channel creation.
+- [x] Added native channel readiness diagnostics: app notification permission, channel enabled state, high importance, sound and vibration.
+- [x] Added a native test-alarm action and Settings button so users can verify audible output on their own device.
+- [x] Routed background threshold notifications through the same shared native notification builder/channel.
+- [x] Added explicit JS/web stubs so browser builds do not attempt to invoke Android native APIs.
+- [x] Preserved one-alert-per-charge-session and unplug re-arming logic in the foreground service.
+- [ ] Verify Kotlin compile and TypeScript checks on the latest commit; Actions runs `41937640739` and `41937632241` are pending.
+- [ ] Test on a physical Android device: test alarm with screen on/off, confirm sound and vibration, change channel to silent/low importance and verify VoltGuard explains the issue, then restore settings and verify delivery.
+- [ ] Verify OPPO/OEM battery-management settings and reboot restoration. Do not claim OEM-independent reliability.
+- [ ] Verify upgrade behaviour: Android channel settings are user-controlled and immutable by app after channel creation. The new channel ID avoids inheriting the old default-importance channel; users can still silence it.
+
+**Important limitations:** the app does not bypass Do Not Disturb, alarm volume, notification permission, channel settings, force-stop, or OEM background restrictions. A test notification being posted is not proof that the phone physically played sound; the user must confirm audibility. No exact-alarm permission is required for this event-driven foreground-service threshold check.
+
+**Next:** wait for CI. If green, merge the stabilization PR after review. Then install the new Android build and physically test the alarm. Only after that move to Phase 1 Device & Battery Information.
+
+
+## Phase 1 — Device & Battery Information progress — 2026-11-05
+
+**Implementation branch:** `phase-0/stabilization-audit`
+
+### Completed in source
+- [x] Added Android battery technology from `BatteryManager.EXTRA_TECHNOLOGY`.
+- [x] Normalized signed battery current into mA for instantaneous and average current; charging/discharging direction is retained.
+- [x] Normalized charge counter into mAh and energy counter into mWh.
+- [x] Exposed new capability flags for battery technology, current, remaining charge and energy counter.
+- [x] Extended the dashboard with a Battery hardware details card: technology, available charge, instantaneous/average battery current, energy counter and cycle count.
+- [x] Kept unavailable readings explicitly unavailable; no sample or inferred hardware values added.
+- [x] Added unit tests for conversions and null/unavailable values.
+
+### Engineering caveats
+- BatteryManager current is battery-side current, not a verified USB adapter input-current measurement. The UI labels it accordingly.
+- `BATTERY_PROPERTY_CHARGE_COUNTER` is remaining charge reported by the fuel gauge, not nominal/design battery capacity.
+- `BATTERY_PROPERTY_ENERGY_COUNTER` is optional and vendor dependent.
+- Android's cycle count is only read when API level is 34+ and the battery intent supplies a valid non-negative value.
+- Android's `EXTRA_HEALTH` is OS-reported status, not a percentage-based battery health/capacity estimate.
+- These Android fields are not exposed on web/iOS by this adapter.
+
+### Pending validation
+- [ ] Latest CI run must pass TypeScript, unit tests, lint, web export and Android Kotlin compilation.
+- [ ] Physical-device validation on the user's OPPO device is still required to confirm which fuel-gauge fields are supported and their units/signs.
+- [ ] Review capability state preservation in live event updates and ensure web build does not reference native-only fields incorrectly.
+- [ ] Add model/manufacturer/API metadata to the diagnostics screen only if available from a stable API and necessary for troubleshooting.
+
+### Next Phase 1 work
+Improve battery health presentation: distinguish Android OS-reported health state from estimated battery capacity/condition. Do not manufacture a health percentage when the OS does not expose one. Then add battery drain trend analysis based only on timestamped local samples, with confidence/coverage indicators and no fabricated per-app attribution.
+
+
+## Battery health and drain analysis checkpoint — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source
+- [x] Added a pure battery health interpreter that preserves the Android OS health status and explicitly does not turn it into a battery-wear percentage.
+- [x] Added a pure device-level discharge-rate analyzer using timestamped battery percentage observations.
+- [x] Analyzer excludes charging/full observations, invalid percentages/timestamps and windows with gaps greater than six hours; minimum observation window is five minutes.
+- [x] Analysis reports percent/hour, observation duration, sample count, coverage tier and cautious possible causes; it does not attribute drain to an app.
+- [x] Added a local query for the latest 24 hours of opted-in SQLite samples (maximum 500 rows); web and history-disabled states return insufficient data.
+- [x] Added dashboard cards for OS-reported health interpretation and device-level drain analysis.
+- [x] Added tests for rate calculation, charging exclusion, sparse gaps, OS health and unknown states.
+- [ ] CI validation for TypeScript, lint, tests, web export and Android compilation.
+- [ ] Validate drain-rate thresholds against real devices and longer observation sessions; current 8%/hour and 15%/hour labels are initial review heuristics, not medical/manufacturer standards.
+- [ ] Add explicit UI guidance that history must be enabled and samples collected before analysis is available.
+- [ ] Verify that current history recording cadence is adequate and does not duplicate observations excessively.
+- [ ] Physical-device validation on Android; no production claims until data collection is tested on the target device.
+
+### Interpretation constraints
+- A percentage-per-hour estimate is coarse because battery percentage is quantized and fuel-gauge reporting varies.
+- The current analyzer is device-level only. It cannot identify which app caused discharge.
+- No actual capacity/wear percentage is calculated because the adapter does not have verified design capacity and full-charge capacity.
+- OS-reported GOOD/OVERHEAT/DEAD/etc. is displayed as an OS state, not converted into a percentage.
+- The analyzer uses only local, user-opted-in history. It does not upload battery samples.
+
+### Next
+Run CI and fix all failures. Then continue with Charging Detect & Optimization Hub using real current/voltage/source and safe system-setting deep links. Per-app energy, deep sleep and protected-app management remain blocked pending public API feasibility work; do not implement fake versions.
+
+
+## Charging Detect & Optimization Hub checkpoint — 2026-11-05
+
+**Branch:** phase-0/stabilization-audit
+
+### Implemented in source
+- [x] Added native read-only diagnostics for Android location enabled state, automatic brightness mode, Bluetooth adapter state, NFC adapter state and master background sync state. Unsupported/unreadable values remain null.
+- [x] Added a strict allowlist of user-directed Android Settings intents for display, location, Bluetooth, NFC and sync settings. VoltGuard does not toggle these settings itself.
+- [x] Exposed optimization diagnostics and settings shortcuts through the Expo native module bridge.
+- [x] Added a dashboard Charging Detect & Optimization section with real setting states and explicit unavailable states.
+- [x] Kept the existing battery-side current and voltage readings; copy explicitly states current is not USB adapter input current.
+- [x] Web/iOS show platform limitation and do not invoke Android native methods.
+- [ ] Kotlin compile, TypeScript, lint, unit tests and web export must pass on the latest commit.
+- [ ] Verify native Settings intents open correctly on the target Android/OEM version; NFC settings intent may be absent on some devices and should fail gracefully.
+- [ ] Confirm the dashboard refresh cadence does not cause unnecessary native polling; current read is triggered alongside telemetry updates.
+- [ ] Validate current sign convention and source labels against physical device readings.
+- [ ] Adapter input current / USB-PD negotiation is not implemented; Android BatteryManager current remains battery-side current only.
+- [ ] No automatic toggles, forced app termination, RAM cleaner or guaranteed charging-speed claims.
+
+### Next
+1. Run full CI and fix all compile/test issues.
+2. Verify optimization states on a physical Android phone.
+3. Continue with battery-care reminders and usage/deep-sleep feasibility only after checking Android public API access. Per-app mAh and deep-sleep counters remain unimplemented unless supported by a verifiable public API.
+
+
+## Battery-care reminder and stabilization fixes — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source
+- [x] Added a separate daily battery-care reminder in Settings; it is not a new navigation tab.
+- [x] Added local daily notification scheduling for Android/iOS with preset local times (07:00, 12:00, 20:00).
+- [x] Persisted enabled state, selected time and this reminder's own scheduled notification ID in the existing local preference store.
+- [x] Replaces only its own prior scheduled notification; it does not cancel unrelated user notifications.
+- [x] Schedules a replacement before cancelling the prior reminder, so a failed replacement does not silently remove an active schedule.
+- [x] Web explicitly reports that closed-tab scheduled reminders are unsupported; no fake background scheduler is claimed.
+- [x] Added a matching web implementation for Android-only battery module exports.
+- [x] Corrected symmetric rounding for signed battery current conversions and added regression coverage.
+- [x] Tightened drain analysis to require every sample in a candidate window, including endpoints, to be unplugged.
+
+### Validation and limitations
+- [ ] Latest Actions for commit `03363d79906715a6b282815bc71b435dbd473823` must pass all jobs before merge.
+- [ ] Verify the Expo Notifications daily trigger compiles under SDK 54 and schedules on Android and iOS.
+- [ ] Verify reminder delivery after app process termination and after device restart on physical devices; OEM battery policies may delay delivery.
+- [ ] Confirm permission denial and rescheduling errors are clearly visible in Settings.
+- [ ] Physical Android alarm audibility still requires user confirmation through the Settings test button.
+- [ ] Do not promise exact-to-the-minute delivery or guaranteed alarm-volume bypass; Do Not Disturb, channel settings, Focus modes and OS battery policies remain in control.
+
+
+## Phase 5 — Android app foreground-usage insights — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source — validation pending
+- [x] Declared Android `PACKAGE_USAGE_STATS` special access in the native module manifest; it is not requested as a normal runtime permission.
+- [x] Added an explicit Usage Access settings shortcut and native permission-state check using AppOps.
+- [x] Queried Android `UsageStatsManager` for a rolling 24-hour window and returned per-package foreground duration and last-used timestamp.
+- [x] Aggregated duplicate daily interval rows by package, sorted by foreground duration and capped the UI result at 20 apps.
+- [x] Excluded VoltGuard itself from the list.
+- [x] Added app label resolution with package-name fallback when Android package visibility prevents resolving a label.
+- [x] Added a breakdown-screen permission explanation, grant-settings action, refresh control, foreground-time list and explicit date-window/coverage caveats.
+- [x] Added typed native bridge methods and web stubs; web/iOS do not call Android Usage Access.
+- [x] No app-usage events are persisted or uploaded; the query is on demand and local.
+
+### Privacy, platform and product constraints
+- Usage Access reveals app-usage patterns and must remain optional, user-initiated and revocable.
+- Google Play distribution requires a policy review of the declared Usage Access purpose and prominent disclosure. Do not assume permission declaration alone guarantees Play approval.
+- Android's usage summaries may be delayed, bucketed, incomplete or unavailable immediately after access is granted.
+- Foreground duration is not battery drain. Do not convert it to mAh, drain percentages, or a “top battery consumers” ranking.
+- Package names may be displayed where app labels cannot be resolved due to Android package visibility; do not add `QUERY_ALL_PACKAGES` merely to improve labels.
+- No background surveillance, screen contents, keystroke collection, message access or remote upload is implemented.
+
+### Validation gate
+- [ ] TypeScript, lint, unit tests and web export must pass on the latest branch commit.
+- [ ] Android Kotlin compile must pass on the same commit.
+- [ ] Physical-device test on target Android: no access, grant access, return to app, refresh, revoke access, and test empty/partial usage history.
+- [ ] Verify package label fallback and duration aggregation against Android Settings > Digital Wellbeing / App usage for a comparable time window.
+- [ ] Review Play Console Usage Access policy and prominent disclosure before public distribution.
+
+### Next
+Implement real RAM and storage diagnostics only where native platform APIs provide valid totals/available values. Do not turn free RAM into a “boost score,” promise performance improvements, or add a task-killer/cleaner.
+
+
+## Android device resource diagnostics — 2026-11-05
+
+### Implemented in source — validation pending
+- [x] Added Android `ActivityManager.MemoryInfo` reads for total RAM, available RAM and low-memory state.
+- [x] Added Android `StatFs` reads for total and available internal data-partition storage.
+- [x] Added typed bridge methods and web/iOS-safe null implementations.
+- [x] Displayed resource readings in the existing Analytics screen; no new navigation tab.
+- [x] Explicitly avoided synthetic boost scores, task killing, memory cleaning or performance claims.
+
+### Limitations and validation
+- [ ] Confirm Kotlin compilation and all JS checks on the latest commit.
+- [ ] Compare RAM values with Android system memory diagnostics and storage values with Android Settings on a physical device.
+- [ ] These are system-wide snapshots and can change between reads; they are not app-specific memory use.
+- [ ] Available RAM is not a target to maximize. Android intentionally uses free memory for cache and background process management.
+- [ ] Storage values represent the app-visible data partition reported by StatFs, not necessarily every removable or adopted storage volume.
+
+
+## Phase 6 — Weekly and monthly battery trends — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Product decision
+- CSV and JSON export are explicitly out of scope. No export buttons, generated files, export dependencies or cloud export endpoints will be added.
+
+### Implemented in source — validation pending
+- [x] Added pure `buildBatteryTrendReport` aggregation for rolling 7-day and 30-day periods.
+- [x] Weekly view groups observations by local calendar day; monthly view groups the 30-day window into five weekly buckets.
+- [x] Calculates charging gains only between adjacent readings that both report charging/full state.
+- [x] Calculates discharge only between adjacent readings that both report unplugged state.
+- [x] Excludes invalid levels/timestamps, intervals shorter than five minutes, gaps longer than six hours and cross-state intervals.
+- [x] Exposes sample counts and per-bucket/overall coverage levels; missing periods remain null rather than zero or interpolated.
+- [x] Summarizes locally inferred charging sessions: total sessions, completed sessions, average recorded gain and completed observed intervals (intervals longer than six hours excluded from duration totals).
+- [x] Added a local SQLite query for up to 5,000 recent samples in the 30-day window; no background task or upload was introduced.
+- [x] Added weekly/monthly trend controls, summary metrics, comparison bars and coverage explanation to the existing Analytics screen. No new tab.
+- [x] Added automated tests for charge/discharge aggregation, cross-state exclusion, long/small gaps, monthly buckets, session summaries and retention boundaries.
+
+### Known interpretation limits
+- Battery percentage is quantized and may fluctuate; reported totals are sums of observed adjacent changes, not laboratory energy measurements.
+- A transition that occurs between samples may not be observable; only adjacent endpoint states are available.
+- Incomplete charging sessions are counted as sessions but excluded from completed-duration and completed-session gain summaries.
+- Monthly display is a rolling 30-day window grouped into calendar-day-based seven-day buckets, not a calendar month.
+- History remains opt-in, foreground-only and retained for up to 30 days. Long gaps and time spent with VoltGuard closed are intentionally excluded.
+- Web battery history remains unsupported; web shows no saved trend data rather than fake values.
+
+### Validation gate
+- [ ] Latest TypeScript, lint, unit tests and web export pass.
+- [ ] Android Kotlin compile passes (native code is not modified in this phase, but remains a required branch gate).
+- [ ] Test weekly/monthly totals against a hand-calculated set of local observations on Android.
+- [ ] Confirm no UI labels imply per-app battery usage or exact energy in mAh.
+- [ ] Verify low-coverage and history-disabled empty states are understandable on a narrow phone screen.
+
+
+## Phase 7 — Battery history and charging-session intelligence — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Implemented in source — validation pending
+- [x] Added a seven-day versus preceding-seven-day comparison of completed charging sessions.
+- [x] Added average observed level gain, observed interval and endpoint-derived level-change rate for eligible sessions.
+- [x] Excluded incomplete, invalid and longer-than-six-hour observation intervals from rate/duration comparison summaries.
+- [x] Clarified that an observed level-change rate is not charger input current, wattage or a laboratory charging-speed measurement.
+- [x] Added a session comparison card to the existing Battery History screen.
+- [x] Added a recent battery-level chart using up to 20 real saved foreground observations, oldest to newest.
+- [x] Missing battery levels remain gaps; no interpolation or demo values.
+- [x] Improved session copy to distinguish the last observed level and warn that an active session may be stale after the app is closed or background updates stop.
+- [x] Added a Settings action to clear locally saved battery samples and charging sessions while leaving history enabled.
+- [x] Added unit tests for period comparisons, incomplete/invalid sessions, long observation intervals, rate calculations and exclusion of sparse intervals from duration totals.
+
+### Interpretation and retention
+- Session start/end times are observation times. They are not guaranteed to equal the exact physical charger plug/unplug times because collection is foreground-only.
+- Session interval duration is elapsed time between observations, not necessarily continuous charging time.
+- Endpoint-derived percentage-points/hour is only a coarse observed interval rate. It is not USB input current, adapter wattage, or a charger benchmark.
+- Long intervals over six hours are excluded from rate and average interval comparisons.
+- History is still opt-in, stored locally and retained for up to 30 days. Clearing history removes samples and sessions but does not turn off the preference.
+- No CSV/JSON export or cloud upload has been introduced.
+
+### Validation gate
+- [ ] Latest TypeScript, lint, unit tests and web export pass.
+- [ ] Android Kotlin compile passes on the latest branch head.
+- [ ] Confirm session comparison calculations against manually prepared local test data.
+- [ ] Test clearing history: cancel confirmation, confirm deletion, verify samples/sessions disappear, and verify history remains enabled.
+- [ ] Check chart labels and comparison card on a narrow Android display and with missing/low-coverage data.
+- [ ] Physical-device verification is still required for actual session transitions while screen-off and app backgrounded.
+
+
+## Phase 8 — Production hardening: analytics and async lifecycle — 2026-11-05
+
+**Branch:** `phase-0/stabilization-audit`
+
+### Changes made
+- [x] Corrected trend-report field mismatches discovered by TypeScript CI (observed duration and observed-day fields).
+- [x] Added per-bucket distinct observed-day counts required by the report type.
+- [x] Corrected charging-session comparison duration formatting to use a duration-in-minutes formatter rather than a timestamp-range formatter.
+- [x] Replaced an undefined text style reference on the History screen.
+- [x] Clarified rate labels as percentage points per hour, not adapter charging speed.
+- [x] Added request sequencing to weekly/monthly trend refreshes so an older asynchronous result cannot overwrite a newer selected period.
+- [x] Added request sequencing to session analytics refreshes and invalidated in-flight requests on unmount.
+- [x] Added request sequencing to history refresh and preference updates to prevent stale reads overwriting the latest enable/disable action.
+- [x] Rechecked source after each patch and committed changes to the active branch.
+
+### Validation / release gates
+- [ ] Latest TypeScript, lint, tests and web export complete successfully on the latest branch SHA.
+- [ ] Latest Android native module compile completes successfully.
+- [ ] Review npm audit findings (CI dependency installation reported 43 vulnerabilities, including 2 critical); identify direct/transitive paths and apply safe targeted upgrades. Do not use `npm audit fix --force` without reviewing breaking changes.
+- [ ] Test repeated fast switching between 7-day and 30-day trends.
+- [ ] Test navigating away during history/session refresh and verify no stale UI update or unhandled rejection.
+- [ ] Test toggling history off while a refresh is in progress; verify deletion remains effective and history stays disabled.
+- [ ] Verify clear-history confirmation and subsequent refresh on a physical Android device.
+- [ ] Verify background session transition accuracy on physical hardware; foreground observation limits remain.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   isBatteryHistoryEnabled,
   setBatteryHistoryEnabled,
@@ -15,46 +15,65 @@ export function useBatteryHistory() {
   const [samples, setSamples] = useState<StoredBatterySample[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(true);
+  const requestId = useRef(0);
 
   const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setIsLoading(true);
     try {
       const nextEnabled = await isBatteryHistoryEnabled();
+      const nextSessions = nextEnabled ? await getChargingSessions() : [];
+      const nextSamples = nextEnabled ? await getRecentBatterySamples(20) : [];
+      if (currentRequest !== requestId.current) return;
       setEnabled(nextEnabled);
-      setSessions(nextEnabled ? await getChargingSessions() : []);
-      setSamples(nextEnabled ? await getRecentBatterySamples(20) : []);
+      setSessions(nextSessions);
+      setSamples(nextSamples);
       setIsAvailable(true);
     } catch {
-      setIsAvailable(false);
-      setSessions([]);
-      setSamples([]);
+      if (currentRequest === requestId.current) {
+        setIsAvailable(false);
+        setSessions([]);
+        setSamples([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (currentRequest === requestId.current) setIsLoading(false);
     }
   }, []);
 
   const updateEnabled = useCallback(async (nextEnabled: boolean) => {
+    const currentRequest = ++requestId.current;
     try {
       await setBatteryHistoryEnabled(nextEnabled);
-      setEnabled(nextEnabled);
       if (!nextEnabled) {
-        setSessions([]);
-        setSamples([]);
-      } else {
-        const currentSnapshot = await batteryTelemetryProvider.getSnapshot();
-        await recordBatterySnapshot(currentSnapshot);
-        setSessions(await getChargingSessions());
-        setSamples(await getRecentBatterySamples(20));
+        if (currentRequest === requestId.current) {
+          setEnabled(false);
+          setSessions([]);
+          setSamples([]);
+          setIsAvailable(true);
+        }
+        return true;
       }
-      setIsAvailable(true);
+      const currentSnapshot = await batteryTelemetryProvider.getSnapshot();
+      await recordBatterySnapshot(currentSnapshot);
+      const nextSessions = await getChargingSessions();
+      const nextSamples = await getRecentBatterySamples(20);
+      if (currentRequest === requestId.current) {
+        setEnabled(true);
+        setSessions(nextSessions);
+        setSamples(nextSamples);
+        setIsAvailable(true);
+      }
       return true;
     } catch {
-      setIsAvailable(false);
+      if (currentRequest === requestId.current) setIsAvailable(false);
       return false;
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+    return () => { requestId.current += 1; };
+  }, [refresh]);
 
   return { enabled, sessions, samples, isLoading, isAvailable, refresh, updateEnabled };
 }
