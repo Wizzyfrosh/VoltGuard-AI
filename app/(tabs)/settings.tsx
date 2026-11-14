@@ -70,7 +70,9 @@ export default function SettingsScreen() {
                 accessibilityLabel="Enable battery history" />
             )}
           </View>
-          <Text style={[styles.privacy, { color: colors.textSecondary }]}>Optional and off by default. Only foreground readings are recorded. Data stays on this device and is retained for up to 30 days. Turning history off deletes saved samples and charging sessions.</Text>\n          {!history.isAvailable && <Text style={[styles.caption, { color: colors.textSecondary }]}>Local battery history is unavailable on this platform. No readings are being saved.</Text>}\n          {history.enabled && history.isAvailable && (
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>Optional and off by default. Only foreground readings are recorded. Data stays on this device and is retained for up to 30 days. Turning history off deletes saved samples and charging sessions.</Text>
+          {!history.isAvailable && <Text style={[styles.caption, { color: colors.textSecondary }]}>Local battery history is unavailable on this platform. No readings are being saved.</Text>}
+          {history.enabled && history.isAvailable && (
             <Pressable
               accessibilityRole="button"
               onPress={() => Alert.alert('Clear battery history?', 'Saved readings and charging sessions will be deleted from this device.', [
@@ -130,7 +132,13 @@ export default function SettingsScreen() {
               {alarmTestMessage && <Text style={[styles.caption, { color: colors.textSecondary }]}>{alarmTestMessage}</Text>}
             </View>
           )}
-          {alerts.monitoringError && (\n            <View style={[styles.inlinePanel, { borderColor: colors.warning }]}>\n              <Text style={[styles.caption, { color: colors.warning, fontWeight: '700' }]}>Background monitoring failed</Text>\n              <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{alerts.monitoringErrorMessage ?? 'Android did not provide a reason. Rebuild and reinstall the latest VoltGuard APK, then retry.'}</Text>\n              <Text style={[styles.caption, { color: colors.textSecondary }]}>On OPPO devices, also check Settings → Battery → App battery management and allow VoltGuard to run in the background.</Text>\n            </View>\n          )}
+          {alerts.monitoringError && (
+            <View style={[styles.inlinePanel, { borderColor: colors.warning }]}>
+              <Text style={[styles.caption, { color: colors.warning, fontWeight: '700' }]}>Background monitoring failed</Text>
+              <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{alerts.monitoringErrorMessage ?? 'Android did not provide a reason. Rebuild and reinstall the latest VoltGuard APK, then retry.'}</Text>
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>On OPPO devices, also check Settings → Battery → App battery management and allow VoltGuard to run in the background.</Text>
+            </View>
+          )}
           {alerts.permissionDenied && <Text style={[styles.caption, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
           <Text style={[styles.caption, { color: colors.textSecondary }]}>{Platform.OS === 'android' ? 'An ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions and manufacturer power management can still interrupt delivery.' : Platform.OS === 'ios' ? 'iOS checks battery thresholds only while VoltGuard is open; continuous background battery monitoring is not available.' : 'Web testing uses browser battery APIs where supported and sends notifications only while this page is open. Browser support varies; closing the tab stops monitoring.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
         </View>
