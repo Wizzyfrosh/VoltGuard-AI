@@ -25,7 +25,7 @@ export default function SettingsScreen() {
     setAlarmTestMessage(null);
     try {
       const sent = await sendChargingAlarmTest();
-      setAlarmTestMessage(sent ? 'Test notification sent.' : 'Available in the Android app.');
+      setAlarmTestMessage(sent ? 'Test alert sent. Confirm that your phone played the alarm sound and vibration.' : 'The native alarm test is available in the Android app only.');
     } catch (error) {
       setAlarmTestMessage(error instanceof Error ? error.message : 'Could not send test notification.');
     } finally {
@@ -62,7 +62,7 @@ export default function SettingsScreen() {
             <Database size={21} color={colors.primary} />
             <View style={styles.copy}>
               <Text style={[styles.heading, { color: colors.text }]}>Battery history</Text>
-              <Text style={[styles.body, { color: colors.textSecondary }]}>Save readings on this device</Text>
+              <Text style={[styles.body, { color: colors.textSecondary }]}>Save supported battery readings and charging sessions locally on this device.</Text>
             </View>
             {history.isLoading ? <ActivityIndicator color={colors.primary} /> : (
               <Switch value={history.enabled} onValueChange={history.updateEnabled} disabled={!history.isAvailable}
@@ -70,7 +70,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="Enable battery history" />
             )}
           </View>
-          {history.enabled && history.isAvailable && (
+          <Text style={[styles.privacy, { color: colors.textSecondary }]}>Optional and off by default. Only foreground readings are recorded. Data stays on this device and is retained for up to 30 days. Turning history off deletes saved samples and charging sessions.</Text>\n          {!history.isAvailable && <Text style={[styles.caption, { color: colors.textSecondary }]}>Local battery history is unavailable on this platform. No readings are being saved.</Text>}\n          {history.enabled && history.isAvailable && (
             <Pressable
               accessibilityRole="button"
               onPress={() => Alert.alert('Clear battery history?', 'Saved readings and charging sessions will be deleted from this device.', [
@@ -119,7 +119,7 @@ export default function SettingsScreen() {
                 <View style={styles.copy}>
                   <Text style={[styles.heading, { color: colors.text }]}>Alarm sound</Text>
                   <Text style={[styles.caption, { color: colors.textSecondary }]}>
-                    {alarmReadiness?.alarmReady ? 'Sound channel enabled' : 'Check notification sound settings'}
+                    {alarmReadiness?.alarmReady ? 'High-priority alarm channel is enabled with sound. Android volume, Do Not Disturb and manufacturer settings can still silence it.' : 'Alarm sound readiness has not been confirmed. Check the notification channel settings before relying on this alert.'}
                   </Text>
                 </View>
                 <Pressable onPress={() => { void handleAlarmTest(); }} disabled={alarmTestBusy}
@@ -130,9 +130,9 @@ export default function SettingsScreen() {
               {alarmTestMessage && <Text style={[styles.caption, { color: colors.textSecondary }]}>{alarmTestMessage}</Text>}
             </View>
           )}
-          {alerts.monitoringError && <Text style={[styles.caption, { color: colors.warning }]}>Background alert could not start. Check notification permission and battery settings.</Text>}
-          {alerts.permissionDenied && <Text style={[styles.caption, { color: colors.warning }]}>Enable VoltGuard notifications in device settings.</Text>}
-          <Text style={[styles.caption, { color: colors.textSecondary }]}>Alerts are reminders; charging is not stopped automatically.</Text>
+          {alerts.monitoringError && (\n            <View style={[styles.inlinePanel, { borderColor: colors.warning }]}>\n              <Text style={[styles.caption, { color: colors.warning, fontWeight: '700' }]}>Background monitoring failed</Text>\n              <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{alerts.monitoringErrorMessage ?? 'Android did not provide a reason. Rebuild and reinstall the latest VoltGuard APK, then retry.'}</Text>\n              <Text style={[styles.caption, { color: colors.textSecondary }]}>On OPPO devices, also check Settings → Battery → App battery management and allow VoltGuard to run in the background.</Text>\n            </View>\n          )}
+          {alerts.permissionDenied && <Text style={[styles.caption, { color: colors.warning }]}>Notification permission was not granted. Enable notifications for VoltGuard in your device settings.</Text>}
+          <Text style={[styles.caption, { color: colors.textSecondary }]}>{Platform.OS === 'android' ? 'An ongoing notification stays visible while background monitoring is active, including when the screen is off. Monitoring is restored after device restart where Android permits it. Force-stop, battery restrictions and manufacturer power management can still interrupt delivery.' : Platform.OS === 'ios' ? 'iOS checks battery thresholds only while VoltGuard is open; continuous background battery monitoring is not available.' : 'Web testing uses browser battery APIs where supported and sends notifications only while this page is open. Browser support varies; closing the tab stops monitoring.'} This is a reminder only: VoltGuard cannot stop or limit charging.</Text>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
             <BellRing size={21} color={colors.primary} />
             <View style={styles.copy}>
               <Text style={[styles.heading, { color: colors.text }]}>Daily battery-care reminder</Text>
-              <Text style={[styles.body, { color: colors.textSecondary }]}>A daily notification at your chosen time</Text>
+              <Text style={[styles.body, { color: colors.textSecondary }]}>A gentle daily notification to review battery temperature, charging habits and battery activity.</Text>
             </View>
             {careReminder.isLoading ? <ActivityIndicator color={colors.primary} /> : (
               <Switch value={careReminder.enabled} onValueChange={value => { void careReminder.updateEnabled(value); }}
@@ -160,7 +160,7 @@ export default function SettingsScreen() {
             ))}
           </View>
           {careReminder.error && <Text style={[styles.caption, { color: colors.warning }]}>{careReminder.error}</Text>}
-          {Platform.OS === 'web' && <Text style={[styles.caption, { color: colors.textSecondary }]}>Scheduled reminders are available in the mobile app.</Text>}
+          {Platform.OS === 'web' && <Text style={[styles.caption, { color: colors.warning }]}>Scheduled reminders while the browser is closed are not supported in this web build. Configure this on your phone in the installed app.</Text>}
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
