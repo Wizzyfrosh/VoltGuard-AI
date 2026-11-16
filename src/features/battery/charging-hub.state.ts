@@ -5,7 +5,9 @@ export type ChargingHubState = {
   fullyCharged: boolean;
 };
 
-export type PlatformBatteryState = 'charging' | 'full' | 'unplugged' | 'unknown';
+// expo-battery's BatteryState numeric enum: UNKNOWN=0, UNPLUGGED=1,
+// CHARGING=2, FULL=3.
+export type PlatformBatteryState = 0 | 1 | 2 | 3;
 export type NativeChargingStatus = 'charging' | 'discharging' | 'full' | 'unknown' | null;
 
 export function resolveChargingHubState(
@@ -13,20 +15,18 @@ export function resolveChargingHubState(
   nativeStatus: NativeChargingStatus,
   nativePlugged: boolean | null,
 ): ChargingHubState {
-  // Prefer an explicit native reading when available; it is sourced from
-  // Android's battery intent and prevents stale cross-platform state winning.
   const effectiveState: PlatformBatteryState =
-    nativeStatus === 'charging' ? 'charging'
-      : nativeStatus === 'full' ? 'full'
-        : nativeStatus === 'discharging' ? 'unplugged'
+    nativeStatus === 'charging' ? 2
+      : nativeStatus === 'full' ? 3
+        : nativeStatus === 'discharging' ? 1
           : batteryState;
 
-  const activelyCharging = effectiveState === 'charging';
-  const fullyCharged = effectiveState === 'full';
+  const activelyCharging = effectiveState === 2;
+  const fullyCharged = effectiveState === 3;
   const connected = activelyCharging || (fullyCharged && nativePlugged === true);
   const label = activelyCharging ? 'Charging'
     : fullyCharged ? 'Fully charged'
-      : effectiveState === 'unplugged' ? 'Not charging'
+      : effectiveState === 1 ? 'Not charging'
         : 'Status unavailable';
 
   return { label, connected, activelyCharging, fullyCharged };
