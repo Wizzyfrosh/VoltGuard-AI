@@ -39,6 +39,8 @@ export default function ChargingHubScreen() {
   const [alarm, setAlarm] = useState<ChargingAlarmStatus | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [savingTarget, setSavingTarget] = useState(false);
+  const [savingAlert, setSavingAlert] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
@@ -64,18 +66,34 @@ export default function ChargingHubScreen() {
     : 'Status unavailable';
 
   const updateThreshold = async (value: number) => {
+    if (savingTarget || savingAlert || alerts.isLoading || value === alerts.threshold) return;
+    setSavingTarget(true);
     setMessage(null);
-    const saved = await alerts.updateThreshold(value);
-    setMessage(saved ? 'Charging target saved.' : alerts.monitoringErrorMessage ?? 'Could not update the charging target.');
+    try {
+      const saved = await alerts.updateThreshold(value);
+      setMessage(saved ? 'Charging target saved.' : alerts.monitoringErrorMessage ?? 'Could not update the charging target.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not update the charging target.');
+    } finally {
+      setSavingTarget(false);
+    }
   };
 
   const toggleAlert = async () => {
+    if (savingAlert || savingTarget || alerts.isLoading) return;
+    setSavingAlert(true);
     setMessage(null);
     const wasEnabled = alerts.enabled;
-    const saved = await alerts.updateEnabled(!wasEnabled);
-    setMessage(saved ? (wasEnabled ? 'Charging target alert disabled.' : 'Charging target alert enabled.')
-      : alerts.monitoringErrorMessage ?? 'Could not update the charging alert.');
-    refresh();
+    try {
+      const saved = await alerts.updateEnabled(!wasEnabled);
+      setMessage(saved ? (wasEnabled ? 'Charging target alert disabled.' : 'Charging target alert enabled.')
+        : alerts.monitoringErrorMessage ?? 'Could not update the charging alert.');
+      refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not update the charging alert.');
+    } finally {
+      setSavingAlert(false);
+    }
   };
 
   const testAlarm = async () => {
@@ -146,14 +164,14 @@ export default function ChargingHubScreen() {
         <View style={styles.sectionHead}><BellRing size={20} color={colors.primary} /><Text style={[styles.cardTitle, { color: colors.text }]}>Charging target alert</Text></View>
         <Text style={[styles.note, { color: colors.textSecondary }]}>Choose the battery level at which VoltGuard should alert you. Android background delivery can be affected by notification permissions and manufacturer power restrictions.</Text>
         <View style={styles.targets}>
-          {[80, 90, 100].map(value => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: alerts.threshold === value }} onPress={() => void updateThreshold(value)}
-            style={[styles.target, { borderColor: alerts.threshold === value ? colors.primary : colors.border, backgroundColor: alerts.threshold === value ? colors.primary + '12' : colors.background }]}>
+          {[80, 90, 100].map(value => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: alerts.threshold === value, disabled: alerts.isLoading || savingTarget || savingAlert }} disabled={alerts.isLoading || savingTarget || savingAlert || alerts.threshold === value} onPress={() => void updateThreshold(value)}
+            style={[styles.target, { borderColor: alerts.threshold === value ? colors.primary : colors.border, backgroundColor: alerts.threshold === value ? colors.primary + '12' : colors.background, opacity: savingTarget || savingAlert ? 0.65 : 1 }]}>
             <Text style={[styles.targetText, { color: alerts.threshold === value ? colors.primary : colors.text }]}>{value}%</Text>
           </Pressable>)}
         </View>
-        <Pressable accessibilityRole="switch" accessibilityState={{ checked: alerts.enabled, disabled: alerts.isLoading }} disabled={alerts.isLoading} onPress={() => void toggleAlert()}
-          style={[styles.primaryButton, { backgroundColor: alerts.enabled ? colors.background : colors.primary, borderColor: colors.primary }]}>
-          {alerts.isLoading ? <ActivityIndicator color={colors.primary} /> :
+        <Pressable accessibilityRole="switch" accessibilityState={{ checked: alerts.enabled, disabled: alerts.isLoading || savingAlert || savingTarget }} disabled={alerts.isLoading || savingAlert || savingTarget} onPress={() => void toggleAlert()}
+          style={[styles.primaryButton, { backgroundColor: alerts.enabled ? colors.background : colors.primary, borderColor: colors.primary, opacity: savingAlert || savingTarget ? 0.7 : 1 }]}>
+          {alerts.isLoading || savingAlert ? <ActivityIndicator color={alerts.enabled ? colors.primary : '#FFFFFF'} /> :
             <Text style={[styles.primaryText, { color: alerts.enabled ? colors.primary : '#FFFFFF' }]}>{alerts.enabled ? 'Disable charging alert' : 'Enable charging alert'}</Text>}
         </Pressable>
         {alerts.monitoringErrorMessage ? <Text style={[styles.note, { color: colors.warning }]}>{alerts.monitoringErrorMessage}</Text> : null}
