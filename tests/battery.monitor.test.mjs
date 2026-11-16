@@ -21,7 +21,7 @@ test('estimates charging time from a positive charging trend', () => {
     sample(60, 0.5, 2), sample(45, 0.55, 2), sample(30, 0.6, 2), sample(15, 0.65, 2), sample(0, 0.7, 2),
   ], now);
   assert.equal(result.direction, 'charging');
-  assert.equal(result.minutesRemaining, 180);
+  assert.equal(result.minutesRemaining, 90);
 });
 
 test('does not estimate from too few samples or a charging-state transition', () => {
