@@ -89,7 +89,13 @@ export function useBatteryAlerts(monitor = true) {
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true, monitoringErrorMessage: message });
-      if (monitor && Platform.OS === 'android' && nextEnabled) await stopBackgroundBatteryMonitoring().catch(() => undefined);
+      if (monitor && Platform.OS === 'android' && nextEnabled) {
+        await stopBackgroundBatteryMonitoring().catch(() => undefined);
+      } else if (monitor && Platform.OS === 'android' && enabled && !nextEnabled) {
+        // A failed preference commit after stopping must restore the previous
+        // enabled service state, not leave UI and native state divergent.
+        await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      }
       return false;
     }
   }, [monitor, threshold]);
