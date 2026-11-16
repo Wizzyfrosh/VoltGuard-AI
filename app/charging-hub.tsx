@@ -54,13 +54,13 @@ export default function ChargingHubScreen() {
   const diagnosticFullAndPlugged = diagnostic?.status === 'full'
     && diagnostic.plugged != null
     && diagnostic.plugged !== 'none-or-unknown';
-  const charging = live.state === Battery.BatteryState.CHARGING
-    || live.state === Battery.BatteryState.FULL
-    || diagnostic?.status === 'charging'
-    || diagnosticFullAndPlugged;
-  const status = live.state === Battery.BatteryState.CHARGING || diagnostic?.status === 'charging' ? 'Charging'
-    : live.state === Battery.BatteryState.FULL || diagnosticFullAndPlugged ? 'Fully charged'
-    : live.state === Battery.BatteryState.UNPLUGGED || diagnostic?.status === 'discharging' || (diagnostic?.status === 'full' && !diagnosticFullAndPlugged) ? 'Not charging'
+  const activelyCharging = live.state === Battery.BatteryState.CHARGING
+    || diagnostic?.status === 'charging';
+  const connected = activelyCharging || diagnosticFullAndPlugged;
+  const fullyCharged = live.state === Battery.BatteryState.FULL || diagnostic?.status === 'full';
+  const status = activelyCharging ? 'Charging'
+    : fullyCharged ? 'Fully charged'
+    : live.state === Battery.BatteryState.UNPLUGGED || diagnostic?.status === 'discharging' ? 'Not charging'
     : 'Status unavailable';
 
   const updateThreshold = async (value: number) => {
@@ -116,8 +116,8 @@ export default function ChargingHubScreen() {
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.statusHead}>
-          <View style={[styles.statusIcon, { backgroundColor: charging ? colors.success + '18' : colors.background }]}>
-            <BatteryCharging size={24} color={charging ? colors.success : colors.primary} />
+          <View style={[styles.statusIcon, { backgroundColor: connected ? colors.success + '18' : colors.background }]}>
+            <BatteryCharging size={24} color={connected ? colors.success : colors.primary} />
           </View>
           <View style={{ flex: 1, gap: 3 }}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>{status}</Text>
@@ -125,8 +125,8 @@ export default function ChargingHubScreen() {
               {diagnostic?.plugged && diagnostic.plugged !== 'none-or-unknown' ? 'Power source · ' + diagnostic.plugged : 'Power source unavailable'}
             </Text>
           </View>
-          <View style={[styles.livePill, { backgroundColor: charging ? colors.success + '18' : colors.background }]}>
-            <Text style={[styles.liveText, { color: charging ? colors.success : colors.textSecondary }]}>{charging ? 'CONNECTED' : 'IDLE'}</Text>
+          <View style={[styles.livePill, { backgroundColor: connected ? colors.success + '18' : colors.background }]}>
+            <Text style={[styles.liveText, { color: connected ? colors.success : colors.textSecondary }]}>{connected ? 'CONNECTED' : fullyCharged ? 'FULL' : 'IDLE'}</Text>
           </View>
         </View>
 
