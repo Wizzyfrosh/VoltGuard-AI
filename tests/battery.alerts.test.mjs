@@ -9,3 +9,12 @@ test('accepts supported charging alert thresholds', () => {
 test('rejects invalid charging alert thresholds', () => {
   for (const value of [0, 49, 101, 80.5, Number.NaN, Number.POSITIVE_INFINITY]) assert.equal(isValidBatteryAlertThreshold(value), false);
 });
+
+test('threshold validation accepts only integer percentages in the supported range', () => {
+  assert.equal(isValidBatteryAlertThreshold(50), true);
+  assert.equal(isValidBatteryAlertThreshold(100), true);
+  assert.equal(isValidBatteryAlertThreshold(49), false);
+  assert.equal(isValidBatteryAlertThreshold(101), false);
+  assert.equal(isValidBatteryAlertThreshold(80.5), false);
+  assert.equal(isValidBatteryAlertThreshold(Number.NaN), false);
+});

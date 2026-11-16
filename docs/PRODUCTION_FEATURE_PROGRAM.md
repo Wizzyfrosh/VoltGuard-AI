@@ -86,14 +86,14 @@ Statuses reflect source inspection, not physical-device verification.
 - Acceptance: no hard-coded device specs; unit tests cover null/sentinel/range handling; physical-device readings match Android diagnostics.
 
 ### C. Charging Detect & Optimization Hub
-- [ ] Add live charging connection state and animated indicator driven by actual charging state (not decorative fake animation).
-- [ ] Display voltage, instantaneous/average current and source with explicit units and timestamp; handle signed current correctly.
-- [ ] Add detection cards for brightness, location/GPS, sync, Bluetooth and NFC only where APIs/permissions permit.
-- [ ] For restricted toggles, provide a Settings deep link or clear manual instruction; never claim the app toggled it.
-- [ ] Give measured, conservative charging suggestions. Do not promise faster charging or disable services automatically.
-- [ ] Add dedicated target-alert channel with sound/vibration and a user-configurable sound/alert test if supported.
-- [ ] Diagnose notification permission, channel disabled, DND/volume restrictions and background-service status.
-- Acceptance: threshold crossing produces one audible notification per charging cycle where OS permits; re-arm on unplug; no duplicate alarms; no automatic charge-stop claim.
+- [x] Add live charging connection state and animated indicator driven by normalized platform/native charging state.
+- [x] Display voltage, instantaneous/average current and power source with explicit units; show the timestamp of the latest hardware diagnostics and preserve battery-side current semantics.
+- [x] Add read-only detection rows for brightness, location/GPS, sync, Bluetooth and NFC using available Android diagnostics.
+- [x] For restricted toggles, provide Android Settings shortcuts and manual fallback guidance; never claim the app toggled them.
+- [x] Give conservative, setting-specific charging/power suggestions without promising faster charging or disabling services automatically.
+- [x] Reuse the dedicated target-alert channel with sound/vibration and provide a native alarm test action.
+- [x] Diagnose notification permission, channel state, DND/volume restrictions and foreground-service enabled/running status.
+- [ ] Acceptance: verify one threshold notification per charging cycle, re-arm on unplug, no duplicate alarms and audible output where OS permits. Physical Android verification remains outstanding; no automatic charge-stop claim.
 
 ### D. Battery drain and usage analytics
 - [ ] Build drain-rate analysis from persisted, timestamped battery samples, using elapsed time and percentage deltas.
@@ -620,3 +620,40 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] Reconcile this phase against the complete product roadmap before considering it complete.
 
 **Known constraints:** Hardware fields remain device-dependent. Battery-side current is not charger input current. The charge counter is not design capacity. OS health is not a wear percentage. Estimates are observational, not guarantees. Background/screen-off sampling is not promised.
+
+
+## Phase I — Charging Detect & Optimization Hub
+
+### Phase I follow-up — reliability correction
+
+- [x] Roll back the persisted charging threshold when a native reconfiguration or preference write fails, then restore the previous native threshold where possible.
+- [ ] Re-run TypeScript, full unit tests, lint, web export, Android JVM tests and Android debug compilation on the follow-up commit.
+- [ ] Resolve the production dependency audit using reviewed, compatible targeted upgrades; do not force an Expo major upgrade.
+- [ ] Complete physical Android acceptance only in the single coordinated device-test cycle.
+
+**Follow-up implementation commit:** `3511a91d2e942b85e628b5fb919158ec6ba057b6`. Previous commit `c6701e4ef9afafa9b124d28e2337b9df8946aa99` passed TypeScript, unit tests, lint, web export, Android JVM tests and Android debug compilation; its dependency security gate failed.
+
+
+
+**Implementation branch:** `phase-i/charging-optimization-hub`  
+**Draft PR:** #22 (targets Phase H; intentionally not merged)  
+**Status:** Core UI, native diagnostics integration and automated code checks implemented; latest CI validation in progress. Physical Android acceptance and OEM-specific Settings verification remain outstanding.
+
+- [x] Add a dedicated Charging Hub route and dashboard entry without changing the existing five bottom tabs.
+- [x] Reuse the existing battery telemetry provider and Android diagnostics; do not introduce a second native telemetry or foreground-service implementation.
+- [x] Show charging state, power source and available battery-side voltage, current, temperature and charge-counter readings.
+- [x] Reuse existing charging target preferences and 80%, 90% and 100% target choices.
+- [x] Reuse the existing alert hook and native foreground monitor; prevent the Charging Hub's non-owning hook instance from directly starting/stopping a second native service.
+- [x] Show Android notification permission/channel readiness, sound/vibration configuration, notification volume, ringer mode, Do Not Disturb state, and foreground-monitor enabled/running state where exposed.
+- [x] Provide an explicit alarm test action and a direct shortcut to the app's Android notification settings, with manual fallback guidance.
+- [x] Show read-only Android brightness, location, Bluetooth, NFC and master-sync status with links to the relevant system settings.
+- [x] Clearly state that system toggles are user-controlled and that VoltGuard does not increase charging wattage or stop charging.
+- [x] Pass TypeScript, full unit tests, lint and web export on the latest validated Phase I commit (latest follow-up UI commit is being revalidated).
+- [ ] Pass Android JVM tests and debug APK compilation on the latest Phase I commit.
+- [ ] Verify navigation, live status, alert enable/disable, threshold changes and alarm test on a physical Android device.
+- [ ] Verify every Settings shortcut and unsupported NFC/Settings intents across Android OEMs.
+- [ ] Verify web and iOS gracefully display unsupported system diagnostics and disable Android-only actions.
+- [ ] Review accessibility, small-screen layout and error/loading states.
+- [ ] Reconcile Charging Hub against the full charging-detection requirements before marking Phase I complete.
+
+**Known constraints:** Brightness/location/connectivity/sync readings are snapshots, not automatic optimizations. Android/OEM restrictions may change available settings and alarm delivery. Battery-side current is not USB adapter input current. No automatic protected-setting changes, charging-current control, charging-speed claims or stop-charging feature are included.

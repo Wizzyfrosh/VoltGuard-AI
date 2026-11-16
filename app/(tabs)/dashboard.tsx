@@ -174,6 +174,7 @@ export default function DashboardScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick actions</Text>
         <DashboardAction title="AI Battery Assistant" subtitle="AI service is not connected yet" icon={Bot} color={colors.primary} onPress={() => router.push('/ai_chat' as any)} />
         <DashboardAction title="Battery Monitor" subtitle="Live diagnostics, history and charging estimates" icon={Activity} color={colors.primary} onPress={() => router.push('/battery-monitor' as any)} />
+        <DashboardAction title="Charging Detect & Optimization" subtitle="Charging status, alert controls and system settings" icon={PlugZap} color={colors.success} onPress={() => router.push('/charging-hub' as any)} />
         <DashboardAction title="Power Breakdown" subtitle="View available battery insights" icon={Activity} color={colors.warning} onPress={() => router.push('/(tabs)/breakdown')} />
         <View style={{ height: 8 }} />
       </ScrollView>

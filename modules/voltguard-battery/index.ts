@@ -17,6 +17,8 @@ type VoltGuardBatteryNativeModule = {
   setAntiTheftVibration: (enabled: boolean) => boolean;
   setAntiTheftFlash: (enabled: boolean) => boolean;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
+  openChargingNotificationSettings: () => boolean;
+  getChargingMonitorStatus: () => ChargingMonitorStatus;
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
   openUsageAccessSettings: () => boolean;
@@ -47,7 +49,15 @@ export type ChargingAlarmStatus = {
   highImportance: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  alarmVolume: number | null;
+  ringerMode: 'normal' | 'vibrate' | 'silent' | null;
+  doNotDisturb: 'off' | 'priority' | 'total_silence' | 'alarms_only' | 'unknown' | null;
   alarmReady: boolean;
+};
+
+export type ChargingMonitorStatus = {
+  monitoringEnabled: boolean;
+  monitoringRunning: boolean;
 };
 
 let nativeModule: VoltGuardBatteryNativeModule | null = null;
@@ -200,6 +210,16 @@ export async function stopBackgroundBatteryMonitoring(): Promise<boolean> {
 export function getChargingAlarmStatus(): ChargingAlarmStatus | null {
   if (Platform.OS !== 'android') return null;
   return getNativeModule()?.getChargingAlarmStatus() ?? null;
+}
+
+export function openChargingNotificationSettings(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.openChargingNotificationSettings() ?? false;
+}
+
+export function getChargingMonitorStatus(): ChargingMonitorStatus | null {
+  if (Platform.OS !== 'android') return null;
+  return getNativeModule()?.getChargingMonitorStatus() ?? null;
 }
 
 export async function sendTestChargingAlarm(): Promise<boolean> {

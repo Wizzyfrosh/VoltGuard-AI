@@ -64,35 +64,46 @@ export function useBatteryAlerts(monitor = true) {
       } catch { setPermissionDenied(true); return false; }
     }
     try {
-      if (Platform.OS === 'android' && nextEnabled) {
+      if (monitor && Platform.OS === 'android' && nextEnabled) {
         const started = await startBackgroundBatteryMonitoring(threshold);
         if (!started) throw new Error('Native background monitoring is unavailable');
       }
+      if (monitor && Platform.OS === 'android' && !nextEnabled) {
+        const stopped = await stopBackgroundBatteryMonitoring();
+        if (!stopped) throw new Error('Android background monitoring could not be stopped. Retry after reopening VoltGuard.');
+      }
       await setBatteryPreference(ENABLED_KEY, String(nextEnabled));
-      if (Platform.OS === 'android' && !nextEnabled) await stopBackgroundBatteryMonitoring();
       setMonitoringError(false);
       setMonitoringErrorMessage(null);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
-      await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
+      await setBatteryPreference(ALERT_MONITOR_ERROR, 'false').catch(() => undefined);
       setEnabled(nextEnabled);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled, monitoringError: false, monitoringErrorMessage: null });
       return true;
     } catch (error) {
       const message = describeMonitorError(error);
+      // Restore the last committed preference if a native start/stop action fails.
+      await setBatteryPreference(ENABLED_KEY, String(enabled)).catch(() => undefined);
       setMonitoringError(true);
       setMonitoringErrorMessage(message);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true, monitoringErrorMessage: message });
-      if (Platform.OS === 'android' && nextEnabled) await stopBackgroundBatteryMonitoring().catch(() => undefined);
+      if (monitor && Platform.OS === 'android' && nextEnabled) {
+        await stopBackgroundBatteryMonitoring().catch(() => undefined);
+      } else if (monitor && Platform.OS === 'android' && enabled && !nextEnabled) {
+        // A failed preference commit after stopping must restore the previous
+        // enabled service state, not leave UI and native state divergent.
+        await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      }
       return false;
     }
-  }, [threshold]);
+  }, [enabled, monitor, threshold]);
 
   const updateThreshold = useCallback(async (nextThreshold: number) => {
     if (!isValidBatteryAlertThreshold(nextThreshold)) return false;
     try {
-      if (Platform.OS === 'android' && enabled) {
+      if (monitor && Platform.OS === 'android' && enabled) {
         const started = await startBackgroundBatteryMonitoring(nextThreshold);
         if (!started) throw new Error('Native background monitoring is unavailable');
       }
@@ -106,15 +117,20 @@ export function useBatteryAlerts(monitor = true) {
       return true;
     } catch (error) {
       const message = describeMonitorError(error);
+      // Restore the last committed threshold if native reconfiguration or a
+      // subsequent preference write fails. Keep UI, database and service aligned.
+      await setBatteryPreference(THRESHOLD_KEY, String(threshold)).catch(() => undefined);
       setMonitoringError(true);
       setMonitoringErrorMessage(message);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true });
-      if (Platform.OS === 'android' && enabled) await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      if (monitor && Platform.OS === 'android' && enabled) {
+        await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      }
       return false;
     }
-  }, [enabled, threshold]);
+  }, [enabled, monitor, threshold]);
 
   useEffect(() => {
     if (monitor && Platform.OS === 'android' && !isLoading) {

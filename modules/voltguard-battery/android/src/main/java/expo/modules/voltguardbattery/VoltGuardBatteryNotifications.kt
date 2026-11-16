@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.RingtoneManager
 import android.os.Build
 
@@ -95,12 +96,39 @@ object VoltGuardBatteryNotifications {
     } else {
       true
     }
+    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    val alarmVolume = try {
+      audioManager?.let { manager ->
+        val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+        if (maximum > 0) manager.getStreamVolume(AudioManager.STREAM_ALARM).toDouble() / maximum.toDouble() else null
+      }
+    } catch (_: Exception) { null }
+    val ringerMode = try {
+      when (audioManager?.ringerMode) {
+        AudioManager.RINGER_MODE_NORMAL -> "normal"
+        AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
+        AudioManager.RINGER_MODE_SILENT -> "silent"
+        else -> null
+      }
+    } catch (_: Exception) { null }
+    val doNotDisturb = try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        when (manager.currentInterruptionFilter) {
+          NotificationManager.INTERRUPTION_FILTER_ALL -> "off"
+          NotificationManager.INTERRUPTION_FILTER_PRIORITY -> "priority"
+          NotificationManager.INTERRUPTION_FILTER_NONE -> "total_silence"
+          NotificationManager.INTERRUPTION_FILTER_ALARMS -> "alarms_only"
+          else -> "unknown"
+        }
+      } else null
+    } catch (_: SecurityException) { null } catch (_: Exception) { null }
     val channelEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
       (channel != null && channel.importance != NotificationManager.IMPORTANCE_NONE)
     val alarmReady = notificationsEnabled &&
       channelEnabled &&
       importance >= NotificationManager.IMPORTANCE_HIGH &&
-      soundEnabled
+      soundEnabled &&
+      (alarmVolume == null || alarmVolume > 0.0)
     return mapOf(
       "channelId" to CHARGING_ALARM_CHANNEL_ID,
       "notificationsEnabled" to notificationsEnabled,
@@ -108,6 +136,9 @@ object VoltGuardBatteryNotifications {
       "highImportance" to (importance >= NotificationManager.IMPORTANCE_HIGH),
       "soundEnabled" to soundEnabled,
       "vibrationEnabled" to vibrationEnabled,
+      "alarmVolume" to alarmVolume,
+      "ringerMode" to ringerMode,
+      "doNotDisturb" to doNotDisturb,
       "alarmReady" to alarmReady
     )
   }
@@ -192,6 +223,10 @@ object VoltGuardBatteryNotifications {
     }
     if (status["soundEnabled"] != true) {
       return "Charging target alarm sound is set to Silent. Choose an alarm sound in Android notification settings."
+    }
+    val volume = status["alarmVolume"] as? Double
+    if (volume != null && volume <= 0.0) {
+      return "Android alarm volume is muted. Increase the alarm volume in Android sound settings."
     }
     return "Charging target alarm is not ready. Check Android notification settings."
   }
