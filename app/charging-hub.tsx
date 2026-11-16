@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, AppState, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, BatteryCharging, BellRing, Bluetooth, CheckCircle2, MapPin, Radio, RefreshCw, Settings2, Sun, Volume2 } from 'lucide-react-native';
@@ -51,6 +51,7 @@ export default function ChargingHubScreen() {
   const [savingTarget, setSavingTarget] = useState(false);
   const [savingAlert, setSavingAlert] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const chargingPulse = useRef(new Animated.Value(1)).current;
 
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -61,6 +62,20 @@ export default function ChargingHubScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+
+  useEffect(() => {
+    if (!activelyCharging) {
+      chargingPulse.stopAnimation();
+      chargingPulse.setValue(1);
+      return;
+    }
+    const pulse = Animated.loop(Animated.sequence([
+      Animated.timing(chargingPulse, { toValue: 1.08, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(chargingPulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]));
+    pulse.start();
+    return () => pulse.stop();
+  }, [activelyCharging, chargingPulse]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
@@ -154,7 +169,7 @@ export default function ChargingHubScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.statusHead}>
           <View style={[styles.statusIcon, { backgroundColor: connected ? colors.success + '18' : colors.background }]}>
-            <BatteryCharging size={24} color={connected ? colors.success : colors.primary} />
+            <Animated.View style={{ transform: [{ scale: chargingPulse }] }}><BatteryCharging size={24} color={connected ? colors.success : colors.primary} /></Animated.View>
           </View>
           <View style={{ flex: 1, gap: 3 }}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>{status}</Text>
@@ -229,6 +244,14 @@ export default function ChargingHubScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.sectionHead}><Settings2 size={20} color={colors.primary} /><Text style={[styles.cardTitle, { color: colors.text }]}>Power optimization checks</Text></View>
         <Text style={[styles.note, { color: colors.textSecondary }]}>These checks report Android system settings. Open Settings to make changes; VoltGuard does not silently toggle protected controls.</Text>
+        {optimization ? <View style={styles.suggestions}>
+          {optimization.automaticBrightnessEnabled === false ? <Text style={[styles.note, { color: colors.text }]}>• Consider enabling adaptive brightness if it suits your viewing conditions.</Text> : null}
+          {optimization.locationEnabled === true ? <Text style={[styles.note, { color: colors.text }]}>• Review which apps need location access; keep navigation and safety features enabled when required.</Text> : null}
+          {optimization.bluetoothEnabled === true ? <Text style={[styles.note, { color: colors.text }]}>• Turn Bluetooth off only when you are not using connected devices.</Text> : null}
+          {optimization.nfcEnabled === true ? <Text style={[styles.note, { color: colors.text }]}>• Turn NFC off when contactless features are not in use.</Text> : null}
+          {optimization.masterSyncEnabled === true ? <Text style={[styles.note, { color: colors.text }]}>• Review account sync settings if background synchronization is not needed.</Text> : null}
+          {optimization.automaticBrightnessEnabled !== false && optimization.locationEnabled !== true && optimization.bluetoothEnabled !== true && optimization.nfcEnabled !== true && optimization.masterSyncEnabled !== true ? <Text style={[styles.note, { color: colors.textSecondary }]}>No setting-specific suggestions are available from the current readings.</Text> : null}
+        </View> : <Text style={[styles.note, { color: colors.textSecondary }]}>System suggestions are unavailable until Android diagnostics can be read.</Text>}
         <SettingRow label="Automatic brightness" value={settingValue(optimization?.automaticBrightnessEnabled)} icon={<Sun size={19} color={colors.primary} />} onPress={() => openSetting('brightness', 'Brightness')} colors={colors} />
         <SettingRow label="Location services" value={settingValue(optimization?.locationEnabled)} icon={<MapPin size={19} color={colors.primary} />} onPress={() => openSetting('location', 'Location')} colors={colors} />
         <SettingRow label="Bluetooth" value={settingValue(optimization?.bluetoothEnabled)} icon={<Bluetooth size={19} color={colors.primary} />} onPress={() => openSetting('bluetooth', 'Bluetooth')} colors={colors} />
@@ -289,5 +312,6 @@ const styles = StyleSheet.create({
   settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth },
   settingLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   settingTitle: { fontSize: 12, fontWeight: '800' },
+  suggestions: { gap: 7, padding: 11, borderRadius: 12, backgroundColor: 'rgba(100, 140, 180, 0.07)' },
   disclaimer: { borderWidth: 1, borderRadius: 14, padding: 13 }
 });
