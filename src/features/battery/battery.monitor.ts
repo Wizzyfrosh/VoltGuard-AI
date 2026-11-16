@@ -82,7 +82,7 @@ export function estimateBatteryTime(
   if (valid.length < 4) return unavailableEstimate();
 
   const latest = valid[valid.length - 1];
-  const direction = latest.state === STATE_UNPLUGGED
+  const direction: 'charging' | 'discharging' | 'unavailable' = latest.state === STATE_UNPLUGGED
     ? 'discharging'
     : latest.state === STATE_CHARGING ? 'charging' : 'unavailable';
   if (direction === 'unavailable') return unavailableEstimate();
@@ -112,7 +112,7 @@ export function estimateBatteryTime(
   const currentPercent = (latest.level as number) * 100;
   const remainingPercent = direction === 'discharging' ? currentPercent : 100 - currentPercent;
   const minutesRemaining = Math.round((remainingPercent / Math.abs(slope)) * 60);
-  const confidence = segment.length >= 8 && elapsed >= 60 * 60_000
+  const confidence: 'low' | 'moderate' | 'good' = segment.length >= 8 && elapsed >= 60 * 60_000
     ? 'good'
     : segment.length >= 5 && elapsed >= 30 * 60_000 ? 'moderate' : 'low';
   return {
