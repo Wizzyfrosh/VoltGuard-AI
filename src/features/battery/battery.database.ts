@@ -61,6 +61,24 @@ async function openBatteryDatabase(): Promise<SQLite.SQLiteDatabase> {
         );
         CREATE INDEX IF NOT EXISTS idx_charging_sessions_started_at ON charging_sessions (started_at DESC);
         CREATE INDEX IF NOT EXISTS idx_charging_sessions_active ON charging_sessions (status, ended_at);
+        CREATE TABLE IF NOT EXISTS battery_diagnostic_samples (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          observed_at TEXT NOT NULL,
+          api_level INTEGER,
+          voltage_millivolts REAL,
+          temperature_celsius REAL,
+          health TEXT,
+          charging_source TEXT,
+          current_now_milliamps REAL,
+          current_average_milliamps REAL,
+          remaining_charge_mAh REAL,
+          energy_counter_mWh REAL,
+          cycle_count INTEGER,
+          technology TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_battery_diagnostics_observed_at
+          ON battery_diagnostic_samples (observed_at DESC);
       `);
       return database;
     })().catch((error) => {
