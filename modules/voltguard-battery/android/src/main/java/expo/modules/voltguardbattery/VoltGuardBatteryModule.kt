@@ -87,6 +87,11 @@ class VoltGuardBatteryModule : Module() {
       VoltGuardBatteryNotifications.getChargingAlarmStatus(context)
     }
 
+    Function("getChargingMonitorStatus") {
+      val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
+      VoltGuardBatteryMonitorService.getChargingMonitorStatus(context)
+    }
+
     Function("sendTestChargingAlarm") {
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       VoltGuardBatteryNotifications.postTestAlarm(context)
