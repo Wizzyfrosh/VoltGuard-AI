@@ -7,6 +7,7 @@ import { ArrowLeft, BatteryCharging, BellRing, Bluetooth, CheckCircle2, MapPin, 
 import { useTheme } from '../src/context/ThemeContext';
 import { useBatteryTelemetry } from '../src/features/battery/useBatteryTelemetry';
 import { useBatteryAlerts } from '../src/features/battery/useBatteryAlerts';
+import { resolveChargingHubState } from '../src/features/battery/charging-hub.state';
 import { getChargingAlarmStatus, getChargingMonitorStatus, getOptimizationDiagnostics, openChargingNotificationSettings, openOptimizationSetting, sendTestChargingAlarm, type ChargingAlarmStatus, type ChargingMonitorStatus, type OptimizationDiagnostics } from '../modules/voltguard-battery';
 
 type SettingKey = 'brightness' | 'location' | 'bluetooth' | 'nfc' | 'sync';
@@ -70,17 +71,13 @@ export default function ChargingHubScreen() {
   }, [refresh]);
 
   const diagnostic = live.androidDiagnostics;
-  const diagnosticFullAndPlugged = diagnostic?.status === 'full'
-    && diagnostic.plugged != null
-    && diagnostic.plugged !== 'none-or-unknown';
-  const activelyCharging = live.state === Battery.BatteryState.CHARGING
-    || diagnostic?.status === 'charging';
-  const connected = activelyCharging || diagnosticFullAndPlugged;
-  const fullyCharged = live.state === Battery.BatteryState.FULL || diagnostic?.status === 'full';
-  const status = activelyCharging ? 'Charging'
-    : fullyCharged ? 'Fully charged'
-    : live.state === Battery.BatteryState.UNPLUGGED || diagnostic?.status === 'discharging' ? 'Not charging'
-    : 'Status unavailable';
+  const chargingState = resolveChargingHubState(
+    live.state,
+    diagnostic?.status ?? null,
+    diagnostic?.plugged == null ? null : diagnostic.plugged !== 'none-or-unknown',
+  );
+  const { activelyCharging, connected, fullyCharged } = chargingState;
+  const status = chargingState.label;
 
   const updateThreshold = async (value: number) => {
     if (savingTarget || savingAlert || alerts.isLoading || value === alerts.threshold) return;
