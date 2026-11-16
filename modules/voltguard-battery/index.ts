@@ -49,7 +49,7 @@ export type ChargingAlarmStatus = {
   highImportance: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
-  notificationVolume: number | null;
+  alarmVolume: number | null;
   ringerMode: 'normal' | 'vibrate' | 'silent' | null;
   doNotDisturb: 'off' | 'priority' | 'total_silence' | 'alarms_only' | 'unknown' | null;
   alarmReady: boolean;
