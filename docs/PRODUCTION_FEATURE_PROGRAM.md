@@ -624,6 +624,17 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 
 ## Phase I — Charging Detect & Optimization Hub
 
+### Phase I follow-up — reliability correction
+
+- [x] Roll back the persisted charging threshold when a native reconfiguration or preference write fails, then restore the previous native threshold where possible.
+- [ ] Re-run TypeScript, full unit tests, lint, web export, Android JVM tests and Android debug compilation on the follow-up commit.
+- [ ] Resolve the production dependency audit using reviewed, compatible targeted upgrades; do not force an Expo major upgrade.
+- [ ] Complete physical Android acceptance only in the single coordinated device-test cycle.
+
+**Follow-up implementation commit:** `3511a91d2e942b85e628b5fb919158ec6ba057b6`. Previous commit `c6701e4ef9afafa9b124d28e2337b9df8946aa99` passed TypeScript, unit tests, lint, web export, Android JVM tests and Android debug compilation; its dependency security gate failed.
+
+
+
 **Implementation branch:** `phase-i/charging-optimization-hub`  
 **Draft PR:** #22 (targets Phase H; intentionally not merged)  
 **Status:** Core UI, native diagnostics integration and automated code checks implemented; latest CI validation in progress. Physical Android acceptance and OEM-specific Settings verification remain outstanding.
