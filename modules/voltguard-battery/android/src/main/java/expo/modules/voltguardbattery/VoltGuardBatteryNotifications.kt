@@ -100,7 +100,7 @@ object VoltGuardBatteryNotifications {
     val alarmVolume = try {
       audioManager?.let { manager ->
         val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-        if (maximum > 0) manager.getStreamVolume(AudioManager.STREAM_NOTIFICATION).toDouble() / maximum.toDouble() else null
+        if (maximum > 0) manager.getStreamVolume(AudioManager.STREAM_ALARM).toDouble() / maximum.toDouble() else null
       }
     } catch (_: Exception) { null }
     val ringerMode = try {
