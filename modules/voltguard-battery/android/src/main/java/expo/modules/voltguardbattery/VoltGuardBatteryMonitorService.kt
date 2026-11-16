@@ -52,6 +52,16 @@ class VoltGuardBatteryMonitorService : Service() {
     /** Runtime-only signal. It resets with the app process and is never treated as persisted proof. */
     fun isMonitoringServiceRunning(): Boolean = monitoringServiceRunning
 
+    /** Persisted intent and runtime service state are reported separately. */
+    fun getChargingMonitorStatus(context: Context): Map<String, Boolean> {
+      val enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getBoolean(KEY_ENABLED, false)
+      return mapOf(
+        "monitoringEnabled" to enabled,
+        "monitoringRunning" to monitoringServiceRunning
+      )
+    }
+
     /** Stop without issuing a new background service start request. */
     fun stop(context: Context) {
       context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
