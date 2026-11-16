@@ -117,12 +117,17 @@ export function useBatteryAlerts(monitor = true) {
       return true;
     } catch (error) {
       const message = describeMonitorError(error);
+      // Restore the last committed threshold if native reconfiguration or a
+      // subsequent preference write fails. Keep UI, database and service aligned.
+      await setBatteryPreference(THRESHOLD_KEY, String(threshold)).catch(() => undefined);
       setMonitoringError(true);
       setMonitoringErrorMessage(message);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
       await setBatteryPreference(ALERT_MONITOR_ERROR, 'true').catch(() => undefined);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { monitoringError: true });
-      if (monitor && Platform.OS === 'android' && enabled) await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      if (monitor && Platform.OS === 'android' && enabled) {
+        await startBackgroundBatteryMonitoring(threshold).catch(() => undefined);
+      }
       return false;
     }
   }, [enabled, monitor, threshold]);
