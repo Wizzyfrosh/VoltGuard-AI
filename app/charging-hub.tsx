@@ -64,20 +64,6 @@ export default function ChargingHubScreen() {
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   useEffect(() => {
-    if (!activelyCharging) {
-      chargingPulse.stopAnimation();
-      chargingPulse.setValue(1);
-      return;
-    }
-    const pulse = Animated.loop(Animated.sequence([
-      Animated.timing(chargingPulse, { toValue: 1.08, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      Animated.timing(chargingPulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-    ]));
-    pulse.start();
-    return () => pulse.stop();
-  }, [activelyCharging, chargingPulse]);
-
-  useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') refresh();
     });
@@ -96,8 +82,22 @@ export default function ChargingHubScreen() {
     nativeChargingStatus,
     diagnostic?.plugged == null ? null : diagnostic.plugged !== 'none-or-unknown',
   );
-  const { connected, fullyCharged } = chargingState;
+  const { activelyCharging, connected, fullyCharged } = chargingState;
   const status = chargingState.label;
+
+  useEffect(() => {
+    if (!activelyCharging) {
+      chargingPulse.stopAnimation();
+      chargingPulse.setValue(1);
+      return;
+    }
+    const pulse = Animated.loop(Animated.sequence([
+      Animated.timing(chargingPulse, { toValue: 1.08, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(chargingPulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]));
+    pulse.start();
+    return () => pulse.stop();
+  }, [activelyCharging, chargingPulse]);
 
   const updateThreshold = async (value: number) => {
     if (savingTarget || savingAlert || alerts.isLoading || value === alerts.threshold) return;
