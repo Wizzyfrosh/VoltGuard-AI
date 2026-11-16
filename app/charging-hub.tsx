@@ -19,12 +19,13 @@ function Metric({ label, value, note, colors }: { label: string; value: string; 
   </View>;
 }
 
-function StatusLine({ label, ready, colors }: { label: string; ready: boolean; colors: any }) {
+function StatusLine({ label, ready, colors }: { label: string; ready: boolean | null; colors: any }) {
+  const statusColor = ready == null ? colors.textSecondary : ready ? colors.success : colors.warning;
   return <View style={styles.statusLine}>
     <Text style={[styles.note, { color: colors.textSecondary }]}>{label}</Text>
     <View style={styles.statusValue}>
-      {ready ? <CheckCircle2 size={14} color={colors.success} /> : null}
-      <Text style={[styles.note, { color: ready ? colors.success : colors.warning }]}>{ready ? 'Ready' : 'Check settings'}</Text>
+      {ready === true ? <CheckCircle2 size={14} color={colors.success} /> : null}
+      <Text style={[styles.note, { color: statusColor }]}>{ready == null ? 'Unavailable' : ready ? 'Ready' : 'Check settings'}</Text>
     </View>
   </View>;
 }
@@ -181,9 +182,8 @@ export default function ChargingHubScreen() {
           <Text style={[styles.settingTitle, { color: colors.text }]}>Alarm channel readiness</Text>
           <StatusLine label="Notifications" ready={alarm.notificationsEnabled} colors={colors} />
           <StatusLine label="Alarm channel" ready={alarm.channelEnabled} colors={colors} />
-          <StatusLine label="Foreground monitor enabled" ready={monitor?.monitoringEnabled === true} colors={colors} />
-          <StatusLine label="Foreground monitor running" ready={monitor?.monitoringRunning === true} colors={colors} />
-          <StatusLine label="Channel enabled" ready={alarm.channelEnabled} colors={colors} />
+          <StatusLine label="Foreground monitor enabled" ready={monitor == null ? null : monitor.monitoringEnabled} colors={colors} />
+          <StatusLine label="Foreground monitor running" ready={monitor == null ? null : monitor.monitoringRunning} colors={colors} />
           <StatusLine label="High importance" ready={alarm.highImportance} colors={colors} />
           <StatusLine label="Sound configured" ready={alarm.soundEnabled} colors={colors} />
           <StatusLine label="Vibration enabled" ready={alarm.vibrationEnabled} colors={colors} />
