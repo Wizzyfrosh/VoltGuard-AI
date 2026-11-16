@@ -127,7 +127,8 @@ object VoltGuardBatteryNotifications {
     val alarmReady = notificationsEnabled &&
       channelEnabled &&
       importance >= NotificationManager.IMPORTANCE_HIGH &&
-      soundEnabled
+      soundEnabled &&
+      (alarmVolume == null || alarmVolume > 0.0)
     return mapOf(
       "channelId" to CHARGING_ALARM_CHANNEL_ID,
       "notificationsEnabled" to notificationsEnabled,
@@ -222,6 +223,10 @@ object VoltGuardBatteryNotifications {
     }
     if (status["soundEnabled"] != true) {
       return "Charging target alarm sound is set to Silent. Choose an alarm sound in Android notification settings."
+    }
+    val volume = status["alarmVolume"] as? Double
+    if (volume != null && volume <= 0.0) {
+      return "Android alarm volume is muted. Increase the alarm volume in Android sound settings."
     }
     return "Charging target alarm is not ready. Check Android notification settings."
   }
