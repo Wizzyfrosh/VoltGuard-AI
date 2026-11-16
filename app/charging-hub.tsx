@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Battery from 'expo-battery';
 import { ArrowLeft, BatteryCharging, BellRing, Bluetooth, CheckCircle2, MapPin, Radio, RefreshCw, Settings2, Sun, Volume2 } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import { useBatteryTelemetry } from '../src/features/battery/useBatteryTelemetry';
@@ -82,7 +81,7 @@ export default function ChargingHubScreen() {
     nativeChargingStatus,
     diagnostic?.plugged == null ? null : diagnostic.plugged !== 'none-or-unknown',
   );
-  const { activelyCharging, connected, fullyCharged } = chargingState;
+  const { connected, fullyCharged } = chargingState;
   const status = chargingState.label;
 
   const updateThreshold = async (value: number) => {
@@ -210,7 +209,7 @@ export default function ChargingHubScreen() {
           {alarm.alarmVolume === 0 ?
             <Text style={[styles.note, { color: colors.warning }]}>The alarm volume is muted. Increase the alarm stream volume in Android sound settings before relying on audible alerts.</Text> : null}
           {alarm.doNotDisturb === 'priority' || alarm.doNotDisturb === 'total_silence' ?
-            <Text style={[styles.note, { color: colors.warning }]}>Do Not Disturb is active. Whether this alarm can interrupt depends on the device's allowed interruption policy; test it on this device.</Text> : null}
+            <Text style={[styles.note, { color: colors.warning }]}>Do Not Disturb is active. Whether this alarm can interrupt depends on the device&apos;s allowed interruption policy; test it on this device.</Text> : null}
           <Pressable accessibilityRole="button" disabled={testing || Platform.OS !== 'android'} onPress={() => void testAlarm()}
             style={[styles.secondaryButton, { borderColor: colors.border, opacity: Platform.OS === 'android' ? 1 : 0.45 }]}>
             {testing ? <ActivityIndicator color={colors.primary} /> : <><Volume2 size={16} color={colors.primary} /><Text style={[styles.smallButtonText, { color: colors.primary }]}>Test alarm sound</Text></>}
