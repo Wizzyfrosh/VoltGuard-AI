@@ -76,7 +76,7 @@ export function useBatteryAlerts(monitor = true) {
       setMonitoringError(false);
       setMonitoringErrorMessage(null);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
-      await setBatteryPreference(ALERT_MONITOR_ERROR, 'false');
+      await setBatteryPreference(ALERT_MONITOR_ERROR, 'false').catch(() => undefined);
       setEnabled(nextEnabled);
       DeviceEventEmitter.emit(ALERT_PREFERENCES_CHANGED, { enabled: nextEnabled, monitoringError: false, monitoringErrorMessage: null });
       return true;
@@ -98,7 +98,7 @@ export function useBatteryAlerts(monitor = true) {
       }
       return false;
     }
-  }, [monitor, threshold]);
+  }, [enabled, monitor, threshold]);
 
   const updateThreshold = useCallback(async (nextThreshold: number) => {
     if (!isValidBatteryAlertThreshold(nextThreshold)) return false;
