@@ -34,7 +34,7 @@ export default function ChargingHubScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const live = useBatteryTelemetry();
-  const alerts = useBatteryAlerts();
+  const alerts = useBatteryAlerts(false);
   const [optimization, setOptimization] = useState<OptimizationDiagnostics | null>(null);
   const [alarm, setAlarm] = useState<ChargingAlarmStatus | null>(null);
   const [refreshing, setRefreshing] = useState(false);
