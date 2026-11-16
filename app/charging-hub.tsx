@@ -7,7 +7,7 @@ import { ArrowLeft, BatteryCharging, BellRing, Bluetooth, CheckCircle2, MapPin, 
 import { useTheme } from '../src/context/ThemeContext';
 import { useBatteryTelemetry } from '../src/features/battery/useBatteryTelemetry';
 import { useBatteryAlerts } from '../src/features/battery/useBatteryAlerts';
-import { getChargingAlarmStatus, getOptimizationDiagnostics, openOptimizationSetting, sendTestChargingAlarm, type ChargingAlarmStatus, type OptimizationDiagnostics } from '../modules/voltguard-battery';
+import { getChargingAlarmStatus, getChargingMonitorStatus, getOptimizationDiagnostics, openOptimizationSetting, sendTestChargingAlarm, type ChargingAlarmStatus, type ChargingMonitorStatus, type OptimizationDiagnostics } from '../modules/voltguard-battery';
 
 type SettingKey = 'brightness' | 'location' | 'bluetooth' | 'nfc' | 'sync';
 
@@ -37,6 +37,7 @@ export default function ChargingHubScreen() {
   const alerts = useBatteryAlerts(false);
   const [optimization, setOptimization] = useState<OptimizationDiagnostics | null>(null);
   const [alarm, setAlarm] = useState<ChargingAlarmStatus | null>(null);
+  const [monitor, setMonitor] = useState<ChargingMonitorStatus | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [savingTarget, setSavingTarget] = useState(false);
@@ -47,6 +48,7 @@ export default function ChargingHubScreen() {
     setRefreshing(true);
     try { setOptimization(getOptimizationDiagnostics()); } catch { setOptimization(null); }
     try { setAlarm(getChargingAlarmStatus()); } catch { setAlarm(null); }
+    try { setMonitor(getChargingMonitorStatus()); } catch { setMonitor(null); }
     setRefreshing(false);
   }, []);
 
@@ -178,6 +180,9 @@ export default function ChargingHubScreen() {
         {alarm ? <View style={[styles.alarmStatus, { borderTopColor: colors.border }]}>
           <Text style={[styles.settingTitle, { color: colors.text }]}>Alarm channel readiness</Text>
           <StatusLine label="Notifications" ready={alarm.notificationsEnabled} colors={colors} />
+          <StatusLine label="Alarm channel" ready={alarm.channelEnabled} colors={colors} />
+          <StatusLine label="Foreground monitor enabled" ready={monitor?.monitoringEnabled === true} colors={colors} />
+          <StatusLine label="Foreground monitor running" ready={monitor?.monitoringRunning === true} colors={colors} />
           <StatusLine label="Channel enabled" ready={alarm.channelEnabled} colors={colors} />
           <StatusLine label="High importance" ready={alarm.highImportance} colors={colors} />
           <StatusLine label="Sound configured" ready={alarm.soundEnabled} colors={colors} />
