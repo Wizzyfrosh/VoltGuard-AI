@@ -68,8 +68,11 @@ export function useBatteryAlerts(monitor = true) {
         const started = await startBackgroundBatteryMonitoring(threshold);
         if (!started) throw new Error('Native background monitoring is unavailable');
       }
+      if (monitor && Platform.OS === 'android' && !nextEnabled) {
+        const stopped = await stopBackgroundBatteryMonitoring();
+        if (!stopped) throw new Error('Android background monitoring could not be stopped. Retry after reopening VoltGuard.');
+      }
       await setBatteryPreference(ENABLED_KEY, String(nextEnabled));
-      if (monitor && Platform.OS === 'android' && !nextEnabled) await stopBackgroundBatteryMonitoring();
       setMonitoringError(false);
       setMonitoringErrorMessage(null);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, '').catch(() => undefined);
@@ -79,6 +82,8 @@ export function useBatteryAlerts(monitor = true) {
       return true;
     } catch (error) {
       const message = describeMonitorError(error);
+      // Restore the last committed preference if a native start/stop action fails.
+      await setBatteryPreference(ENABLED_KEY, String(enabled)).catch(() => undefined);
       setMonitoringError(true);
       setMonitoringErrorMessage(message);
       await setBatteryPreference(ALERT_MONITOR_MESSAGE, message).catch(() => undefined);
