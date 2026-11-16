@@ -620,3 +620,28 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [ ] Reconcile this phase against the complete product roadmap before considering it complete.
 
 **Known constraints:** Hardware fields remain device-dependent. Battery-side current is not charger input current. The charge counter is not design capacity. OS health is not a wear percentage. Estimates are observational, not guarantees. Background/screen-off sampling is not promised.
+
+
+## Phase I — Charging Detect & Optimization Hub
+
+**Implementation branch:** `phase-i/charging-optimization-hub`  
+**Draft PR:** #22 (targets Phase H; intentionally not merged)  
+**Status:** UI and integration implemented; automated validation pending.
+
+- [x] Add a dedicated Charging Hub route and dashboard entry without changing the existing five bottom tabs.
+- [x] Reuse the existing battery telemetry provider and Android diagnostics; do not introduce a second native telemetry or foreground-service implementation.
+- [x] Show charging state, power source and available battery-side voltage, current, temperature and charge-counter readings.
+- [x] Reuse existing charging target preferences and 80%, 90% and 100% target choices.
+- [x] Reuse the existing alert hook and native foreground monitor; prevent the Charging Hub's non-owning hook instance from directly starting/stopping a second native service.
+- [x] Show existing Android notification-channel readiness diagnostics and provide an explicit alarm test action.
+- [x] Show read-only Android brightness, location, Bluetooth, NFC and master-sync status with links to the relevant system settings.
+- [x] Clearly state that system toggles are user-controlled and that VoltGuard does not increase charging wattage or stop charging.
+- [ ] Pass TypeScript, full unit tests, lint and web export on the latest Phase I commit.
+- [ ] Pass Android JVM tests and debug APK compilation on the latest Phase I commit.
+- [ ] Verify navigation, live status, alert enable/disable, threshold changes and alarm test on a physical Android device.
+- [ ] Verify every Settings shortcut and unsupported NFC/Settings intents across Android OEMs.
+- [ ] Verify web and iOS gracefully display unsupported system diagnostics and disable Android-only actions.
+- [ ] Review accessibility, small-screen layout and error/loading states.
+- [ ] Reconcile Charging Hub against the full charging-detection requirements before marking Phase I complete.
+
+**Known constraints:** Brightness/location/connectivity/sync readings are snapshots, not automatic optimizations. Android/OEM restrictions may change available settings and alarm delivery. Battery-side current is not USB adapter input current. No automatic protected-setting changes, charging-current control, charging-speed claims or stop-charging feature are included.
