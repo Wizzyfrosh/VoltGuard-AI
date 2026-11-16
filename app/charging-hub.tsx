@@ -34,7 +34,7 @@ export default function ChargingHubScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const live = useBatteryTelemetry();
-  const alerts = useBatteryAlerts(false);
+  const alerts = useBatteryAlerts();
   const [optimization, setOptimization] = useState<OptimizationDiagnostics | null>(null);
   const [alarm, setAlarm] = useState<ChargingAlarmStatus | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,13 +51,16 @@ export default function ChargingHubScreen() {
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   const diagnostic = live.androidDiagnostics;
+  const diagnosticFullAndPlugged = diagnostic?.status === 'full'
+    && diagnostic.plugged != null
+    && diagnostic.plugged !== 'none-or-unknown';
   const charging = live.state === Battery.BatteryState.CHARGING
     || live.state === Battery.BatteryState.FULL
     || diagnostic?.status === 'charging'
-    || diagnostic?.status === 'full';
+    || diagnosticFullAndPlugged;
   const status = live.state === Battery.BatteryState.CHARGING || diagnostic?.status === 'charging' ? 'Charging'
-    : live.state === Battery.BatteryState.FULL || diagnostic?.status === 'full' ? 'Fully charged'
-    : live.state === Battery.BatteryState.UNPLUGGED || diagnostic?.status === 'discharging' ? 'Not charging'
+    : live.state === Battery.BatteryState.FULL || diagnosticFullAndPlugged ? 'Fully charged'
+    : live.state === Battery.BatteryState.UNPLUGGED || diagnostic?.status === 'discharging' || (diagnostic?.status === 'full' && !diagnosticFullAndPlugged) ? 'Not charging'
     : 'Status unavailable';
 
   const updateThreshold = async (value: number) => {
