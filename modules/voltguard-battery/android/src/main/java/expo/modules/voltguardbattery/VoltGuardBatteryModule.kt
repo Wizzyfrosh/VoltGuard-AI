@@ -87,6 +87,21 @@ class VoltGuardBatteryModule : Module() {
       VoltGuardBatteryNotifications.getChargingAlarmStatus(context)
     }
 
+    Function("openChargingNotificationSettings") {
+      val context = appContext.reactContext ?: return@Function false
+      try {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        } else {
+          Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(android.net.Uri.fromParts("package", context.packageName, null))
+        }
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+      } catch (_: Exception) { false }
+    }
+
     Function("getChargingMonitorStatus") {
       val context = appContext.reactContext ?: throw IllegalStateException("React context is unavailable")
       VoltGuardBatteryMonitorService.getChargingMonitorStatus(context)
