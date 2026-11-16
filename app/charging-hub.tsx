@@ -7,7 +7,7 @@ import { ArrowLeft, BatteryCharging, BellRing, Bluetooth, CheckCircle2, MapPin, 
 import { useTheme } from '../src/context/ThemeContext';
 import { useBatteryTelemetry } from '../src/features/battery/useBatteryTelemetry';
 import { useBatteryAlerts } from '../src/features/battery/useBatteryAlerts';
-import { getChargingAlarmStatus, getChargingMonitorStatus, getOptimizationDiagnostics, openOptimizationSetting, sendTestChargingAlarm, type ChargingAlarmStatus, type ChargingMonitorStatus, type OptimizationDiagnostics } from '../modules/voltguard-battery';
+import { getChargingAlarmStatus, getChargingMonitorStatus, getOptimizationDiagnostics, openChargingNotificationSettings, openOptimizationSetting, sendTestChargingAlarm, type ChargingAlarmStatus, type ChargingMonitorStatus, type OptimizationDiagnostics } from '../modules/voltguard-battery';
 
 type SettingKey = 'brightness' | 'location' | 'bluetooth' | 'nfc' | 'sync';
 
@@ -195,6 +195,13 @@ export default function ChargingHubScreen() {
           <Pressable accessibilityRole="button" disabled={testing || Platform.OS !== 'android'} onPress={() => void testAlarm()}
             style={[styles.secondaryButton, { borderColor: colors.border, opacity: Platform.OS === 'android' ? 1 : 0.45 }]}>
             {testing ? <ActivityIndicator color={colors.primary} /> : <><Volume2 size={16} color={colors.primary} /><Text style={[styles.smallButtonText, { color: colors.primary }]}>Test alarm sound</Text></>}
+          </Pressable>
+          <Pressable accessibilityRole="button" disabled={Platform.OS !== 'android'} onPress={() => {
+            const opened = openChargingNotificationSettings();
+            if (!opened) setMessage('Android notification settings could not be opened. Open Settings > Apps > VoltGuard > Notifications manually.');
+          }} style={[styles.secondaryButton, { borderColor: colors.border, opacity: Platform.OS === 'android' ? 1 : 0.45 }]}>
+            <Settings2 size={16} color={colors.primary} />
+            <Text style={[styles.smallButtonText, { color: colors.primary }]}>Notification settings</Text>
           </Pressable>
           {!alarm.alarmReady ? <Text style={[styles.note, { color: colors.warning }]}>Alarm notifications need attention in Android settings.</Text> : null}
         </View> : <Text style={[styles.note, { color: colors.textSecondary }]}>Alarm-channel diagnostics are unavailable on this platform.</Text>}
