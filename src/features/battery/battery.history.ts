@@ -68,7 +68,6 @@ export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> 
     if (!enabled) {
       await db.runAsync('DELETE FROM battery_samples');
       await db.runAsync('DELETE FROM charging_sessions');
-    await db.runAsync('DELETE FROM battery_diagnostic_samples');
       await db.runAsync('DELETE FROM battery_diagnostic_samples');
     }
   }));
@@ -220,6 +219,7 @@ export async function clearBatteryHistory(): Promise<void> {
   await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM battery_samples');
     await db.runAsync('DELETE FROM charging_sessions');
+    await db.runAsync('DELETE FROM battery_diagnostic_samples');
   }));
 }
 
@@ -279,8 +279,12 @@ export async function getBatteryMonitorReport(): Promise<import('./battery.monit
        charging_source, current_now_milliamps, current_average_milliamps,
        remaining_charge_mAh, energy_counter_mWh, cycle_count, technology
        FROM battery_diagnostic_samples WHERE observed_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
        ORDER BY observed_at DESC, id DESC LIMIT 5000`,
-      cutoff,
+      cutoff, HISTORY_PREFERENCE,
     ),
   ]);
   const samples = sampleRows.reverse().map((row) => ({
