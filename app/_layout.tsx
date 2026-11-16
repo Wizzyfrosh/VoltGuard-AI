@@ -44,6 +44,7 @@ function RootLayoutNav() {
         <Stack.Screen name="permission-center" options={{ title: 'Permission centre', headerBackTitle: 'Settings' }} />
         <Stack.Screen name="anti-theft" options={{ headerShown: false }} />
         <Stack.Screen name="battery-monitor" options={{ headerShown: false }} />
+        <Stack.Screen name="charging-hub" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </View>
