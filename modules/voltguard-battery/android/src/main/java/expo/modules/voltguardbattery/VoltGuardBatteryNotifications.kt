@@ -97,7 +97,7 @@ object VoltGuardBatteryNotifications {
       true
     }
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-    val notificationVolume = try {
+    val alarmVolume = try {
       audioManager?.let { manager ->
         val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
         if (maximum > 0) manager.getStreamVolume(AudioManager.STREAM_NOTIFICATION).toDouble() / maximum.toDouble() else null
@@ -135,7 +135,7 @@ object VoltGuardBatteryNotifications {
       "highImportance" to (importance >= NotificationManager.IMPORTANCE_HIGH),
       "soundEnabled" to soundEnabled,
       "vibrationEnabled" to vibrationEnabled,
-      "alarmVolume" to notificationVolume,
+      "alarmVolume" to alarmVolume,
       "ringerMode" to ringerMode,
       "doNotDisturb" to doNotDisturb,
       "alarmReady" to alarmReady
