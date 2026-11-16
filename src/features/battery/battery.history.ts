@@ -68,6 +68,7 @@ export async function setBatteryHistoryEnabled(enabled: boolean): Promise<void> 
     if (!enabled) {
       await db.runAsync('DELETE FROM battery_samples');
       await db.runAsync('DELETE FROM charging_sessions');
+      await db.runAsync('DELETE FROM battery_diagnostic_samples');
     }
   }));
 }
@@ -104,6 +105,47 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
       snapshot.lowPowerMode === null ? null : snapshot.lowPowerMode ? 1 : 0,
       snapshot.source,
     );
+
+    const diagnostics = snapshot.androidDiagnostics;
+    const diagnosticsAt = snapshot.diagnosticsObservedAt ?? snapshot.observedAt;
+    if (diagnostics && (
+      diagnostics.voltageMilliVolts !== null ||
+      diagnostics.temperatureCelsius !== null ||
+      diagnostics.health !== null ||
+      diagnostics.plugged !== null ||
+      diagnostics.currentNowMilliAmps !== null ||
+      diagnostics.currentAverageMilliAmps !== null ||
+      diagnostics.remainingChargeMilliAmpHours !== null ||
+      diagnostics.energyCounterMilliWattHours !== null ||
+      diagnostics.cycleCount !== null ||
+      diagnostics.technology !== null
+    )) {
+      const existingDiagnostics = await db.getFirstAsync<{ id: number }>(
+        'SELECT id FROM battery_diagnostic_samples WHERE observed_at = ? LIMIT 1',
+        diagnosticsAt,
+      );
+      if (!existingDiagnostics) {
+        await db.runAsync(
+          `INSERT INTO battery_diagnostic_samples
+           (observed_at, api_level, voltage_millivolts, temperature_celsius, health,
+            charging_source, current_now_milliamps, current_average_milliamps,
+            remaining_charge_mAh, energy_counter_mWh, cycle_count, technology)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          diagnosticsAt,
+          diagnostics.apiLevel,
+          diagnostics.voltageMilliVolts,
+          diagnostics.temperatureCelsius,
+          diagnostics.health,
+          diagnostics.plugged,
+          diagnostics.currentNowMilliAmps,
+          diagnostics.currentAverageMilliAmps,
+          diagnostics.remainingChargeMilliAmpHours,
+          diagnostics.energyCounterMilliWattHours,
+          diagnostics.cycleCount,
+          diagnostics.technology,
+        );
+      }
+    }
 
     const active = await db.getFirstAsync<ChargingSessionRow>(
       `SELECT id, started_at, ended_at, start_level, end_level, status, source
@@ -144,6 +186,7 @@ export async function recordBatterySnapshot(snapshot: BatterySnapshot): Promise<
       "DELETE FROM charging_sessions WHERE started_at < ?",
       cutoff,
     );
+    await db.runAsync('DELETE FROM battery_diagnostic_samples WHERE observed_at < ?', cutoff);
   }));
 }
 
@@ -176,6 +219,7 @@ export async function clearBatteryHistory(): Promise<void> {
   await runBatteryHistoryMutation(() => db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM battery_samples');
     await db.runAsync('DELETE FROM charging_sessions');
+    await db.runAsync('DELETE FROM battery_diagnostic_samples');
   }));
 }
 
@@ -206,6 +250,62 @@ export async function getBatteryDrainAnalysis(): Promise<BatteryDrainAnalysis> {
   })));
 }
 
+
+
+export async function getBatteryMonitorReport(): Promise<import('./battery.monitor').BatteryMonitorReport> {
+  const { buildBatteryMonitorReport } = await import('./battery.monitor');
+  if (Platform.OS === 'web') return buildBatteryMonitorReport([], []);
+  if (!(await isBatteryHistoryEnabled())) return buildBatteryMonitorReport([], []);
+  const db = await getBatteryDatabase();
+  const cutoff = getBatteryHistoryCutoff();
+  const [sampleRows, diagnosticRows] = await Promise.all([
+    db.getAllAsync<{ observed_at: string; level: number | null; battery_state: number }>(
+      `SELECT observed_at, level, battery_state FROM battery_samples
+       WHERE observed_at >= ? AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
+       ORDER BY observed_at DESC, id DESC LIMIT 5000`,
+      cutoff, HISTORY_PREFERENCE,
+    ),
+    db.getAllAsync<{
+      observed_at: string; api_level: number | null; voltage_millivolts: number | null;
+      temperature_celsius: number | null; health: string | null; charging_source: string | null;
+      current_now_milliamps: number | null; current_average_milliamps: number | null;
+      remaining_charge_mAh: number | null; energy_counter_mWh: number | null;
+      cycle_count: number | null; technology: string | null;
+    }>(
+      `SELECT observed_at, api_level, voltage_millivolts, temperature_celsius, health,
+       charging_source, current_now_milliamps, current_average_milliamps,
+       remaining_charge_mAh, energy_counter_mWh, cycle_count, technology
+       FROM battery_diagnostic_samples WHERE observed_at >= ?
+       AND EXISTS (
+         SELECT 1 FROM user_preferences
+         WHERE preference_key = ? AND preference_value = 'true'
+       )
+       ORDER BY observed_at DESC, id DESC LIMIT 5000`,
+      cutoff, HISTORY_PREFERENCE,
+    ),
+  ]);
+  const samples = sampleRows.reverse().map((row) => ({
+    observedAt: row.observed_at, level: row.level, state: row.battery_state,
+  }));
+  const diagnostics = diagnosticRows.reverse().map((row) => ({
+    observedAt: row.observed_at,
+    apiLevel: row.api_level,
+    voltageMilliVolts: row.voltage_millivolts,
+    temperatureCelsius: row.temperature_celsius,
+    health: row.health,
+    chargingSource: row.charging_source,
+    currentNowMilliAmps: row.current_now_milliamps,
+    currentAverageMilliAmps: row.current_average_milliamps,
+    remainingChargeMilliAmpHours: row.remaining_charge_mAh,
+    energyCounterMilliWattHours: row.energy_counter_mWh,
+    cycleCount: row.cycle_count,
+    technology: row.technology,
+  }));
+  return buildBatteryMonitorReport(samples, diagnostics);
+}
 
 /** Read opted-in local samples for the 30-day trend window. No exports or uploads. */
 export async function getBatteryTrendReport(period: BatteryTrendPeriod): Promise<BatteryTrendReport> {

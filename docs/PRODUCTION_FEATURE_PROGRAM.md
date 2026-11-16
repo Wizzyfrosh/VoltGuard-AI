@@ -596,3 +596,27 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - Usage Access is optional, Android-only and user-granted through system Settings. It is never prompted on app startup.
 - The Permission Centre can refresh status and open system settings; it cannot revoke Android permissions on behalf of the user.
 - Physical-device permission and lifecycle checks remain required. CI cannot prove Android Settings handoff or OEM behaviour.
+
+
+## Phase H — Expanded Battery Monitor
+
+**Implementation branch:** `phase-h/expanded-battery-monitor`  
+**Draft PR:** #21 (targets the Phase G implementation branch; not merged)  
+**Status:** Implementation in progress; automated validation and device acceptance pending.
+
+- [x] Add a dedicated Battery Monitor detail route without adding or changing bottom navigation tabs.
+- [x] Show live platform battery level and Android hardware diagnostics when supplied by the device.
+- [x] Keep OS battery health separate from battery wear/capacity estimates.
+- [x] Persist available hardware diagnostic observations only under the existing explicit Battery history opt-in.
+- [x] Apply local history retention and delete diagnostic observations when history is disabled or cleared.
+- [x] Gate historical diagnostic reads on the stored history-consent preference.
+- [x] Calculate charging/depletion estimates from recent contiguous same-state samples; return unavailable when evidence is insufficient.
+- [x] Show observed 30-day voltage, temperature and current ranges without interpolating missing readings.
+- [x] Add unit tests for trend direction, insufficient data, time gaps, duplicate observations and valid diagnostic ranges.
+- [ ] Pass TypeScript, full unit test, lint and web export CI on the latest commit.
+- [ ] Pass Android JVM tests and debug APK compilation on the latest commit.
+- [ ] Review the screen on narrow Android layouts and web.
+- [ ] Validate real readings, sampling cadence, estimate behaviour, opt-in, retention and deletion on physical Android devices.
+- [ ] Reconcile this phase against the complete product roadmap before considering it complete.
+
+**Known constraints:** Hardware fields remain device-dependent. Battery-side current is not charger input current. The charge counter is not design capacity. OS health is not a wear percentage. Estimates are observational, not guarantees. Background/screen-off sampling is not promised.
