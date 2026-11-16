@@ -44,7 +44,7 @@ export interface BatteryMonitorReport {
   };
 }
 
-const MIN_INTERVAL_MS = 5 * 60_000;
+const MIN_INTERVAL_MS = 60_000;
 const MAX_INTERVAL_MS = 2 * 60 * 60_000;
 const MIN_WINDOW_MS = 15 * 60_000;
 const STATE_CHARGING = 2;
