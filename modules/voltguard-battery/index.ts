@@ -17,6 +17,7 @@ type VoltGuardBatteryNativeModule = {
   setAntiTheftVibration: (enabled: boolean) => boolean;
   setAntiTheftFlash: (enabled: boolean) => boolean;
   getChargingAlarmStatus: () => ChargingAlarmStatus;
+  openChargingNotificationSettings: () => boolean;
   getChargingMonitorStatus: () => ChargingMonitorStatus;
   sendTestChargingAlarm: () => boolean;
   hasUsageAccess: () => Promise<boolean>;
@@ -209,6 +210,11 @@ export async function stopBackgroundBatteryMonitoring(): Promise<boolean> {
 export function getChargingAlarmStatus(): ChargingAlarmStatus | null {
   if (Platform.OS !== 'android') return null;
   return getNativeModule()?.getChargingAlarmStatus() ?? null;
+}
+
+export function openChargingNotificationSettings(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return getNativeModule()?.openChargingNotificationSettings() ?? false;
 }
 
 export function getChargingMonitorStatus(): ChargingMonitorStatus | null {
