@@ -71,9 +71,15 @@ export default function ChargingHubScreen() {
   }, [refresh]);
 
   const diagnostic = live.androidDiagnostics;
+  const nativeChargingStatus = diagnostic?.status === 'charging'
+    || diagnostic?.status === 'discharging'
+    || diagnostic?.status === 'full'
+    || diagnostic?.status === 'unknown'
+    ? diagnostic.status
+    : null;
   const chargingState = resolveChargingHubState(
     live.state,
-    diagnostic?.status ?? null,
+    nativeChargingStatus,
     diagnostic?.plugged == null ? null : diagnostic.plugged !== 'none-or-unknown',
   );
   const { activelyCharging, connected, fullyCharged } = chargingState;
