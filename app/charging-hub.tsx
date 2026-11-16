@@ -187,10 +187,10 @@ export default function ChargingHubScreen() {
           <StatusLine label="High importance" ready={alarm.highImportance} colors={colors} />
           <StatusLine label="Sound configured" ready={alarm.soundEnabled} colors={colors} />
           <StatusLine label="Vibration enabled" ready={alarm.vibrationEnabled} colors={colors} />
-          <StatusLine label="Notification volume" ready={alarm.notificationVolume == null ? null : alarm.notificationVolume > 0} colors={colors} />
+          <StatusLine label="Alarm volume" ready={alarm.alarmVolume == null ? null : alarm.alarmVolume > 0} colors={colors} />
           <StatusLine label="Ringer mode" ready={alarm.ringerMode == null ? null : alarm.ringerMode === 'normal'} colors={colors} />
           <StatusLine label="Do Not Disturb" ready={alarm.doNotDisturb == null || alarm.doNotDisturb === 'unknown' ? null : alarm.doNotDisturb === 'off'} colors={colors} />
-          {alarm.ringerMode === 'silent' || alarm.ringerMode === 'vibrate' || alarm.notificationVolume === 0 || (alarm.doNotDisturb != null && alarm.doNotDisturb !== 'off' && alarm.doNotDisturb !== 'unknown') ?
+          {alarm.ringerMode === 'silent' || alarm.ringerMode === 'vibrate' || alarm.alarmVolume === 0 || (alarm.doNotDisturb != null && alarm.doNotDisturb !== 'off' && alarm.doNotDisturb !== 'unknown') ?
             <Text style={[styles.note, { color: colors.warning }]}>Android sound or interruption settings may suppress the charging alarm. Review your device sound and Do Not Disturb settings.</Text> : null}
           <Pressable accessibilityRole="button" disabled={testing || Platform.OS !== 'android'} onPress={() => void testAlarm()}
             style={[styles.secondaryButton, { borderColor: colors.border, opacity: Platform.OS === 'android' ? 1 : 0.45 }]}>
