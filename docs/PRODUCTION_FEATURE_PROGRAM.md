@@ -633,7 +633,8 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [x] Show charging state, power source and available battery-side voltage, current, temperature and charge-counter readings.
 - [x] Reuse existing charging target preferences and 80%, 90% and 100% target choices.
 - [x] Reuse the existing alert hook and native foreground monitor; prevent the Charging Hub's non-owning hook instance from directly starting/stopping a second native service.
-- [x] Show existing Android notification-channel readiness diagnostics and provide an explicit alarm test action.
+- [x] Show Android notification permission/channel readiness, sound/vibration configuration, notification volume, ringer mode, Do Not Disturb state, and foreground-monitor enabled/running state where exposed.
+- [x] Provide an explicit alarm test action and a direct shortcut to the app's Android notification settings, with manual fallback guidance.
 - [x] Show read-only Android brightness, location, Bluetooth, NFC and master-sync status with links to the relevant system settings.
 - [x] Clearly state that system toggles are user-controlled and that VoltGuard does not increase charging wattage or stop charging.
 - [ ] Pass TypeScript, full unit tests, lint and web export on the latest Phase I commit.
