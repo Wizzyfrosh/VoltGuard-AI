@@ -86,14 +86,14 @@ Statuses reflect source inspection, not physical-device verification.
 - Acceptance: no hard-coded device specs; unit tests cover null/sentinel/range handling; physical-device readings match Android diagnostics.
 
 ### C. Charging Detect & Optimization Hub
-- [ ] Add live charging connection state and animated indicator driven by actual charging state (not decorative fake animation).
-- [ ] Display voltage, instantaneous/average current and source with explicit units and timestamp; handle signed current correctly.
-- [ ] Add detection cards for brightness, location/GPS, sync, Bluetooth and NFC only where APIs/permissions permit.
-- [ ] For restricted toggles, provide a Settings deep link or clear manual instruction; never claim the app toggled it.
-- [ ] Give measured, conservative charging suggestions. Do not promise faster charging or disable services automatically.
-- [ ] Add dedicated target-alert channel with sound/vibration and a user-configurable sound/alert test if supported.
-- [ ] Diagnose notification permission, channel disabled, DND/volume restrictions and background-service status.
-- Acceptance: threshold crossing produces one audible notification per charging cycle where OS permits; re-arm on unplug; no duplicate alarms; no automatic charge-stop claim.
+- [x] Add live charging connection state and animated indicator driven by normalized platform/native charging state.
+- [x] Display voltage, instantaneous/average current and power source with explicit units; show the timestamp of the latest hardware diagnostics and preserve battery-side current semantics.
+- [x] Add read-only detection rows for brightness, location/GPS, sync, Bluetooth and NFC using available Android diagnostics.
+- [x] For restricted toggles, provide Android Settings shortcuts and manual fallback guidance; never claim the app toggled them.
+- [x] Give conservative, setting-specific charging/power suggestions without promising faster charging or disabling services automatically.
+- [x] Reuse the dedicated target-alert channel with sound/vibration and provide a native alarm test action.
+- [x] Diagnose notification permission, channel state, DND/volume restrictions and foreground-service enabled/running status.
+- [ ] Acceptance: verify one threshold notification per charging cycle, re-arm on unplug, no duplicate alarms and audible output where OS permits. Physical Android verification remains outstanding; no automatic charge-stop claim.
 
 ### D. Battery drain and usage analytics
 - [ ] Build drain-rate analysis from persisted, timestamped battery samples, using elapsed time and percentage deltas.
@@ -626,7 +626,7 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 
 **Implementation branch:** `phase-i/charging-optimization-hub`  
 **Draft PR:** #22 (targets Phase H; intentionally not merged)  
-**Status:** UI and integration implemented; automated validation pending.
+**Status:** Core UI, native diagnostics integration and automated code checks implemented; latest CI validation in progress. Physical Android acceptance and OEM-specific Settings verification remain outstanding.
 
 - [x] Add a dedicated Charging Hub route and dashboard entry without changing the existing five bottom tabs.
 - [x] Reuse the existing battery telemetry provider and Android diagnostics; do not introduce a second native telemetry or foreground-service implementation.
@@ -637,7 +637,7 @@ Implement real RAM and storage diagnostics only where native platform APIs provi
 - [x] Provide an explicit alarm test action and a direct shortcut to the app's Android notification settings, with manual fallback guidance.
 - [x] Show read-only Android brightness, location, Bluetooth, NFC and master-sync status with links to the relevant system settings.
 - [x] Clearly state that system toggles are user-controlled and that VoltGuard does not increase charging wattage or stop charging.
-- [ ] Pass TypeScript, full unit tests, lint and web export on the latest Phase I commit.
+- [x] Pass TypeScript, full unit tests, lint and web export on the latest validated Phase I commit (latest follow-up UI commit is being revalidated).
 - [ ] Pass Android JVM tests and debug APK compilation on the latest Phase I commit.
 - [ ] Verify navigation, live status, alert enable/disable, threshold changes and alarm test on a physical Android device.
 - [ ] Verify every Settings shortcut and unsupported NFC/Settings intents across Android OEMs.
