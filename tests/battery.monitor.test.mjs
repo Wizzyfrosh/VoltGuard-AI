@@ -31,6 +31,13 @@ test('does not estimate from too few samples or a charging-state transition', ()
   ], now).minutesRemaining, null);
 });
 
+test('rejects duplicate or near-duplicate timestamps in a trend window', () => {
+  const result = estimateBatteryTime([
+    sample(30, 0.9), sample(29.5, 0.89), sample(15, 0.8), sample(0, 0.7),
+  ], now);
+  assert.equal(result.minutesRemaining, null);
+});
+
 test('does not bridge long gaps or use future/out-of-range observations', () => {
   const result = estimateBatteryTime([
     sample(240, 0.9), sample(225, 0.85), sample(10, 0.7), sample(0, 0.65),
