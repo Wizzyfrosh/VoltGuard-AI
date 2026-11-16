@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Battery from 'expo-battery';
-import { Activity, ArrowLeft, BatteryCharging, BatteryFull, Clock3, RefreshCw, Thermometer, Zap } from 'lucide-react-native';
+import { ArrowLeft, BatteryCharging, BatteryFull, Clock3, RefreshCw, Thermometer } from 'lucide-react-native';
 import { useTheme } from '../src/context/ThemeContext';
 import { useBatteryTelemetry } from '../src/features/battery/useBatteryTelemetry';
 import { getBatteryMonitorReport } from '../src/features/battery/battery.history';
@@ -127,7 +127,7 @@ export default function BatteryMonitorScreen() {
             <Thermometer size={21} color={colors.primary} />
             <Text style={[styles.condition, { color: colors.text }]}>{diagnostic?.health?.replace(/[-_]/g, ' ') ?? 'Unavailable'}</Text>
           </View>
-          <Text style={[styles.body, { color: colors.textSecondary }]}>Android's health field is an operating-system status. It does not represent remaining battery capacity or a wear percentage.</Text>
+          <Text style={[styles.body, { color: colors.textSecondary }]}>Android&apos;s health field is an operating-system status. It does not represent remaining battery capacity or a wear percentage.</Text>
           <Text style={[styles.body, { color: colors.textSecondary }]}>Capacity-based wear remains unavailable unless the device exposes verified design capacity and full-charge capacity.</Text>
         </Section>
       </ScrollView>
